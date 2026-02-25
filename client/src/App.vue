@@ -1,32 +1,24 @@
 <script setup>
-import { onMounted, watch } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter();
-const route = useRoute();
+const authStore = useAuthStore()
 
-const checkAuth = () => {
-  const token = localStorage.getItem("token");
-
-  // Always allow OAuth callback to run
-  if (route.path === "/oauth-success") return;
-
-  // If logged in, don't stay on login/register
-  if (token && route.path.startsWith("/auth")) {
-    router.replace("/dashboard");
-    return;
-  }
-
-  // If not logged in, block dashboard
-  if (!token && route.path === "/dashboard") {
-    router.replace("/auth/login");
-  }
-};
-
-onMounted(checkAuth);
-watch(() => route.path, checkAuth);
+onMounted(async () => {
+  // This will hit /auth/me and fill authStore.user
+  await authStore.fetchCurrentUser()
+})
 </script>
 
 <template>
-  <router-view />
+  <router-view v-if="authStore.initialized" />
+  <div v-else class="loading-spinner">Loading...</div>
 </template>
+
+<style>
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+</style>

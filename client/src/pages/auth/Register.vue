@@ -1,145 +1,149 @@
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import apiClient from '@/api/axios';
+
+const router = useRouter();
+const form = ref({ username: '', email: '', password: '' });
+const loading = ref(false);
+const error = ref(''); // 👈 FIX 1: We must define the error variable!
+
+const handleRegister = async () => {
+    loading.value = true;
+    error.value = ''; // 👈 Reset the error on a new attempt
+
+    try {
+        await apiClient.post('/auth/register', form.value);
+
+        console.log("OTP Sent to email");
+
+        router.push({
+            path: '/auth/verify-otp',
+            query: { email: form.value.email }
+        });
+    } catch (err) {
+        // 👈 FIX 2: Safely extract the error message from the backend
+        error.value = err.response?.data?.message || 'Registration failed. Please try again.';
+        console.error("Registration Error:", err);
+    } finally {
+        loading.value = false;
+    }
+};
+</script>
+
 <template>
     <div class="auth-container">
-        <div class="card">
-            <h2>Create Account ✨</h2>
+        <div class="auth-card">
+            <h2>Create Account</h2>
+            <p>Join the DepEd Guihulngan City talent pool.</p>
 
-            <form @submit.prevent="register">
-                <input v-model="name" type="text" placeholder="Full name" required />
-                <input v-model="email" type="email" placeholder="Email" required />
-
-                <div class="password-wrapper">
-                    <input :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="Password"
-                        required />
-                    <span @click="showPassword = !showPassword">
-                        {{ showPassword ? "Hide" : "Show" }}
-                    </span>
+            <form @submit.prevent="handleRegister">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input v-model="form.username" type="text" placeholder="Juan Dela Cruz" required />
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input v-model="form.email" type="email" placeholder="juan@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input v-model="form.password" type="password" placeholder="Min. 8 characters" required />
                 </div>
 
-                <button type="submit" class="primary">Register</button>
-            </form>
+                <p v-if="error" class="error-text">{{ error }}</p>
 
-            <p class="footer">
-                Already have an account?
-                <router-link to="/auth/login">Login</router-link>
-            </p>
+                <button type="submit" class="btn-submit" :disabled="loading">
+                    {{ loading ? 'Sending OTP...' : 'Register' }}
+                </button>
+            </form>
         </div>
     </div>
 </template>
 
-<script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-
-const name = ref("");
-const email = ref("");
-const password = ref("");
-const showPassword = ref(false);
-const router = useRouter();
-
-const register = async () => {
-    const res = await fetch("http://localhost:4000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            name: name.value,
-            email: email.value,
-            password: password.value,
-        }),
-    });
-
-    const data = await res.json();
-    localStorage.setItem("token", data.token);
-    router.push("/dashboard");
-};
-</script>
-
 <style scoped>
+/* Standard Auth Styles */
 .auth-container {
     min-height: 100vh;
-    display: grid;
-    place-items: center;
-    background: linear-gradient(135deg, #111827, #1f2933);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    padding: 2rem;
 }
 
-.card {
+.auth-card {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 16px;
     width: 100%;
-    max-width: 380px;
-    background: #0f172a;
-    padding: 32px;
-    border-radius: 14px;
-    color: #e5e7eb;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, .4);
+    max-width: 400px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 h2 {
-    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
 }
 
-.subtitle {
-    text-align: center;
-    opacity: 0.7;
-    margin-bottom: 20px;
+p {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: #475569;
 }
 
 input {
     width: 100%;
     padding: 12px;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    border: none;
-    margin-bottom: 12px;
-    background: #020617;
+    transition: 0.2s;
+}
+
+input:focus {
+    border-color: #38bdf8;
+    outline: none;
+    box-shadow: 0 0 0 2px #e0f2fe;
+    /* Updated for cross-browser standard */
+}
+
+.btn-submit {
+    width: 100%;
+    background: #0f172a;
     color: white;
-}
-
-.password-wrapper {
-    position: relative;
-}
-
-.password-wrapper span {
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    font-size: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
     cursor: pointer;
+    border: none;
+    margin-top: 1rem;
+}
+
+.btn-submit:disabled {
     opacity: 0.7;
+    cursor: not-allowed;
 }
 
-.primary {
-    width: 100%;
-    padding: 12px;
-    background: #6366f1;
-    color: white;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-}
-
-.google {
-    width: 100%;
-    padding: 12px;
-    background: white;
-    color: black;
-    border-radius: 8px;
-    border: none;
-    margin-top: 10px;
-}
-
-.divider {
+.error-text {
+    color: #dc2626;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
     text-align: center;
-    margin: 14px 0;
-    opacity: 0.5;
-}
-
-.footer {
-    text-align: center;
-    margin-top: 12px;
-}
-
-.expired {
-    background: #7f1d1d;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    font-size: 14px;
+    font-weight: 500;
 }
 </style>

@@ -1,154 +1,213 @@
+<script setup>
+import { ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+
+const form = ref({ email: '', password: '' });
+const loading = ref(false);
+const error = ref('');
+
+const handleLogin = async () => {
+    loading.value = true;
+    error.value = '';
+    try {
+        await authStore.login(form.value);
+
+        // Check if role is an object or a string
+        const roleData = authStore.user?.role;
+        const roleName = typeof roleData === 'object' ? roleData.name : roleData;
+
+        const defaultDash = roleName === 'admin' ? '/admin/dashboard' : '/user/dashboard';
+        const redirectPath = route.query.redirect || defaultDash;
+
+        router.push(redirectPath);
+    } catch (err) {
+        // Handle cases where err.response might be undefined
+        error.value = typeof err === 'string' ? err : (err.response?.data?.message || 'Login failed');
+    } finally {
+        loading.value = false;
+    }
+};
+
+const handleGoogleLogin = () => {
+    // It's good practice to pass the current redirect path to the backend 
+    // so the backend can return the user to the same spot after Google auth
+    const redirect = route.query.redirect ? `?returnTo=${route.query.redirect}` : '';
+    window.location.href = `http://localhost:4000/api/auth/google${redirect}`;
+};
+</script>
+
 <template>
     <div class="auth-container">
-        <div class="card">
-            <h2>Welcome Back 👋</h2>
-            <p class="subtitle">Login to continue</p>
+        <div class="auth-card">
+            <header>
+                <h2>Sign In</h2>
+                <p>Access the DepEd GNC Recruitment Portal</p>
+            </header>
 
-            <p v-if="$route.query.expired" class="expired">
-                Session expired. Please login again.
-            </p>
-
-            <form @submit.prevent="login">
-                <input v-model="email" type="email" placeholder="Email" required />
-
-                <div class="password-wrapper">
-                    <input :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="Password"
-                        required />
-                    <span @click="showPassword = !showPassword">
-                        {{ showPassword ? "Hide" : "Show" }}
-                    </span>
+            <form @submit.prevent="handleLogin" class="auth-form">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input v-model="form.email" type="email" placeholder="name@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input v-model="form.password" type="password" placeholder="••••••••" required />
                 </div>
 
-                <button type="submit" class="primary">Login</button>
+                <p v-if="error" class="error-text">{{ error }}</p>
+
+                <button type="submit" class="btn-submit" :disabled="loading">
+                    {{ loading ? 'Authenticating...' : 'Sign In' }}
+                </button>
             </form>
 
-            <div class="divider">OR</div>
+            <div class="divider"><span>OR</span></div>
 
-            <button class="google" @click="loginWithGoogle">
+            <button @click="handleGoogleLogin" class="btn-google">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_Logo.svg" alt="G" />
                 Continue with Google
             </button>
 
-            <p class="footer">
-                No account?
-                <router-link to="/auth/register">Register</router-link>
-            </p>
+            <footer class="auth-footer">
+                <span>New to ORAS?</span>
+                <router-link to="/auth/register">Create an Account</router-link>
+            </footer>
         </div>
     </div>
 </template>
 
-<script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-
-const email = ref("");
-const password = ref("");
-const showPassword = ref(false);
-const router = useRouter();
-
-const login = async () => {
-    const res = await fetch("http://localhost:4000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.value, password: password.value }),
-    });
-
-    const data = await res.json();
-    localStorage.setItem("token", data.token);
-    router.push("/dashboard");
-};
-
-const loginWithGoogle = () => {
-    window.location.href = "http://localhost:4000/api/auth/google";
-};
-</script>
-
 <style scoped>
+/* Standard Auth Styles */
 .auth-container {
     min-height: 100vh;
-    display: grid;
-    place-items: center;
-    background: linear-gradient(135deg, #111827, #1f2933);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    padding: 2rem;
 }
 
-.card {
+.auth-card {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 16px;
     width: 100%;
-    max-width: 380px;
-    background: #0f172a;
-    padding: 32px;
-    border-radius: 14px;
-    color: #e5e7eb;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, .4);
+    max-width: 400px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 h2 {
-    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
 }
 
-.subtitle {
-    text-align: center;
-    opacity: 0.7;
-    margin-bottom: 20px;
+p {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: #475569;
 }
 
 input {
     width: 100%;
     padding: 12px;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    border: none;
-    margin-bottom: 12px;
-    background: #020617;
-    color: white;
+    transition: 0.2s;
 }
 
-.password-wrapper {
-    position: relative;
+input:focus {
+    border-color: #38bdf8;
+    outline: none;
+    ring: 2px solid #38bdf8;
 }
 
-.password-wrapper span {
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    font-size: 12px;
-    cursor: pointer;
-    opacity: 0.7;
-}
-
-.primary {
+.btn-submit {
     width: 100%;
-    padding: 12px;
-    background: #6366f1;
+    background: #0f172a;
     color: white;
+    padding: 12px;
     border-radius: 8px;
-    border: none;
+    font-weight: 600;
     cursor: pointer;
+    border: none;
+    margin-top: 1rem;
 }
 
-.google {
+.btn-google {
     width: 100%;
-    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     background: white;
-    color: black;
+    border: 1px solid #e2e8f0;
+    padding: 11px;
     border-radius: 8px;
-    border: none;
-    margin-top: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
 }
 
 .divider {
+    margin: 1.5rem 0;
+    position: relative;
     text-align: center;
-    margin: 14px 0;
-    opacity: 0.5;
+    font-size: 0.75rem;
+    color: #94a3b8;
 }
 
-.footer {
-    text-align: center;
-    margin-top: 12px;
+.divider::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: #e2e8f0;
 }
 
-.expired {
-    background: #7f1d1d;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    font-size: 14px;
+.divider span {
+    position: relative;
+    background: white;
+    padding: 0 10px;
+}
+
+.auth-footer {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.auth-footer a {
+    color: #38bdf8;
+    font-weight: 700;
+    text-decoration: none;
+    margin-left: 5px;
+}
+
+.error-text {
+    color: #dc2626;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
 }
 </style>
