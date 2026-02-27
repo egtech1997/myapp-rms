@@ -13,6 +13,12 @@ import 'primeicons/primeicons.css'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
+import Card from 'primevue/card'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import Password from 'primevue/password'
+import Toast from 'primevue/toast'
+import ToastService from 'primevue/toastservice'
 
 const app = createApp(App)
 
@@ -32,5 +38,12 @@ app.use(PrimeVue, {
 app.component('Button', Button)
 app.component('Avatar', Avatar)
 app.component('Menu', Menu)
+app.component('Card', Card)
+app.component('Dialog', Dialog)
+app.component('InputText', InputText)
+app.component('Password', Password)
+app.component('Toast', Toast)
+
+app.use(ToastService)
 
 app.mount('#app')
