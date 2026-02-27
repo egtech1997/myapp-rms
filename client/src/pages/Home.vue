@@ -90,9 +90,9 @@ const openBulletinDetail = (item) => {
 // --- JOB VACANCIES STATE & FILTER LOGIC ---
 const searchQuery = ref('');
 const selectedCategory = ref('All');
-const categories = ref(['All', 'Teaching', 'Non-Teaching']);
+// CHANGE 1: Update the filter option list
+const categories = ref(['All', 'Teaching Related', 'Non-Teaching']);
 
-// Watcher to prevent null category selection
 watch(selectedCategory, (newVal) => {
     if (newVal === null) {
         selectedCategory.value = 'All';
@@ -104,7 +104,7 @@ const jobList = ref([
         title: 'Teacher I (Senior High - TVL)',
         type: 'Full-Time',
         division: 'DIVISION OFFICE',
-        category: 'Teaching',
+        category: 'Teaching Related', // CHANGE 2: Update job data
         salary: '₱31,705.00 / month',
         description: 'Provide high-quality instruction and hands-on training for the TVL track in Senior High School.',
         requirements: ['LET Passer', 'NC II Certified', 'Relevant Bachelor’s Degree']
@@ -113,7 +113,7 @@ const jobList = ref([
         title: 'Teacher I (Senior High - Sports)',
         type: 'Full-Time',
         division: 'DIVISION OFFICE',
-        category: 'Teaching',
+        category: 'Teaching Related', // CHANGE 2: Update job data
         salary: '₱31,705.00 / month',
         description: 'Lead the Sports track and coach school teams while implementing the PE curriculum.',
         requirements: ['LET Passer', 'Coaching Experience', 'B.S. in Physical Education']
@@ -289,7 +289,7 @@ onMounted(() => {
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div v-for="(job, index) in filteredJobs" :key="index" @click="openModal(job)"
                         class="bg-white/90 border border-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col h-full">
-                        <div class="absolute top-0 left-0 right-0 h-2" :class="job.category === 'Teaching' ? 'bg-blue-500' : 'bg-orange-500'"></div>
+                        <div class="absolute top-0 left-0 right-0 h-2" :class="job.category === 'Teaching Related' ? 'bg-blue-500' : 'bg-orange-500'"></div>
                         <div class="mb-6 flex justify-between items-start">
                             <div class="p-3 bg-slate-50 rounded-xl text-slate-400"><i class="pi pi-briefcase text-xl"></i></div>
                             <Chip :label="job.category" class="text-[10px] font-black uppercase bg-slate-100" />

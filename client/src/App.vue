@@ -32,9 +32,9 @@ onMounted(async () => {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  /* full screen height */
   background: #f9f9f9;
-  font-family: 'Poppins', sans-serif;
+  /* Updated font-family to Avenir with fallbacks */
+  font-family: 'Avenir', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: #555;
 }
 
@@ -49,7 +49,6 @@ onMounted(async () => {
   height: 60px;
   border: 6px solid #e0e0e0;
   border-top: 6px solid #4f46e5;
-  /* nice purple accent */
   border-radius: 50%;
   animation: spin 1s linear infinite;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -59,7 +58,6 @@ onMounted(async () => {
   0% {
     transform: rotate(0deg);
   }
-
   100% {
     transform: rotate(360deg);
   }
