@@ -38,12 +38,5 @@ app.use(PrimeVue, {
 app.component('Button', Button)
 app.component('Avatar', Avatar)
 app.component('Menu', Menu)
-app.component('Card', Card)
-app.component('Dialog', Dialog)
-app.component('InputText', InputText)
-app.component('Password', Password)
-app.component('Toast', Toast)
-
-app.use(ToastService)
 
 app.mount('#app')

@@ -13,18 +13,14 @@ const handleRegister = async () => {
     error.value = '';
 
     try {
-
         const targetEmail = form.value.email;
-
         await apiClient.post('/auth/register', form.value);
-
 
         router.push({
             path: '/auth/verify-otp',
             query: { email: targetEmail }
         });
     } catch (err) {
-
         error.value = err.response?.data?.message || 'Registration failed';
     } finally {
         loading.value = false;
@@ -41,7 +37,7 @@ const handleRegister = async () => {
                     <i class="pi pi-user-plus text-white text-sm"></i>
                 </div>
                 <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Create Account</h2>
-                <p class="text-sm text-slate-500 mt-1">Join the DepEd Guihulngan City talent pool</p>
+                <p class="text-sm text-slate-500 mt-1">Join the DepEd Guihulngan City Talent Pool</p>
             </div>
 
             <form @submit.prevent="handleRegister" class="space-y-4">
@@ -68,13 +64,13 @@ const handleRegister = async () => {
                 </Message>
 
                 <Button type="submit" :loading="loading" label="Register" icon="pi pi-check"
-                    class="w-full !rounded-xl !py-2.5 !bg-slate-900 border-none hover:!bg-slate-800" />
+                    class="w-full !rounded-xl !py-2.5 !bg-slate-900 border-none hover:!bg-slate-800 transition-transform duration-200 hover:scale-[1.02] active:scale-95" />
             </form>
 
             <div class="mt-6 text-center text-xs text-slate-500">
-                Already have an account?
+                Already Have An Account?
                 <router-link to="/auth/login" class="font-bold text-sky-600 hover:underline">
-                    Sign in here
+                    Sign in Here
                 </router-link>
             </div>
         </div>

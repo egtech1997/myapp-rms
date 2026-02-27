@@ -1,12 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
 @theme {
+  /* Updated font stack: Targets Avenir first, then falls back to system sans-serif */
+  --font-avenir: "Avenir Next", "Avenir", "Inter", sans-serif;
+  
   --font-inter: 'Inter', sans-serif;
-  --font-roboto: 'Roboto', sans-serif;
   --color-corp-bg: #f8fafb;
   --color-corp-sidebar: #111827;
   --color-corp-border: #eef1f4;
+  
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
   --primary-200: #bfdbfe;
