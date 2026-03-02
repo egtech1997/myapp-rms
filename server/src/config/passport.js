@@ -18,23 +18,26 @@ passport.use(
       try {
         const email = profile.emails[0].value;
 
-        // 1. Find user by email - ✅ Changed to .populate("roles")
         let user = await User.findOne({ email }).populate("roles");
 
         if (user) {
+          // Update existing user
+          user.lastLogin = Date.now();
           if (!user.googleId) {
             user.googleId = profile.id;
             user.isVerified = true;
-            await user.save();
           }
+          // CRITICAL: validateBeforeSave: false allows saving without a password
+          await user.save({ validateBeforeSave: false });
           return done(null, user);
         }
 
-        // 2. Get default role
+        // Create new user
         const defaultRole = await Role.findOne({ name: "user" });
 
-        // 3. Create user - ✅ Changed 'role' to 'roles' array
-        const newUser = await User.create({
+        // Note: .create() runs validation. If your model requires a password,
+        // this will fail. We use new User() + .save() instead for more control.
+        const newUser = new User({
           username: profile.displayName,
           email: email,
           googleId: profile.id,
@@ -43,11 +46,12 @@ passport.use(
           roles: defaultRole ? [defaultRole._id] : [],
         });
 
-        // 4. ✅ Changed to .populate("roles")
+        // Skip password validation for social login
+        await newUser.save({ validateBeforeSave: false });
+
         const populatedUser = await User.findById(newUser._id).populate(
           "roles",
         );
-
         return done(null, populatedUser);
       } catch (error) {
         console.error("💥 Google Strategy Error:", error);
@@ -63,12 +67,8 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    // 5. ✅ Changed to .populate("roles")
     const user = await User.findById(id).populate("roles");
-    if (!user) {
-      return done(null, false);
-    }
-    done(null, user);
+    done(null, user || false);
   } catch (error) {
     console.error("💥 Deserialize Error:", error);
     done(error, null);

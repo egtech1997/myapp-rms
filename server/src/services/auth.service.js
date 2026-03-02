@@ -60,6 +60,7 @@ export const loginUserLogic = async (email, password) => {
   if (!user.isVerified) {
     throw new Error("Please verify your account via OTP first");
   }
-
+  user.lastLogin = Date.now();
+  await user.save({ validateBeforeSave: false });
   return user;
 };

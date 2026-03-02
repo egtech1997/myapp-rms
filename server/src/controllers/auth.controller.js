@@ -1,174 +1,214 @@
 import * as authService from "../services/auth.service.js";
 import sendEmail from "../services/email.service.js";
-import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import fs from "fs";
+import path from "path";
 
-const sendTokenCookie = (res, user) => {
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+// Utils
+import { sendTokenCookie } from "../utils/auth.js";
+import { updateLoginTimestamp, formatUserResponse } from "../utils/user.js";
+import catchAsync from "../utils/catchAsync.js";
+
+/**
+ * AUTHENTICATION
+ */
+
+export const register = catchAsync(async (req, res, next) => {
+  const { user, rawOtp } = await authService.registerUserLogic(req.body);
+  await sendEmail({
+    email: user.email,
+    subject: "Verify Your Account",
+    html: `<h2>Your OTP is: ${rawOtp}</h2><p>Valid for 10 minutes.</p>`,
   });
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  res.status(201).json({ message: "OTP sent to email" });
+});
+
+export const verifyOTP = catchAsync(async (req, res, next) => {
+  const user = await authService.verifyOTPLogic(req.body.email, req.body.otp);
+  const populatedUser = await User.findById(user._id).populate("roles");
+
+  await updateLoginTimestamp(populatedUser);
+  sendTokenCookie(res, populatedUser);
+
+  res.status(200).json({
+    message: "Success",
+    user: formatUserResponse(populatedUser),
   });
-};
+});
 
-export const register = async (req, res, next) => {
-  try {
-    const { user, rawOtp } = await authService.registerUserLogic(req.body);
-    await sendEmail({
-      email: user.email,
-      subject: "Verify Your Account",
-      html: `<h2>Your OTP is: ${rawOtp}</h2><p>Valid for 10 minutes.</p>`,
-    });
-    res.status(201).json({ message: "OTP sent to email" });
-  } catch (error) {
-    next(error);
+export const login = catchAsync(async (req, res, next) => {
+  const { email, password } = req.body;
+  const user = await authService.loginUserLogic(email, password);
+
+  await updateLoginTimestamp(user);
+  sendTokenCookie(res, user);
+
+  res.status(200).json({
+    message: "Login successful",
+    user: formatUserResponse(user),
+  });
+});
+
+export const googleAuthCallback = catchAsync(async (req, res, next) => {
+  if (!req.user) {
+    return res.redirect(
+      `${process.env.CLIENT_URL}/auth/login?error=auth_failed`,
+    );
   }
-};
 
-export const verifyOTP = async (req, res, next) => {
-  try {
-    const user = await authService.verifyOTPLogic(req.body.email, req.body.otp);
-    const populatedUser = await User.findById(user._id).populate("roles");
+  // Ensure roles are fully populated before proceeding
+  const user = await User.findById(req.user._id).populate("roles");
 
-    sendTokenCookie(res, populatedUser);
-    res.status(200).json({
-      message: "Success",
-      user: {
-        id: populatedUser._id,
-        username: populatedUser.username,
-        email: populatedUser.email,
-        roles: populatedUser.roles.map((r) => r.name),
-        avatar: populatedUser.avatar,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  await updateLoginTimestamp(user);
+  sendTokenCookie(res, user);
 
-export const login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const user = await authService.loginUserLogic(email, password);
-    sendTokenCookie(res, user);
+  // SAFE ROLE MAPPING: Handles both populated objects and raw IDs
+  const roleNames = user.roles.map((r) =>
+    typeof r === "object" && r.name ? r.name : "user",
+  );
 
-    res.status(200).json({
-      message: "Login successful",
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        roles: user.roles.map((r) => r.name),
-        avatar: user.avatar,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  const redirectTarget = roleNames.some((name) => name === "admin")
+    ? "admin"
+    : "user";
 
-export const googleAuthCallback = (req, res, next) => {
-  try {
-    if (!req.user) {
-      return res.redirect(
-        `${process.env.CLIENT_URL}/auth/login?error=auth_failed`,
-      );
-    }
-
-    sendTokenCookie(res, req.user);
-
-    const roleNames = req.user.roles.map((r) => r.name);
-    const redirectTarget = roleNames.some((name) => name !== "user")
-      ? "admin"
-      : "user";
-
-    res.redirect(`${process.env.CLIENT_URL}/${redirectTarget}/dashboard`);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getMe = async (req, res, next) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Not logged in" });
-    }
-
-    res.status(200).json({
-      status: "success",
-      user: {
-        id: req.user._id,
-        username: req.user.username,
-        email: req.user.email,
-        roles: req.user.roles.map((r) => r.name),
-        avatar: req.user.avatar,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  res.redirect(`${process.env.CLIENT_URL}/${redirectTarget}/dashboard`);
+});
 
 export const logout = (req, res, next) => {
-  try {
-    res.cookie("token", "loggedout", {
-      httpOnly: true,
-      expires: new Date(Date.now() + 10 * 1000),
+  res.cookie("token", "loggedout", {
+    httpOnly: true,
+    expires: new Date(Date.now() + 10 * 1000),
+  });
+  res.status(200).json({ message: "Logged out" });
+};
+
+/**
+ * PROFILE MANAGEMENT
+ */
+
+export const getMe = catchAsync(async (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  res.status(200).json({
+    status: "success",
+    user: formatUserResponse(req.user),
+  });
+});
+
+export const updateMe = catchAsync(async (req, res, next) => {
+  const { username } = req.body;
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    { username },
+    { new: true, runValidators: true },
+  ).populate("roles");
+
+  res.status(200).json({
+    status: "success",
+    user: formatUserResponse(updatedUser),
+  });
+});
+
+export const updatePassword = catchAsync(async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findById(req.user._id).select("+password");
+
+  if (user.googleId && !user.password) {
+    return res.status(400).json({
+      message:
+        "This account uses Google Login. Use Forgot Password to set a password.",
     });
-    res.status(200).json({ message: "Logged out" });
-  } catch (error) {
-    next(error);
   }
-};
 
-export const updateMe = async (req, res, next) => {
+  const isMatch = await user.comparePassword(currentPassword, user.password);
+  if (!isMatch)
+    return res.status(401).json({ message: "Current password is incorrect" });
+
+  user.password = newPassword;
+  await user.save();
+
+  sendTokenCookie(res, user);
+  res.status(200).json({ message: "Password updated successfully" });
+});
+
+export const updateAvatar = catchAsync(async (req, res, next) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded." });
+
+  const user = await User.findById(req.user._id).populate("roles");
+
+  if (user.avatar && user.avatar.startsWith("/uploads/avatars/")) {
+    const oldPath = path.join(process.cwd(), "public", user.avatar);
+    if (fs.existsSync(oldPath)) {
+      try {
+        fs.unlinkSync(oldPath);
+      } catch (e) {
+        console.error("Old avatar delete failed:", e);
+      }
+    }
+  }
+
+  user.avatar = `/uploads/avatars/${req.file.filename}`;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: "success",
+    user: formatUserResponse(user),
+  });
+});
+
+/**
+ * PASSWORD RECOVERY
+ */
+
+export const forgotPassword = catchAsync(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ message: "User not found." });
+
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  const resetURL = `${process.env.CLIENT_URL}/auth/reset-password/${resetToken}`;
+
   try {
-    const { username } = req.body;
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      { username },
-      { new: true, runValidators: true },
-    ).populate("roles");
-
-    res.status(200).json({
-      status: "success",
-      user: {
-        id: updatedUser._id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        roles: updatedUser.roles.map((r) => r.name),
-        avatar: updatedUser.avatar,
-      },
+    await sendEmail({
+      email: user.email,
+      subject: "Password Reset Request",
+      html: `<h2>Reset Password</h2><p>Link: <a href="${resetURL}">${resetURL}</a></p>`,
     });
-  } catch (error) {
-    next(error);
+    res.status(200).json({ message: "Reset link sent!" });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    return res.status(500).json({ message: "Email could not be sent." });
   }
-};
+});
 
-export const updatePassword = async (req, res, next) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
+export const resetPassword = catchAsync(async (req, res, next) => {
+  const crypto = await import("crypto");
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
 
-    const user = await User.findById(req.user._id).select("+password");
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+  if (!user)
+    return res.status(400).json({ message: "Token invalid or expired" });
 
-    const isMatch = await user.comparePassword(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Current password is incorrect" });
-    }
+  user.password = req.body.password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
 
-    user.password = newPassword;
-    await user.save();
+  const populatedUser = await User.findById(user._id).populate("roles");
+  await updateLoginTimestamp(populatedUser);
+  sendTokenCookie(res, populatedUser);
 
-    res.status(200).json({ message: "Password updated successfully" });
-  } catch (error) {
-    next(error);
-  }
-};
+  res.status(200).json({
+    message: "Password reset successful!",
+    user: formatUserResponse(populatedUser),
+  });
+});

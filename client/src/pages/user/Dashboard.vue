@@ -18,7 +18,7 @@ const goToJobs = () => {
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div class="flex items-center gap-5">
                     <div class="relative">
-                        <img :src="authStore.user?.avatar || `https://ui-avatars.com/api/?name=${authStore.user?.username}`"
+                        <img :src="authStore.user?.avatarUrl || `https://ui-avatars.com/api/?name=${authStore.user?.username}`"
                             class="w-16 h-16 rounded-full border-2 border-sky-100 shadow-sm" />
                         <div
                             class="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full">
