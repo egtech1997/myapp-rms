@@ -1,18 +1,174 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+<<<<<<< Updated upstream
 
 const authStore = useAuthStore();
+=======
+import { useToast } from 'primevue/usetoast';
+import { useRouter, useRoute } from 'vue-router'; 
+import apiClient from '@/api/axios';
 
+// Cropper Imports
+import { Cropper } from 'vue-advanced-cropper';
+import 'vue-advanced-cropper/dist/style.css';
+
+const authStore = useAuthStore();
+const toast = useToast();
+const router = useRouter();
+const route = useRoute();
+
+// UI States
+const showSettingsModal = ref(false);
+const uploading = ref(false);
+const isSaving = ref(false);
+
+// Cropping Logic
+const fileInput = ref(null);
+const selectedImage = ref(null);
+const cropperRef = ref(null);
+
+// Password Form
+const passwordData = reactive({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+});
+>>>>>>> Stashed changes
+
+// Navigation Links
 const navLinks = [
     { name: 'Dashboard', to: '/user/dashboard', icon: 'pi-home' },
     { name: 'Applications', to: '/user/applications', icon: 'pi-folder-open' },
-    { name: 'Find Jobs', to: '/vacancies', icon: 'pi-search' },
+    { name: 'Find Jobs', action: 'jobs', icon: 'pi-search' }, 
 ];
+<<<<<<< Updated upstream
 </script>
 
 <template>
     <div class="min-h-screen flex flex-col bg-slate-50 font-inter text-sm text-slate-600 antialiased">
+=======
+
+// Navigation Handler
+const handleNavigation = async (link) => {
+    if (link.to) {
+        router.push(link.to);
+    } else if (link.action === 'jobs') {
+        await router.push('/');
+        setTimeout(() => {
+            const jobSection = document.getElementById('jobs');
+            if (jobSection) {
+                jobSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 150); 
+    }
+};
+
+const triggerFileSelect = () => fileInput.value.click();
+
+const onFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+        toast.add({ severity: 'error', summary: 'File Too Large', detail: 'Max size is 10MB', life: 3000 });
+        return;
+    }
+
+    if (file.type === 'image/gif') {
+        uploadOriginalFile(file);
+    } else {
+        selectedImage.value = URL.createObjectURL(file);
+    }
+};
+
+const uploadOriginalFile = async (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file, file.name);
+
+    uploading.value = true;
+    try {
+        const { data } = await apiClient.patch('/auth/update-avatar', formData);
+        if (data.status === 'success') {
+            updateUserInStore(data.user);
+        }
+    } catch (err) {
+        console.error("Upload Error:", err.response?.data || err.message);
+        toast.add({
+            severity: 'error',
+            summary: 'Upload Failed',
+            detail: err.response?.data?.message || 'Server connection error'
+        });
+    } finally {
+        uploading.value = false;
+        if (fileInput.value) fileInput.value.value = '';
+    }
+};
+
+const uploadCroppedImage = async () => {
+    const result = cropperRef.value.getResult();
+    if (!result || !result.canvas) return;
+
+    result.canvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        const formData = new FormData();
+        formData.append('avatar', blob, 'avatar.jpg');
+
+        uploading.value = true;
+        try {
+            const { data } = await apiClient.patch('/auth/update-avatar', formData);
+            if (data.status === 'success') {
+                updateUserInStore(data.user);
+            }
+        } catch (err) {
+            toast.add({ severity: 'error', summary: 'Upload Failed', detail: err.response?.data?.message });
+        } finally {
+            uploading.value = false;
+        }
+    }, 'image/jpeg', 0.9);
+};
+
+// CENTRAL STORE UPDATE
+const updateUserInStore = (userData) => {
+    const updatedUser = { ...userData };
+    updatedUser.avatarUrl = `${updatedUser.avatarUrl}?t=${Date.now()}`;
+    authStore.user = updatedUser;
+
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Profile picture updated', life: 3000 });
+    selectedImage.value = null;
+};
+
+const handlePasswordUpdate = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast.add({ severity: 'error', detail: 'Passwords do not match', life: 3000 });
+        return;
+    }
+
+    isSaving.value = true;
+    try {
+        await apiClient.patch('/auth/update-password', {
+            currentPassword: passwordData.currentPassword,
+            newPassword: passwordData.newPassword
+        });
+
+        toast.add({ severity: 'success', summary: 'Success', detail: 'Password updated', life: 3000 });
+        showSettingsModal.value = false;
+        Object.assign(passwordData, { currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+        toast.add({ severity: 'error', detail: err.response?.data?.message || 'Update failed', life: 4000 });
+    } finally {
+        isSaving.value = false;
+    }
+};
+</script>
+
+<template>
+    <div class="min-h-screen flex flex-col font-inter text-sm text-slate-600 antialiased"
+         style="background-image: linear-gradient(rgba(248, 250, 252, 0.50), rgba(248, 250, 252, 0.50)), url('https://image2url.com/r2/default/images/1772169455473-54bb76c7-1d32-4152-8411-9e38daab5695.png'); background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;">
+        
+        <Toast />
+>>>>>>> Stashed changes
 
         <!-- HEADER -->
         <header
@@ -20,10 +176,15 @@ const navLinks = [
             <!-- Logo + Nav -->
             <div class="flex items-center gap-6">
                 <router-link to="/" class="flex items-center gap-2.5 group">
+<<<<<<< Updated upstream
                     <div
                         class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                         <i class="pi pi-send text-white text-[10px]"></i>
                     </div>
+=======
+                    <img src="https://i.ibb.co/7dHhWCpp/images.png" alt="Logo" class="w-8 h-8 object-contain transition-transform group-hover:scale-105" />
+                    
+>>>>>>> Stashed changes
                     <span class="text-[15px] font-bold tracking-tight text-slate-800">
                         RSP <span class="text-sky-600 font-medium">Portal</span>
                     </span>
@@ -31,11 +192,12 @@ const navLinks = [
 
                 <!-- Desktop Nav -->
                 <nav class="hidden md:flex items-center gap-1">
-                    <router-link v-for="link in navLinks" :key="link.to" :to="link.to"
-                        class="flex items-center gap-2 px-4 h-14 rounded-md text-slate-500 font-semibold text-[13px] transition-all hover:text-sky-600 hover:bg-slate-50 aria-[current=page]:text-sky-600 aria-[current=page]:bg-sky-50/50">
+                    <a v-for="link in navLinks" :key="link.name" @click.prevent="handleNavigation(link)"
+                        class="cursor-pointer flex items-center gap-2 px-4 h-14 rounded-md text-slate-500 font-semibold text-[13px] transition-all hover:text-sky-600 hover:bg-slate-50"
+                        :class="{ 'text-sky-600 bg-sky-50/50': route.path === link.to && link.to }">
                         <i class="pi text-[11px]" :class="link.icon"></i>
                         <span>{{ link.name }}</span>
-                    </router-link>
+                    </a>
                 </nav>
             </div>
 
@@ -114,15 +276,23 @@ const navLinks = [
                 <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
                     <span>Candidate Workspace</span>
                     <i class="pi pi-angle-right text-[8px]"></i>
+<<<<<<< Updated upstream
                     <span class="text-sky-600 font-extrabold">
                         {{ $route.name || 'Overview' }}
                     </span>
+=======
+                    <span class="text-sky-600">{{ route.name || 'Overview' }}</span>
+>>>>>>> Stashed changes
                 </div>
             </div>
         </div>
 
+<<<<<<< Updated upstream
         <!-- MAIN SLOT -->
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+=======
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full relative z-10">
+>>>>>>> Stashed changes
             <slot />
         </main>
 

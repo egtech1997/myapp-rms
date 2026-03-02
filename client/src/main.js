@@ -33,5 +33,15 @@ app.use(PrimeVue, {
 app.component('Button', Button)
 app.component('Avatar', Avatar)
 app.component('Menu', Menu)
+<<<<<<< Updated upstream
 app.component('Dialog', Dialog)
+=======
+app.component('Card', Card)
+app.component('Dialog', Dialog)
+app.component('InputText', InputText)
+app.component('Password', Password)
+app.component('Toast', Toast)
+app.component('ToastService', ToastService)
+app.use(ToastService);
+>>>>>>> Stashed changes
 app.mount('#app')

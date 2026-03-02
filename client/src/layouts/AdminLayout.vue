@@ -11,8 +11,10 @@ const navGroups = [
         title: 'Management',
         items: [
             { label: 'Analytics', icon: 'pi pi-chart-line', to: '/admin/dashboard' },
-            { label: 'Job Catalog', icon: 'pi pi-briefcase', to: '/admin/jobs' },
-            { label: 'Talent Pool', icon: 'pi pi-users', to: '/admin/applicants' },
+          { label: 'Bulletin', icon: 'pi pi-chart-line', to: '/admin/bulletin' },
+            { label: 'Jobs', icon: 'pi pi-briefcase', to: '/admin/jobs' },
+            { label: 'Applicants', icon: 'pi pi-users', to: '/admin/applicants' },
+            { label: 'Accounts', icon: 'pi pi-chart-line', to: '/admin/accounts' },
         ],
     },
 ]

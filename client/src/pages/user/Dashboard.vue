@@ -1,11 +1,19 @@
 <script setup>
 import UserLayout from '@/layouts/UserLayout.vue';
 import { useAuthStore } from '@/stores/auth';
+import { useRouter } from 'vue-router'; 
+
 const authStore = useAuthStore();
+const router = useRouter(); 
+
+// Updated function to navigate to the home page and scroll down to the #jobs section
+const goToJobs = () => {
+    router.push({ path: '/', hash: '#jobs' });
+};
 </script>
 
 <template>
-    <UserLayout>
+    <UserLayout class="profile-bg">
         <div class="bg-white border border-corp-border rounded-sm p-6 shadow-sm mb-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div class="flex items-center gap-5">
@@ -35,7 +43,14 @@ const authStore = useAuthStore();
                 <div class="flex gap-2">
                     <Button label="Edit Profile" icon="pi pi-user-edit" size="small" variant="outlined"
                         severity="secondary" class="!text-xs" />
-                    <Button label="View Vacancies" icon="pi pi-briefcase" size="small" class="!text-xs" />
+                    
+                    <Button 
+                        label="View Vacancies" 
+                        icon="pi pi-briefcase" 
+                        size="small" 
+                        class="!text-xs" 
+                        @click="goToJobs" 
+                    />
                 </div>
             </div>
         </div>
@@ -85,6 +100,15 @@ const authStore = useAuthStore();
 <style scoped>
 @reference "@/assets/main.css";
 
+.profile-bg {
+    background-image: linear-gradient(rgba(248, 250, 252, 0.9), rgba(248, 250, 252, 0.9)), 
+                      url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2070');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    min-height: 100vh;
+}
+
 .font-inter {
     font-family: 'Inter', sans-serif;
 }
@@ -97,7 +121,6 @@ const authStore = useAuthStore();
     @apply bg-white p-5 border border-corp-border rounded-sm shadow-sm hover:shadow-md transition-shadow;
 }
 
-/* Ensure PrimeVue buttons match our compact scale */
 :deep(.p-button) {
     @apply !py-1.5 !px-3;
 }

@@ -50,8 +50,9 @@ const fetchWeather = async () => {
 };
 
 // --- BULLETIN BOARD STATE ---
-const isBulletinDialogOpen = ref(false);
-const selectedAnnouncement = ref(null);
+const isBulletinDialogOpen = ref(false); // FIXED: Added this state
+const selectedAnnouncement = ref(null);   // FIXED: Added this state
+
 const announcements = ref([
     {
         id: 1,
@@ -82,6 +83,7 @@ const announcements = ref([
     }
 ]);
 
+// FIXED: Added this function to handle the click
 const openBulletinDetail = (item) => {
     selectedAnnouncement.value = item;
     isBulletinDialogOpen.value = true;
@@ -90,7 +92,6 @@ const openBulletinDetail = (item) => {
 // --- JOB VACANCIES STATE & FILTER LOGIC ---
 const searchQuery = ref('');
 const selectedCategory = ref('All');
-// CHANGE 1: Update the filter option list
 const categories = ref(['All', 'Teaching Related', 'Non-Teaching']);
 
 watch(selectedCategory, (newVal) => {
@@ -104,7 +105,7 @@ const jobList = ref([
         title: 'Teacher I (Senior High - TVL)',
         type: 'Full-Time',
         division: 'DIVISION OFFICE',
-        category: 'Teaching Related', // CHANGE 2: Update job data
+        category: 'Teaching Related',
         salary: '₱31,705.00 / month',
         description: 'Provide high-quality instruction and hands-on training for the TVL track in Senior High School.',
         requirements: ['LET Passer', 'NC II Certified', 'Relevant Bachelor’s Degree']
@@ -113,7 +114,7 @@ const jobList = ref([
         title: 'Teacher I (Senior High - Sports)',
         type: 'Full-Time',
         division: 'DIVISION OFFICE',
-        category: 'Teaching Related', // CHANGE 2: Update job data
+        category: 'Teaching Related',
         salary: '₱31,705.00 / month',
         description: 'Lead the Sports track and coach school teams while implementing the PE curriculum.',
         requirements: ['LET Passer', 'Coaching Experience', 'B.S. in Physical Education']
@@ -242,7 +243,7 @@ onMounted(() => {
                 <span class="text-blue-600 text-xs font-black uppercase tracking-[0.2em]">{{ slides[currentSlide].subtitle }}</span>
                 <h1 class="text-4xl md:text-6xl font-black text-slate-900 leading-[1.1] mt-4 mb-6">{{ slides[currentSlide].title }}</h1>
                 <p class="text-slate-600 text-lg max-w-md leading-relaxed">{{ slides[currentSlide].description }}</p>
-                <Button v-if="authStore.isAuthenticated" label="Open Dashboard" icon="pi pi-th-large" rounded class="bg-blue-600 border-none px-8 text-white mt-4" @click="router.push(authStore.dashboardRoute)" />
+                <Button v-if="authStore.isAuthenticated" label="Open Profile" icon="pi pi-th-large" rounded class="bg-blue-600 border-none px-8 text-white mt-4" @click="router.push(authStore.dashboardRoute)" />
             </div>
             <div class="hidden lg:block h-[500px] relative group">
                 <div class="relative h-full w-full rounded-[40px] overflow-hidden shadow-2xl">
@@ -397,6 +398,32 @@ onMounted(() => {
                     <p class="text-slate-500 leading-relaxed">{{ selectedMember?.bio }}</p>
                 </div>
                 <Button label="Close Profile" class="w-full bg-emerald-500 text-white border-none py-5 font-black" @click="isTeamModalOpen = false" />
+            </div>
+        </Dialog>
+
+        <Dialog v-model:visible="isBulletinDialogOpen" modal dismissableMask :showHeader="false" contentClass="p-0 rounded-[40px] overflow-hidden border-none shadow-2xl" class="max-w-2xl w-full mx-4">
+            <div class="bg-white text-left flex flex-col max-h-[85vh]">
+                <div class="p-10 overflow-y-auto">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            <i :class="[selectedAnnouncement?.icon, selectedAnnouncement?.color]" class="text-xl"></i>
+                            <p class="text-[11px] font-black text-blue-600 tracking-widest uppercase">{{ selectedAnnouncement?.category }}</p>
+                        </div>
+                        <Button icon="pi pi-times" severity="secondary" rounded text class="-mt-4 -mr-4 hover:bg-red-50 hover:text-red-500" @click="isBulletinDialogOpen = false" />
+                    </div>
+                    <h2 class="text-3xl font-black text-slate-900 mb-4 leading-tight">{{ selectedAnnouncement?.title }}</h2>
+                    <div class="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase mb-8">
+                        <i class="pi pi-calendar"></i> Posted on {{ selectedAnnouncement?.date }}
+                    </div>
+                    <div class="space-y-6 border-t border-slate-50 pt-8">
+                        <p class="text-slate-600 text-base leading-relaxed font-medium whitespace-pre-line">
+                            {{ selectedAnnouncement?.content }}
+                        </p>
+                    </div>
+                </div>
+                <div class="w-full mt-auto">
+                    <Button label="Close Announcement" class="w-full bg-slate-900 border-none py-6 rounded-none font-black text-lg hover:bg-slate-800 transition-colors text-white" @click="isBulletinDialogOpen = false" />
+                </div>
             </div>
         </Dialog>
     </div>
