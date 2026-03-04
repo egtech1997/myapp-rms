@@ -4,22 +4,40 @@ import bcrypt from "bcryptjs";
 import * as otpService from "./otp.service.js";
 
 export const registerUserLogic = async (userData) => {
+  const { email } = userData;
   const { otp, expiresAt } = otpService.generateOTP();
   const hashedOtp = otpService.hashOTP(otp);
 
-  const defaultRole = await Role.findOne({ name: "user" });
+  const isAdminEmail = email.toLowerCase().endsWith("@deped.gov.ph");
+  const roleName = isAdminEmail ? "admin" : "user";
 
-  if (!defaultRole) {
+  const targetRole = await Role.findOne({ name: roleName });
+
+  if (!targetRole) {
     throw new Error(
-      "Default system role 'user' not found. Please run the seed script.",
+      `System role '${roleName}' not found. Please run the seed script.`,
     );
   }
 
-  const user = await User.create({
-    ...userData,
-    roles: [defaultRole._id],
-    otp: { code: hashedOtp, expiresAt },
-  });
+  const existingUser = await User.findOne({ email });
+  if (existingUser && existingUser.isVerified) {
+    throw new Error("User already exists and is verified. Please login.");
+  }
+
+  let user;
+  if (existingUser) {
+    Object.assign(existingUser, userData);
+    existingUser.roles = [targetRole._id];
+    existingUser.otp = { code: hashedOtp, expiresAt };
+    user = await existingUser.save();
+  } else {
+    // Create new user
+    user = await User.create({
+      ...userData,
+      roles: [targetRole._id],
+      otp: { code: hashedOtp, expiresAt },
+    });
+  }
 
   return { user, rawOtp: otp };
 };
@@ -30,14 +48,15 @@ export const verifyOTPLogic = async (email, otp) => {
   const user = await User.findOne({
     email,
     "otp.code": hashedOtp,
-    "otp.expiresAt": { $gt: Date.now() },
+    "otp.expiresAt": { $gt: new Date() },
   }).populate("roles");
 
   if (!user) throw new Error("Invalid or expired OTP");
 
   user.isVerified = true;
   user.otp = undefined;
-  await user.save();
+  await user.save({ validateBeforeSave: false });
+
   return user;
 };
 
@@ -48,7 +67,8 @@ export const loginUserLogic = async (email, password) => {
 
   if (!user) throw new Error("Invalid email or password");
 
-  if (!user.password) {
+  // Check if it's a social-only account
+  if (!user.password && user.googleId) {
     throw new Error(
       "This account uses Google Login. Please sign in with Google.",
     );
@@ -60,7 +80,9 @@ export const loginUserLogic = async (email, password) => {
   if (!user.isVerified) {
     throw new Error("Please verify your account via OTP first");
   }
-  user.lastLogin = Date.now();
+
+  user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
+
   return user;
 };

@@ -25,12 +25,10 @@ import { useJobs } from '@/composables/useJobs';
 const { jobs, loading, error, fetchJobs } = useJobs();
 const searchQuery = ref('');
 
-// Fetch jobs when component loads
 onMounted(() => {
     fetchJobs();
 });
 
-// Search logic
 const handleSearch = () => {
     fetchJobs({ search: searchQuery.value });
 };

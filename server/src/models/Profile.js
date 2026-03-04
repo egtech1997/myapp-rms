@@ -50,7 +50,7 @@ const profileSchema = new mongoose.Schema(
           enum: ["Vocational", "Bachelor", "Masteral", "Doctorate"],
         },
         degree: String,
-        units: Number, // Relevant for those with "units earned" in Masters
+        units: Number,
         school: String,
         yearGraduated: Number,
       },

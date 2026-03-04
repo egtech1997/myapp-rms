@@ -1,25 +1,371 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 @import 'tailwindcss';
 
-@theme {
-  --font-inter: 'Inter', sans-serif;
-  --font-roboto: 'Roboto', sans-serif;
-  --color-corp-bg: #f8fafb;
-  --color-corp-sidebar: #111827;
-  --color-corp-border: #eef1f4;
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-200: #bfdbfe;
-  --primary-300: #93c5fd;
-  --primary-400: #60a5fa;
-  --primary-500: #2563eb;
-  --primary-600: #1d4ed8;
-  --primary-700: #1e40af;
-  --primary-800: #1e3a8a;
-  --primary-900: #172554;
+@layer primevue;
 
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --control-height: 44px;
+  --control-height-sm: 36px;
+  --control-height-lg: 52px;
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+
+  --primary-400: #818cf8;
+  --primary-500: #6366f1;
+  --primary-600: #4f46e5;
+
+  --bg-app: #f4f7fb;
   --surface-0: #ffffff;
   --surface-50: #f8fafc;
-  --surface-100: #f1f5f9;
-  --surface-900: #0f172a;
+  --border-color: rgba(226, 232, 240, 0.8);
+
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+
+  --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-md: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-primary: 0 8px 16px -4px rgba(99, 102, 241, 0.3);
+
+  --transition-safe:
+    background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease,
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =====================================================
+   DARK MODE
+===================================================== */
+.app-dark {
+  --bg-app: #0b0f19;
+  --surface-0: #111827;
+  --surface-50: #1f2937;
+  --border-color: rgba(55, 65, 81, 0.5);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-primary: 0 8px 16px -4px rgba(99, 102, 241, 0.2);
+}
+
+/* =====================================================
+   BASE STYLES
+===================================================== */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background: var(--bg-app);
+    color: var(--text-primary);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 2. Removed @apply completely to prevent Vite build errors */
+  body {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: 0em;
+    margin: 0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+
+  p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+}
+
+/* =====================================================
+   GLOBAL PRIMEVUE COMPONENTS & FORMS
+===================================================== */
+.p-component {
+  transition: var(--transition-safe);
+}
+
+/* Buttons (With the Ultimate Override Fix) */
+.p-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  height: var(--control-height) !important;
+  padding: 0 1.5rem !important;
+  border-radius: var(--radius-sm) !important;
+  min-width: max-content !important;
+  transition: var(--transition-safe);
+}
+.p-button-label,
+.p-button-icon {
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  flex: none !important;
+}
+.p-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.p-button:active {
+  transform: translateY(0) scale(0.98);
+}
+.p-button:not(.p-button-secondary):not(.p-button-text):not(.p-button-outlined) {
+  background: linear-gradient(135deg, var(--primary-400), var(--primary-600)) !important;
+  border: none !important;
+  box-shadow: var(--shadow-primary) !important;
+}
+.p-button:not(.p-button-secondary):not(.p-button-text):not(.p-button-outlined) .p-button-label,
+.p-button:not(.p-button-secondary):not(.p-button-text):not(.p-button-outlined) .p-button-icon {
+  color: #ffffff !important;
+}
+.p-button:not(.p-button-secondary):not(.p-button-text):not(.p-button-outlined):hover {
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-600)) !important;
+  box-shadow: 0 12px 20px -4px rgba(99, 102, 241, 0.4) !important;
+}
+.p-button.p-button-outlined.p-button-secondary {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+.p-button.p-button-outlined.p-button-secondary .p-button-label,
+.p-button.p-button-outlined.p-button-secondary .p-button-icon {
+  color: var(--text-primary) !important;
+}
+.p-button.p-button-outlined.p-button-secondary:hover {
+  background: var(--surface-50) !important;
+  border-color: var(--text-secondary) !important;
+}
+
+/* Standard Inputs */
+.p-inputtext,
+.p-password-input,
+.p-select,
+.p-multiselect,
+.p-datepicker,
+.p-textarea,
+.p-autocomplete-input {
+  height: var(--control-height);
+  padding: 0 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-50);
+  border: 1px solid transparent;
+  border-bottom: 2px solid var(--border-color);
+  box-shadow: none;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+.p-select .p-select-label,
+.p-multiselect .p-multiselect-label {
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.p-textarea {
+  height: auto;
+  min-height: 100px;
+  padding: 0.75rem 1rem;
+}
+
+/* Input Focus States */
+.p-inputtext:focus,
+.p-password-input:focus,
+.p-select:focus,
+.p-multiselect:focus,
+.p-datepicker:focus,
+.p-textarea:focus,
+.p-autocomplete-input:focus {
+  background: var(--surface-0);
+  border-color: transparent;
+  border-bottom-color: var(--primary-500);
+  box-shadow: 0 4px 12px -4px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Checkboxes, Radios */
+.p-checkbox-box,
+.p-radiobutton-box {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-color);
+  background: var(--surface-50);
+  transition: var(--transition-safe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.p-checkbox-box {
+  border-radius: 6px;
+}
+.p-radiobutton-box {
+  border-radius: 50%;
+}
+.p-checkbox-box.p-highlight,
+.p-radiobutton-box.p-highlight {
+  background: var(--primary-500);
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-primary);
+}
+.p-toggleswitch.p-highlight .p-toggleswitch-slider {
+  background: var(--primary-500);
+}
+
+/* =====================================================
+   LAYOUTS, PANELS & DATA
+===================================================== */
+
+/* Cards */
+.p-card {
+  background: var(--surface-0);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.p-card .p-card-body {
+  padding: 1.5rem !important;
+}
+.p-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* DataTable */
+.p-datatable {
+  background: var(--surface-0);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.p-datatable-thead > tr > th {
+  background: var(--surface-0);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.p-datatable-tbody > tr > td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.p-datatable-tbody > tr {
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
+}
+.p-datatable-tbody > tr:hover {
+  background-color: var(--surface-50);
+}
+
+/* Paginator */
+.p-paginator {
+  background: transparent;
+  border: none;
+  padding: 1rem 0;
+}
+.p-paginator .p-paginator-pages .p-paginator-page {
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  min-width: 2.5rem;
+  height: 2.5rem;
+  margin: 0 0.25rem;
+}
+.p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: var(--primary-50);
+  color: var(--primary-600);
+  font-weight: 600;
+}
+
+/* Tabs */
+.p-tabview-nav,
+.p-tablist-tab-list {
+  background: transparent;
+  border-bottom: 1px solid var(--border-color);
+}
+.p-tabview-nav-link,
+.p-tab {
+  background: transparent !important;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 1rem 1.5rem;
+}
+.p-tabview-nav-link:focus,
+.p-tab-active {
+  color: var(--primary-600);
+  border-bottom-color: var(--primary-500);
+}
+
+/* =====================================================
+   OVERLAYS, MENUS & FEEDBACK
+===================================================== */
+/* Dialogs, Menus, Select Dropdowns */
+.p-dialog,
+.p-menu,
+.p-select-panel,
+.p-autocomplete-panel {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  background: var(--surface-0);
+}
+
+/* Dialog Content */
+.p-dialog .p-dialog-header {
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+}
+.p-dialog .p-dialog-content {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+/* Dropdown/Menu Options */
+.p-select-panel .p-select-option,
+.p-menu .p-menuitem-link {
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+.p-select-panel .p-select-option:hover,
+.p-menu .p-menuitem-link:hover {
+  background-color: var(--surface-50);
+  color: var(--primary-600);
+}
+
+/* Toasts */
+.p-toast .p-toast-message {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  border: none;
+  font-family: var(--font-sans);
+}
+.p-toast .p-toast-message .p-toast-message-content {
+  padding: 1rem 1.25rem !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Progress Bars */
+.p-progressbar {
+  border-radius: var(--radius-sm);
+  height: 8px;
+  background: var(--surface-50);
+}
+.p-progressbar-value {
+  background: var(--primary-500);
 }

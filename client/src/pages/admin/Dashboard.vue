@@ -3,16 +3,16 @@ import AdminLayout from '@/layouts/AdminLayout.vue';
 import { ref } from 'vue';
 
 const stats = ref([
-    { label: 'Total Applicants', value: '1,248', icon: 'pi-users', color: 'text-sky-600', bg: 'bg-sky-50' },
-    { label: 'Pending Reviews', value: '42', icon: 'pi-clock', color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Active Job Posts', value: '15', icon: 'pi-briefcase', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Reports Sync', value: 'Online', icon: 'pi-sync', color: 'text-slate-500', bg: 'bg-slate-50' }
+    { label: 'Total Applicants', value: '1,248', icon: 'pi-users', color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+12% this week', trendColor: 'text-emerald-500', trendIcon: 'pi-arrow-up' },
+    { label: 'Pending Reviews', value: '42', icon: 'pi-clock', color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Needs attention', trendColor: 'text-amber-500', trendIcon: 'pi-exclamation-circle' },
+    { label: 'Active Job Posts', value: '15', icon: 'pi-briefcase', color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '3 closing soon', trendColor: 'text-emerald-500', trendIcon: 'pi-info-circle' },
+    { label: 'Reports Sync', value: 'Online', icon: 'pi-sync', color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Updated just now', trendColor: 'text-purple-500', trendIcon: 'pi-check-circle' }
 ]);
 
 const applications = ref([
-    { id: 1, name: 'Juan Dela Cruz', position: 'Teacher I (Elementary)', date: '2026-02-24', status: 'Pending' },
-    { id: 2, name: 'Maria Clara', position: 'Master Teacher II', date: '2026-02-23', status: 'Shortlisted' },
-    { id: 3, name: 'Crisostomo Ibarra', position: 'Principal I', date: '2026-02-22', status: 'Pending' },
+    { id: 1, name: 'Juan Dela Cruz', position: 'Teacher I (Elementary)', date: '2026-02-24', status: 'Pending', avatar: 'JC' },
+    { id: 2, name: 'Maria Clara', position: 'Master Teacher II', date: '2026-02-23', status: 'Shortlisted', avatar: 'MC' },
+    { id: 3, name: 'Crisostomo Ibarra', position: 'Principal I', date: '2026-02-22', status: 'Pending', avatar: 'CI' },
 ]);
 
 const getStatusSeverity = (status) => {
@@ -26,56 +26,91 @@ const getStatusSeverity = (status) => {
 
 <template>
     <AdminLayout>
-        <div class="mb-6">
-            <h1 class="text-xl font-medium text-slate-800 tracking-tight">Administrative Overview</h1>
-            <p class="text-xs text-slate-500 mt-1 font-normal font-inter">PRIME-HRM Compliance Monitoring & Recruitment
-                Statistics</p>
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl font-display font-bold text-[var(--text-primary)] tracking-tight">Administrative
+                    Overview</h1>
+                <p class="text-sm text-[var(--text-secondary)] mt-1">PRIME-HRM Compliance Monitoring & Recruitment
+                    Statistics</p>
+            </div>
+            <div class="flex gap-3">
+                <Button label="Generate Report" icon="pi pi-file-pdf" severity="secondary" outlined />
+                <Button label="New Job" icon="pi pi-plus" />
+            </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div v-for="stat in stats" :key="stat.label"
-                class="bg-white p-5 rounded-sm border border-corp-border flex items-center justify-between shadow-sm/5">
-                <div>
-                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest font-inter">{{
-                        stat.label }}</span>
-                    <h2 class="text-2xl font-light text-slate-800 mt-1 font-roboto">{{ stat.value }}</h2>
+                class="bg-[var(--surface-0)] p-6 rounded-2xl border border-[var(--border-color)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all duration-300 hover:-translate-y-1 group">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{{
+                            stat.label }}</span>
+                        <h2 class="text-3xl font-display font-bold text-[var(--text-primary)] mt-2">{{ stat.value }}
+                        </h2>
+                    </div>
+                    <div :class="[stat.bg, stat.color]"
+                        class="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300">
+                        <i :class="['pi', stat.icon]" class="text-xl"></i>
+                    </div>
                 </div>
-                <div :class="[stat.bg, stat.color]"
-                    class="w-10 h-10 rounded flex items-center justify-center border border-current/10">
-                    <i :class="['pi', stat.icon]" class="text-base"></i>
+                <div class="mt-4 pt-4 border-t border-[var(--border-color)] text-xs font-medium flex items-center gap-1.5"
+                    :class="stat.trendColor">
+                    <i :class="['pi', stat.trendIcon]" class="text-[10px]"></i>
+                    {{ stat.trend }}
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-sm border border-corp-border shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
-                <h3 class="text-sm font-medium text-slate-700 font-inter">Recent Applications</h3>
-                <Button label="Export CSV" icon="pi pi-download" size="small" variant="text"
-                    class="!text-[11px] font-medium uppercase tracking-wider" />
+        <div
+            class="bg-[var(--surface-0)] rounded-2xl border border-[var(--border-color)] shadow-[var(--shadow-sm)] overflow-hidden">
+            <div
+                class="px-6 py-5 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--surface-0)]">
+                <div>
+                    <h3 class="text-base font-display font-bold text-[var(--text-primary)]">Recent Applications</h3>
+                    <p class="text-xs text-[var(--text-secondary)] mt-0.5">Showing the latest applicant submissions</p>
+                </div>
+                <Button label="Export CSV" icon="pi pi-download" size="small" variant="text" severity="secondary"
+                    class="!text-xs font-semibold" />
             </div>
 
-            <DataTable :value="applications" responsiveLayout="scroll" class="p-datatable-compact font-roboto">
-                <Column field="name" header="Applicant Name" class="text-[13px] text-slate-700 font-inter font-medium">
+            <DataTable :value="applications" responsiveLayout="scroll" class="p-datatable-modern">
+                <Column field="name" header="Applicant Details" class="py-4">
+                    <template #body="slotProps">
+                        <div class="flex items-center gap-3 pl-2">
+                            <div
+                                class="w-9 h-9 rounded-full bg-[var(--surface-100)] border border-[var(--border-color)] flex items-center justify-center text-xs font-bold text-[var(--text-secondary)]">
+                                {{ slotProps.data.avatar }}
+                            </div>
+                            <div>
+                                <div class="text-sm font-semibold text-[var(--text-primary)]">{{ slotProps.data.name }}
+                                </div>
+                                <div class="text-xs text-[var(--text-secondary)]">{{ slotProps.data.position }}</div>
+                            </div>
+                        </div>
+                    </template>
                 </Column>
-
-                <Column field="position" header="Position Applied" class="text-[13px] text-slate-500"></Column>
 
                 <Column field="date" header="Date Submitted">
                     <template #body="slotProps">
-                        <span class="text-xs text-slate-400">{{ slotProps.data.date }}</span>
+                        <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                            <i class="pi pi-calendar opacity-70 text-xs"></i>
+                            {{ slotProps.data.date }}
+                        </div>
                     </template>
                 </Column>
 
                 <Column field="status" header="Status">
                     <template #body="slotProps">
                         <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)"
-                            class="!text-[10px] !px-2 !py-0.5 !font-medium !rounded-full !uppercase !tracking-tighter" />
+                            class="!px-3 !py-1 !text-[11px] !font-bold !rounded-lg !uppercase !tracking-wider" />
                     </template>
                 </Column>
 
-                <Column header="Action" headerStyle="width: 4rem; text-align: center" bodyStyle="text-align: center">
+                <Column header="" headerStyle="width: 4rem; text-align: right" bodyStyle="text-align: right">
                     <template #body>
-                        <Button icon="pi pi-ellipsis-h" variant="text" severity="secondary" size="small" class="!p-1" />
+                        <Button icon="pi pi-chevron-right" variant="text" severity="secondary" rounded
+                            class="!w-8 !h-8 hover:bg-[var(--surface-50)] transition-colors" />
                     </template>
                 </Column>
             </DataTable>
@@ -84,31 +119,18 @@ const getStatusSeverity = (status) => {
 </template>
 
 <style scoped>
-@reference "@/assets/main.css";
+/* Modern PrimeVue DataTable Overrides using CSS Variables */
+@reference '../../assets/main.css';
 
-/* Instead of applying to classes, use standard CSS for fonts to avoid ! important issues */
-.font-inter {
-    font-family: 'Inter', sans-serif !important;
+:deep(.p-datatable-modern .p-datatable-thead > tr > th) {
+    @apply bg-[var(--surface-50)] text-[var(--text-secondary)] text-xs uppercase tracking-wider py-4 px-6 border-y border-[var(--border-color)] font-semibold;
 }
 
-.font-roboto {
-    font-family: 'Roboto', sans-serif !important;
+:deep(.p-datatable-modern .p-datatable-tbody > tr > td) {
+    @apply py-3 px-6 border-b border-[var(--border-color)] bg-[var(--surface-0)] transition-colors duration-200;
 }
 
-/* PrimeVue Overrides */
-:deep(.p-datatable-compact .p-datatable-thead > tr > th) {
-    /* Use ! prefix only on standard Tailwind utilities */
-    @apply !bg-slate-50/50 !text-slate-400 !text-[10px] !uppercase !tracking-widest !py-3 !px-4 !border-b !border-corp-border !font-semibold;
-    font-family: 'Inter', sans-serif !important;
-}
-
-:deep(.p-datatable-compact .p-datatable-tbody > tr > td) {
-    @apply !py-2.5 !px-4 !border-b !border-slate-50;
-    /* Use standard CSS for force-overriding PrimeVue padding/borders if @apply fails */
-    border-bottom-width: 1px !important;
-}
-
-:deep(.p-datatable-compact .p-datatable-tbody > tr:hover) {
-    background-color: rgba(248, 250, 252, 0.5) !important;
+:deep(.p-datatable-modern .p-datatable-tbody > tr:hover > td) {
+    @apply bg-[var(--surface-50)];
 }
 </style>
