@@ -4,14 +4,9 @@ import User from "../models/User.js";
 import fs from "fs";
 import path from "path";
 
-// Utils
 import { sendTokenCookie } from "../utils/auth.js";
 import { updateLoginTimestamp, formatUserResponse } from "../utils/user.js";
 import catchAsync from "../utils/catchAsync.js";
-
-/**
- * AUTHENTICATION
- */
 
 export const register = catchAsync(async (req, res, next) => {
   const { user, rawOtp } = await authService.registerUserLogic(req.body);
@@ -48,7 +43,6 @@ export const login = catchAsync(async (req, res, next) => {
     user: formatUserResponse(user),
   });
 });
-
 export const googleAuthCallback = catchAsync(async (req, res, next) => {
   if (!req.user) {
     return res.redirect(
@@ -56,24 +50,19 @@ export const googleAuthCallback = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Ensure roles are fully populated before proceeding
   const user = await User.findById(req.user._id).populate("roles");
 
   await updateLoginTimestamp(user);
   sendTokenCookie(res, user);
 
-  // SAFE ROLE MAPPING: Handles both populated objects and raw IDs
-  const roleNames = user.roles.map((r) =>
-    typeof r === "object" && r.name ? r.name : "user",
-  );
+  const roleNames = user.roles.map((r) => r.name);
+  const isAdmin =
+    roleNames.includes("admin") || roleNames.includes("super_admin");
 
-  const redirectTarget = roleNames.some((name) => name === "admin")
-    ? "admin"
-    : "user";
+  const redirectTarget = isAdmin ? "admin" : "user";
 
   res.redirect(`${process.env.CLIENT_URL}/${redirectTarget}/dashboard`);
 });
-
 export const logout = (req, res, next) => {
   res.cookie("token", "loggedout", {
     httpOnly: true,
@@ -81,10 +70,6 @@ export const logout = (req, res, next) => {
   });
   res.status(200).json({ message: "Logged out" });
 };
-
-/**
- * PROFILE MANAGEMENT
- */
 
 export const getMe = catchAsync(async (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: "Not logged in" });
@@ -154,10 +139,6 @@ export const updateAvatar = catchAsync(async (req, res, next) => {
     user: formatUserResponse(user),
   });
 });
-
-/**
- * PASSWORD RECOVERY
- */
 
 export const forgotPassword = catchAsync(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });

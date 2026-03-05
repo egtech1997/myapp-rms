@@ -12,26 +12,16 @@ export const registerUserLogic = async (userData) => {
   const roleName = isAdminEmail ? "admin" : "user";
 
   const targetRole = await Role.findOne({ name: roleName });
-
   if (!targetRole) {
-    throw new Error(
-      `System role '${roleName}' not found. Please run the seed script.`,
-    );
+    throw new Error(`System role '${roleName}' not found. Please seed the DB.`);
   }
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser && existingUser.isVerified) {
-    throw new Error("User already exists and is verified. Please login.");
-  }
-
-  let user;
-  if (existingUser) {
-    Object.assign(existingUser, userData);
-    existingUser.roles = [targetRole._id];
-    existingUser.otp = { code: hashedOtp, expiresAt };
-    user = await existingUser.save();
+  let user = await User.findOne({ email });
+  if (user) {
+    user.roles = [targetRole._id];
+    user.otp = { code: hashedOtp, expiresAt };
+    await user.save();
   } else {
-    // Create new user
     user = await User.create({
       ...userData,
       roles: [targetRole._id],
@@ -67,7 +57,6 @@ export const loginUserLogic = async (email, password) => {
 
   if (!user) throw new Error("Invalid email or password");
 
-  // Check if it's a social-only account
   if (!user.password && user.googleId) {
     throw new Error(
       "This account uses Google Login. Please sign in with Google.",

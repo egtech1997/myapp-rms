@@ -50,31 +50,37 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
+  // 1. Ensure auth is initialized before any routing decision
   if (!authStore.initialized) {
     await authStore.fetchCurrentUser()
   }
 
   const isLoggedIn = authStore.isAuthenticated
 
-  // If already logged in, don't let them see /auth pages
+  // 2. Handle the "Home" logic (NEW)
+  // If a user hits '/' and they are logged in, send them to their dashboard immediately
+  if (to.path === '/' && isLoggedIn) {
+    return authStore.dashboardRoute
+  }
+
+  // 3. Prevent logged-in users from seeing login/register
   if (isLoggedIn && to.path.startsWith('/auth')) {
     return authStore.dashboardRoute
   }
 
-  // Auth requirement
+  // 4. Auth requirement
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { path: '/auth/login', query: { redirect: to.fullPath } }
   }
 
-  // Role protection
+  // 5. Role protection
   if (to.meta.role) {
-    // If route needs 'admin' but user is NOT staff
     if (to.meta.role === 'admin' && !authStore.isStaff) {
       return '/user/dashboard'
     }
-    // If route needs 'user' but user is NOT even a 'user'
-    if (to.meta.role === 'user' && !authStore.hasRole('user')) {
-      return authStore.dashboardRoute
+    // Added a more specific check here
+    if (to.meta.role === 'user' && !isLoggedIn) {
+      return '/auth/login'
     }
   }
 })

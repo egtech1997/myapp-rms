@@ -1,32 +1,50 @@
 import Application from "../models/Application.js";
-import Profile from "../models/Profile.js";
 import catchAsync from "../utils/catchAsync.js";
-import AppError from "../utils/AppError.js";
 
-export const createApplication = catchAsync(async (req, res, next) => {
-  const { jobId, category } = req.body;
+// 1. Submit Application
+export const applyToJob = catchAsync(async (req, res) => {
+  const { jobId, category, applicantData } = req.body;
 
-  // 1. Fetch the user's Profile
-  const profile = await Profile.findOne({ user: req.user._id });
-  if (!profile) {
-    return next(
-      new AppError("Please complete your Profile before applying.", 400),
-    );
+  // Check if already applied to this specific job
+  const existing = await Application.findOne({
+    submittedBy: req.user._id,
+    submittedTo: jobId,
+  });
+
+  if (existing) {
+    return res
+      .status(400)
+      .json({ message: "You have already applied for this position." });
   }
 
-  // 2. Create the application using Profile data as the initial snapshot
   const newApplication = await Application.create({
     submittedBy: req.user._id,
     submittedTo: jobId,
     category,
-    applicantData: {
-      personalInfo: profile.toObject(), // Copies the data
-      education: profile.education || [],
-      training: profile.training || [],
-      experience: profile.experience || [],
-      performanceRating: profile.performanceRating || {},
-    },
+    applicantData, // Frontend sends the current Profile snapshot
   });
 
-  res.status(201).json({ status: "success", data: newApplication });
+  res.status(201).json({
+    status: "success",
+    data: newApplication,
+  });
+});
+
+// 2. Get My Applications (For the User Dashboard)
+export const getMyApplications = catchAsync(async (req, res) => {
+  const applications = await Application.find({ submittedBy: req.user._id })
+    .populate("submittedTo", "title department") // Show job details
+    .sort("-createdAt");
+
+  res.status(200).json({ status: "success", data: applications });
+});
+
+// 3. Get All Applications for a Job (For HR/Admin)
+export const getJobApplications = catchAsync(async (req, res) => {
+  const { jobId } = req.params;
+  const applications = await Application.find({ submittedTo: jobId })
+    .populate("submittedBy", "username email avatar")
+    .sort("-totalScore"); // Rank by score for DepEd MSP
+
+  res.status(200).json({ status: "success", data: applications });
 });

@@ -7,22 +7,16 @@ import session from "express-session";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// Config & Routes
 import "./config/passport.js";
 import authRoutes from "./routes/auth.routes.js";
+import roleRouter from "./routes/role.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 
-// Setup __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-/**
- * 1. GLOBAL MIDDLEWARES
- */
-
-// CORS: Must match your Vue 3 / Vite dev server URL
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -30,23 +24,16 @@ app.use(
   }),
 );
 
-// Static Files: Serving uploaded avatars
-// Accessible via http://localhost:4000/uploads/avatars/filename.jpg
 app.use(
   "/uploads",
   express.static(path.join(process.cwd(), "public", "uploads")),
 );
 
 // Security & Parsing
-app.use(express.json({ limit: "10kb" })); // Body limit to prevent DOS
+app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
-app.use(mongoSanitize()); // Prevent NoSQL Injection
+app.use(mongoSanitize());
 
-/**
- * 2. SESSION & AUTHENTICATION
- * Even though we use JWT Cookies, Passport Google Strategy
- * often requires a temporary session during the redirect flow.
- */
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "gnc_oras_secret",
@@ -55,7 +42,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 1000 * 60 * 60, // 1 hour
+      maxAge: 1000 * 60 * 60,
     },
   }),
 );
@@ -63,17 +50,11 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-/**
- * 3. ROUTES
- */
-
-// Health Check
 app.get("/health", (req, res) => res.status(200).send("Server is healthy"));
 
-// Auth & User Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/v1/roles", roleRouter);
 
-// 404 Handler for undefined routes
 app.all("*", (req, res, next) => {
   res.status(404).json({
     status: "fail",
@@ -81,9 +62,6 @@ app.all("*", (req, res, next) => {
   });
 });
 
-/**
- * 4. GLOBAL ERROR HANDLING
- */
 app.use(errorMiddleware);
 
 export default app;

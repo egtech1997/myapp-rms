@@ -5,14 +5,9 @@ import Lara from '@primevue/themes/lara'
 import App from './App.vue'
 import router from './router'
 
-// Global Styles & Icons
 import './assets/main.css'
 import 'primeicons/primeicons.css'
 
-// ==========================================
-// PRIMEVUE COMPONENTS (Global Arsenal)
-// ==========================================
-// Forms & Inputs
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -27,7 +22,6 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import AutoComplete from 'primevue/autocomplete'
 import FileUpload from 'primevue/fileupload'
 
-// Data Display
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Paginator from 'primevue/paginator'
@@ -40,7 +34,6 @@ import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionContent from 'primevue/accordioncontent'
 
-// Navigation & Menus
 import Menu from 'primevue/menu'
 import Menubar from 'primevue/menubar'
 import Tabs from 'primevue/tabs'
@@ -49,12 +42,10 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 
-// Panels & Layout
 import Divider from 'primevue/divider'
 import ScrollPanel from 'primevue/scrollpanel'
 import Toolbar from 'primevue/toolbar'
 
-// Overlays & Feedback
 import Dialog from 'primevue/dialog'
 import ConfirmDialog from 'primevue/confirmdialog'
 import ConfirmationService from 'primevue/confirmationservice'
@@ -62,11 +53,30 @@ import Toast from 'primevue/toast'
 import ToastService from 'primevue/toastservice'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
+import { useAuthStore } from '@/stores/auth'
 
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+
+app.directive('can', {
+  mounted(el, binding) {
+    const authStore = useAuthStore()
+    if (!authStore.can(binding.value)) {
+      el.style.display = 'none'
+    }
+  },
+})
+
+app.directive('role', {
+  mounted(el, binding) {
+    const authStore = useAuthStore()
+    if (!authStore.hasRole(binding.value)) {
+      el.style.display = 'none'
+    }
+  },
+})
 
 app.use(PrimeVue, {
   ripple: true,

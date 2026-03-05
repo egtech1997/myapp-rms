@@ -100,4 +100,19 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   return false;
 };
 
+userSchema.pre("findOneAndDelete", async function (next) {
+  const query = this.getQuery();
+  const user = await this.model.findOne(query);
+
+  if (
+    user &&
+    (user.username === "super_admin" ||
+      user.email === "superadmin@deped.gov.ph")
+  ) {
+    throw new Error(
+      "This is a protected system account and cannot be deleted.",
+    );
+  }
+  next();
+});
 export default mongoose.model("User", userSchema);

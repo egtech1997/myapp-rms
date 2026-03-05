@@ -26,7 +26,7 @@ const passwordData = reactive({
 const navLinks = [
     { name: 'Dashboard', to: '/user/dashboard', icon: 'pi-home' },
     { name: 'My Applications', to: '/user/applications', icon: 'pi-folder-open' },
-    { name: 'Bulletin Board', to: '/vacancies', icon: 'pi-megaphone' },
+    { name: 'Job Vacancies', to: '/vacancies', icon: 'pi-megaphone' },
 ]
 
 const triggerFileSelect = () => fileInput.value.click()

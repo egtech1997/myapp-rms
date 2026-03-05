@@ -1,23 +1,34 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
 import apiClient from '@/api/axios'
 import { Cropper } from 'vue-advanced-cropper'
+import AdminSidebar from '@/components/AdminSidebar.vue'
 import 'vue-advanced-cropper/dist/style.css'
 
 const authStore = useAuthStore()
 const toast = useToast()
 
+// UI State
+const isDark = ref(false)
 const isCollapsed = ref(false)
 const isHovered = ref(false)
 const showSettingsModal = ref(false)
+const showNotifications = ref(false)
+const showUserDropdown = ref(false) // Added state for user dropdown
+
+// Data State
 const uploading = ref(false)
 const isSaving = ref(false)
-
 const fileInput = ref(null)
 const selectedImage = ref(null)
 const cropperRef = ref(null)
+
+const notifications = ref([
+    { id: 1, title: 'New Application', time: '2 mins ago', icon: 'pi-file-import', color: 'text-blue-500 bg-blue-50' },
+    { id: 2, title: 'System Update', time: '1 hour ago', icon: 'pi-server', color: 'text-amber-500 bg-amber-50' }
+])
 
 const passwordData = reactive({
     currentPassword: '',
@@ -25,176 +36,159 @@ const passwordData = reactive({
     confirmPassword: ''
 })
 
-const navGroups = [
-    {
-        title: 'Human Resource',
-        items: [
-            { label: 'Dashboard', icon: 'pi pi-chart-line', to: '/admin/dashboard' },
-            { label: 'Job Positions', icon: 'pi pi-briefcase', to: '/admin/jobs' },
-            { label: 'Applicants', icon: 'pi pi-users', to: '/admin/applicants' },
-            { label: 'Rankings (CAL)', icon: 'pi pi-list', to: '/admin/rankings' }
-        ]
-    }
-]
+onMounted(() => {
+    isDark.value = localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark')
+})
 
+const toggleTheme = () => {
+    isDark.value = !isDark.value
+    document.documentElement.classList.toggle('dark', isDark.value)
+    localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
+
+/* --- LOGIC: AVATAR & PASSWORD --- */
 const triggerFileSelect = () => fileInput.value.click()
-
-const onFileSelect = (event) => {
-    const file = event.target.files[0]
+const onFileSelect = (e) => {
+    const file = e.target.files[0]
     if (!file) return
-    if (file.size > 10 * 1024 * 1024) {
-        toast.add({ severity: 'error', summary: 'File too large', detail: 'Max 10MB', life: 3000 })
-        return
-    }
-
-    if (file.type === 'image/gif') {
-        uploadFile(file, false)
-    } else {
-        selectedImage.value = URL.createObjectURL(file)
-    }
+    selectedImage.value = URL.createObjectURL(file)
 }
 
 const uploadFile = async (fileOrBlob, isCropped = false) => {
     const formData = new FormData()
-    const fileName = isCropped ? 'avatar.jpg' : fileOrBlob.name
-    formData.append('avatar', fileOrBlob, fileName)
-
+    formData.append('avatar', fileOrBlob, isCropped ? 'avatar.jpg' : fileOrBlob.name)
     uploading.value = true
     try {
         const { data } = await apiClient.patch('/auth/update-avatar', formData)
-        authStore.user = {
-            ...data.user,
-            avatarUrl: `${data.user.avatarUrl}?t=${Date.now()}`
-        }
-        toast.add({ severity: 'success', summary: 'Updated', detail: 'Avatar updated', life: 3000 })
+        authStore.user = { ...data.user, avatarUrl: `${data.user.avatarUrl}?t=${Date.now()}` }
+        toast.add({ severity: 'success', summary: 'Profile Updated', detail: 'Your photo was saved successfully.', life: 3000 })
         selectedImage.value = null
     } catch (err) {
-        toast.add({ severity: 'error', summary: 'Upload failed', life: 3000 })
-    } finally {
-        uploading.value = false
-        if (fileInput.value) fileInput.value.value = ''
-    }
+        toast.add({ severity: 'error', summary: 'Upload Failed', detail: 'Could not update your profile photo.', life: 3000 })
+    } finally { uploading.value = false }
 }
 
 const uploadCroppedImage = () => {
     const result = cropperRef.value.getResult()
-    if (!result?.canvas) return
-    result.canvas.toBlob(blob => blob && uploadFile(blob, true), 'image/jpeg', 0.9)
+    if (result?.canvas) result.canvas.toBlob(b => b && uploadFile(b, true), 'image/jpeg', 0.9)
 }
 
 const handlePasswordUpdate = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-        toast.add({ severity: 'error', detail: 'Passwords do not match', life: 3000 })
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Passwords do not match.', life: 3000 })
         return
     }
-
     isSaving.value = true
     try {
-        await apiClient.patch('/auth/update-password', {
-            currentPassword: passwordData.currentPassword,
-            newPassword: passwordData.newPassword
-        })
-        toast.add({ severity: 'success', summary: 'Password Updated', life: 3000 })
+        await apiClient.patch('/auth/update-password', passwordData)
+        toast.add({ severity: 'success', summary: 'Security Updated', detail: 'Your password was changed successfully.', life: 3000 })
         showSettingsModal.value = false
         Object.assign(passwordData, { currentPassword: '', newPassword: '', confirmPassword: '' })
     } catch (err) {
-        toast.add({ severity: 'error', summary: 'Update Failed', detail: err.response?.data?.message, life: 3000 })
-    } finally {
-        isSaving.value = false
-    }
+        toast.add({ severity: 'error', summary: 'Update Failed', detail: err.response?.data?.message || 'An error occurred.', life: 3000 })
+    } finally { isSaving.value = false }
 }
 </script>
 
 <template>
-    <div class="flex h-screen bg-[var(--bg-app)] text-[var(--text-primary)] antialiased overflow-hidden">
+    <div
+        class="flex h-screen bg-[var(--bg-app)] text-[var(--text-main)] transition-colors duration-300 font-sans selection:bg-[var(--color-solar)] selection:text-black">
         <Toast />
 
-        <aside @mouseenter="isHovered = true" @mouseleave="isHovered = false"
-            :class="[isCollapsed && !isHovered ? 'w-[72px]' : 'w-64']"
-            class="flex flex-col shrink-0 transition-all duration-300 ease-in-out z-30 shadow-[var(--shadow-lg)] bg-[#0f172a]">
+        <AdminSidebar v-model:isHovered="isHovered" :isCollapsed="isCollapsed" />
 
-            <div class="h-[60px] flex items-center px-4 border-b border-white/5 bg-black/10">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <div
-                        class="min-w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-[var(--shadow-primary)] flex items-center justify-center transition-transform hover:scale-105 cursor-pointer">
-                        <i class="pi pi-shield text-white text-lg"></i>
-                    </div>
-                    <span v-show="!isCollapsed || isHovered"
-                        class="text-white font-bold uppercase tracking-wider text-xs whitespace-nowrap">
-                        HRMS Admin
-                    </span>
-                </div>
-            </div>
-
-            <nav
-                class="flex-1 py-6 px-3 space-y-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <div v-for="group in navGroups" :key="group.title">
-                    <p v-show="!isCollapsed || isHovered"
-                        class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">
-                        {{ group.title }}
-                    </p>
-                    <div class="space-y-1">
-                        <router-link v-for="item in group.items" :key="item.to" :to="item.to"
-                            class="group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 aria-[current=page]:bg-indigo-500/15 aria-[current=page]:text-indigo-400 aria-[current=page]:font-semibold relative overflow-hidden">
-                            <i :class="item.icon"
-                                class="text-lg min-w-[24px] text-center transition-transform group-hover:scale-110"></i>
-                            <span v-show="!isCollapsed || isHovered" class="truncate text-sm tracking-wide">{{
-                                item.label }}</span>
-                            <div
-                                class="absolute left-0 top-1/4 bottom-1/4 w-1 bg-indigo-500 rounded-r-full opacity-0 aria-[current=page]:opacity-100 transition-opacity">
-                            </div>
-                        </router-link>
-                    </div>
-                </div>
-            </nav>
-        </aside>
-
-        <div class="flex-1 flex flex-col min-w-0">
-
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <header
-                class="h-[60px] bg-[var(--surface-0)] shadow-[var(--shadow-sm)] flex items-center justify-between px-6 sticky top-0 z-20">
+                class="h-16 bg-[var(--surface)] border-b border-[var(--border-main)] flex items-center justify-between px-6 z-30 shadow-sm">
                 <div class="flex items-center gap-4">
                     <button @click="isCollapsed = !isCollapsed"
-                        class="w-10 h-10 grid place-items-center rounded-xl hover:bg-[var(--surface-50)] text-[var(--text-secondary)] transition-colors">
+                        class="p-2 hover:bg-[var(--bg-app)] rounded-lg text-[var(--text-muted)] transition-colors">
                         <i class="pi pi-bars text-lg"></i>
                     </button>
-                    <div
-                        class="hidden sm:flex items-center text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                        <span class="hover:text-indigo-600 transition-colors cursor-pointer">Admin</span>
-                        <i class="pi pi-angle-right mx-2 text-[10px] opacity-50"></i>
-                        <span class="text-[var(--text-primary)] font-extrabold">{{ $route.name || 'Overview' }}</span>
-                    </div>
+
+                    <div class="h-5 w-[1px] bg-[var(--border-main)] hidden sm:block"></div>
+
+                    <nav class="hidden sm:flex items-center gap-2 text-sm">
+                        <span class="text-[var(--text-muted)] font-medium">Dashboard</span>
+                        <i class="pi pi-angle-right text-[10px] text-[var(--border-main)]"></i>
+                        <span class="font-semibold text-[var(--text-main)] capitalize">{{ $route.name || 'Overview'
+                            }}</span>
+                    </nav>
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <Button icon="pi pi-bell" variant="text" severity="secondary"
-                        class="!w-10 !h-10 rounded-full hover:bg-[var(--surface-50)] text-[var(--text-secondary)]" />
-                    <div class="h-6 w-px bg-[var(--border-color)]"></div>
-
-                    <div class="relative group">
-                        <button
-                            class="flex items-center gap-3 rounded-full hover:bg-[var(--surface-50)] py-1 pl-1 pr-3 transition-colors">
-                            <Avatar :image="authStore.user?.avatarUrl" shape="circle" class="!w-9 !h-9 shadow-sm" />
-                            <i class="pi pi-chevron-down text-xs text-[var(--text-secondary)] hidden sm:block"></i>
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <button @click="showNotifications = !showNotifications"
+                            @blur="setTimeout(() => showNotifications = false, 200)"
+                            class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[var(--bg-app)] text-[var(--text-muted)] transition-colors relative">
+                            <i class="pi pi-bell"></i>
+                            <span
+                                class="absolute top-2.5 right-2.5 w-2 h-2 bg-[var(--color-solar)] rounded-full border-2 border-[var(--surface)]"></span>
                         </button>
 
-                        <div
-                            class="absolute right-0 mt-3 w-56 rounded-2xl bg-[var(--surface-0)] shadow-[var(--shadow-lg)] border border-[var(--border-color)] opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-200 z-50">
+                        <div v-if="showNotifications"
+                            class="absolute right-0 mt-2 w-80 bg-[var(--surface)] border border-[var(--border-main)] shadow-xl rounded-xl overflow-hidden animate-zoom-in z-50">
                             <div
-                                class="px-4 py-3 border-b border-[var(--border-color)] bg-[var(--surface-50)] rounded-t-2xl">
-                                <p class="text-sm font-bold text-[var(--text-primary)] truncate">{{
-                                    authStore.user?.username }}</p>
-                                <p class="text-xs text-[var(--text-secondary)] truncate mt-0.5">{{ authStore.user?.email
-                                    }}</p>
+                                class="px-4 py-3 border-b border-[var(--border-main)] bg-[var(--bg-app)]/30 flex justify-between items-center">
+                                <span class="text-sm font-semibold">Notifications</span>
+                                <button class="text-xs text-[var(--color-solar)] font-semibold hover:underline">Mark all
+                                    as read</button>
                             </div>
-                            <div class="p-2 space-y-1">
+                            <div class="max-h-64 overflow-y-auto custom-scrollbar">
+                                <div v-for="n in notifications" :key="n.id"
+                                    class="p-4 hover:bg-[var(--bg-app)] border-b border-[var(--border-main)] last:border-0 flex gap-4 cursor-pointer transition-colors">
+                                    <div
+                                        :class="['w-10 h-10 rounded-full flex items-center justify-center shrink-0 dark:bg-slate-800 dark:text-slate-300', n.color]">
+                                        <i :class="['pi text-sm', n.icon]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-[var(--text-main)]">{{ n.title }}</p>
+                                        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ n.time }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="toggleTheme"
+                        class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[var(--bg-app)] text-[var(--text-muted)] transition-colors">
+                        <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'"></i>
+                    </button>
+
+                    <div class="h-5 w-[1px] bg-[var(--border-main)] mx-1"></div>
+
+                    <div class="relative" @mouseenter="showUserDropdown = true" @mouseleave="showUserDropdown = false">
+
+                        <button @click="showUserDropdown = !showUserDropdown"
+                            @blur="setTimeout(() => showUserDropdown = false, 200)"
+                            class="flex items-center gap-3 p-1.5 rounded-lg hover:bg-[var(--bg-app)] transition-colors border border-transparent hover:border-[var(--border-main)] focus:outline-none focus:border-[var(--border-main)]">
+                            <img :src="authStore.user?.avatarUrl"
+                                class="w-8 h-8 rounded-full bg-[var(--bg-app)] object-cover border border-[var(--border-main)]" />
+                            <div class="hidden md:flex flex-col items-start text-left mr-2">
+                                <span class="text-xs font-semibold leading-none">{{ authStore.user?.username }}</span>
+                                <span
+                                    class="text-[10px] text-[var(--text-muted)] mt-1 leading-none">Administrator</span>
+                            </div>
+                            <i class="pi pi-chevron-down text-[10px] text-[var(--text-muted)] hidden md:block"
+                                :class="{ 'rotate-180': showUserDropdown, 'transition-transform': true }"></i>
+                        </button>
+
+                        <div :class="[
+                            'absolute right-0 mt-2 w-56 bg-[var(--surface)] border border-[var(--border-main)] shadow-xl rounded-xl transition-all overflow-hidden z-50',
+                            showUserDropdown ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
+                        ]">
+                            <div class="p-4 border-b border-[var(--border-main)]">
+                                <p class="text-xs text-[var(--text-muted)]">Signed in as</p>
+                                <p class="text-sm font-semibold truncate mt-0.5">{{ authStore.user?.username }}</p>
+                            </div>
+                            <div class="p-2">
                                 <button @click="showSettingsModal = true"
-                                    class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-xl hover:bg-[var(--surface-50)] text-[var(--text-primary)] transition-colors">
-                                    <i class="pi pi-cog text-[var(--text-secondary)]"></i> Settings
+                                    class="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-[var(--bg-app)] flex items-center gap-3 transition-colors">
+                                    <i class="pi pi-user text-[var(--text-muted)]"></i> Account Settings
                                 </button>
                                 <button @click="authStore.logout"
-                                    class="w-full flex items-center gap-3 px-3 py-2 text-sm font-bold rounded-xl text-rose-600 hover:bg-rose-50 transition-colors">
-                                    <i class="pi pi-power-off"></i> Logout
+                                    class="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center gap-3 transition-colors mt-1">
+                                    <i class="pi pi-sign-out"></i> Sign Out
                                 </button>
                             </div>
                         </div>
@@ -202,95 +196,163 @@ const handlePasswordUpdate = async () => {
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto p-6 md:p-8">
-                <div class="max-w-7xl mx-auto">
-                    <slot />
-                </div>
+            <main class="flex-1 overflow-y-auto p-6 lg:p-8 bg-[var(--bg-app)] custom-scrollbar">
+                <router-view v-slot="{ Component }">
+                    <transition name="page-fade" mode="out-in">
+                        <div class="max-w-7xl mx-auto">
+                            <component :is="Component" />
+                        </div>
+                    </transition>
+                </router-view>
             </main>
         </div>
 
-        <Dialog v-model:visible="showSettingsModal" modal header="Account Settings" :style="{ width: '28rem' }" :pt="{
-            root: 'rounded-2xl border-none shadow-[var(--shadow-lg)] overflow-hidden',
-            header: 'px-6 pt-6 pb-4 border-b border-[var(--border-color)] bg-[var(--surface-0)]',
-            title: 'font-display font-bold text-lg',
-            content: 'p-6 bg-[var(--surface-0)]'
-        }">
+        <div v-if="showSettingsModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div @click="showSettingsModal = false"
+                class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-fade-in"></div>
 
-            <div v-if="selectedImage" class="space-y-6 animate-fade-in">
-                <div class="flex flex-col gap-2">
-                    <p class="text-sm font-medium text-[var(--text-secondary)]">Adjust your profile picture</p>
-                    <div
-                        class="border border-[var(--border-color)] rounded-2xl overflow-hidden bg-slate-900 h-64 shadow-inner">
-                        <cropper ref="cropperRef" class="h-full" :src="selectedImage"
+            <div
+                class="relative w-full max-w-lg bg-[var(--surface)] border border-[var(--border-main)] shadow-2xl rounded-2xl overflow-hidden animate-zoom-in">
+                <div
+                    class="px-6 py-4 border-b border-[var(--border-main)] flex justify-between items-center bg-[var(--surface)]">
+                    <div>
+                        <h3 class="text-base font-bold">Profile & Security</h3>
+                        <p class="text-xs text-[var(--text-muted)] mt-0.5">Manage your personal details and password.
+                        </p>
+                    </div>
+                    <button @click="showSettingsModal = false"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-app)] text-[var(--text-muted)] transition-colors">
+                        <i class="pi pi-times text-sm"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+
+                    <div>
+                        <h4 class="text-sm font-semibold mb-4">Profile Picture</h4>
+                        <div class="flex items-center gap-5">
+                            <div class="relative group cursor-pointer w-20 h-20 shrink-0" @click="triggerFileSelect">
+                                <img :src="authStore.user?.avatarUrl"
+                                    class="w-full h-full rounded-full border-2 border-[var(--border-main)] object-cover shadow-sm" />
+                                <div
+                                    class="absolute inset-0 bg-slate-900/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-white">
+                                    <i class="pi pi-camera text-xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <button @click="triggerFileSelect"
+                                    class="px-4 py-2 text-sm font-semibold bg-[var(--bg-app)] border border-[var(--border-main)] hover:bg-[var(--border-main)] rounded-lg transition-colors">
+                                    Upload new photo
+                                </button>
+                                <p class="text-xs text-[var(--text-muted)] mt-2">Recommended: Square JPG, PNG. Max 10MB.
+                                </p>
+                            </div>
+                            <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="onFileSelect" />
+                        </div>
+                    </div>
+
+                    <div v-if="selectedImage"
+                        class="p-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl animate-fade-in">
+                        <p class="text-xs font-semibold mb-2">Adjust Image</p>
+                        <cropper ref="cropperRef" class="h-48 rounded-lg" :src="selectedImage"
                             :stencil-props="{ aspectRatio: 1 }" />
+                        <div class="flex gap-3 mt-4">
+                            <button @click="uploadCroppedImage"
+                                class="flex-1 py-2 bg-[#0F172A] dark:bg-[var(--color-solar)] dark:text-black text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all shadow-sm">
+                                Apply Crop
+                            </button>
+                            <button @click="selectedImage = null"
+                                class="flex-1 py-2 border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-main)] text-sm font-semibold rounded-lg hover:bg-[var(--bg-app)] transition-all">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="!authStore.user?.googleId" class="pt-4 border-t border-[var(--border-main)]">
+                        <h4 class="text-sm font-semibold mb-4">Change Password</h4>
+                        <div class="space-y-4">
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-medium text-[var(--text-muted)]">Current Password</label>
+                                <input v-model="passwordData.currentPassword" type="password"
+                                    class="w-full h-10 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:border-[var(--color-solar)] focus:ring-2 focus:ring-[var(--color-solar)]/20 outline-none transition-all"
+                                    placeholder="Enter your active password" />
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-medium text-[var(--text-muted)]">New Password</label>
+                                    <input v-model="passwordData.newPassword" type="password"
+                                        class="w-full h-10 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:border-[var(--color-solar)] focus:ring-2 focus:ring-[var(--color-solar)]/20 outline-none transition-all" />
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-medium text-[var(--text-muted)]">Confirm Password</label>
+                                    <input v-model="passwordData.confirmPassword" type="password"
+                                        class="w-full h-10 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:border-[var(--color-solar)] focus:ring-2 focus:ring-[var(--color-solar)]/20 outline-none transition-all" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <Button label="Cancel" severity="secondary" text @click="selectedImage = null" />
-                    <Button label="Apply & Upload" :loading="uploading" @click="uploadCroppedImage" />
+
+                <div class="px-6 py-4 bg-[var(--bg-app)] border-t border-[var(--border-main)] flex justify-end gap-3">
+                    <button @click="showSettingsModal = false"
+                        class="px-5 py-2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                        Cancel
+                    </button>
+                    <button v-if="!authStore.user?.googleId" @click="handlePasswordUpdate" :disabled="isSaving"
+                        class="px-5 py-2 bg-[#0F172A] dark:bg-[var(--color-solar)] dark:text-black text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg hover:-translate-y-px transition-all disabled:opacity-50 flex items-center gap-2">
+                        <i v-if="isSaving" class="pi pi-spin pi-spinner text-xs"></i>
+                        {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                    </button>
                 </div>
             </div>
-
-            <div v-else class="space-y-8">
-                <div class="flex flex-col items-center gap-4">
-                    <div class="relative group cursor-pointer" @click="triggerFileSelect">
-                        <Avatar :image="authStore.user?.avatarUrl" shape="circle"
-                            class="!w-28 !h-28 border-4 border-[var(--surface-0)] shadow-[var(--shadow-md)] transition-transform duration-300 group-hover:-translate-y-1 group-hover:shadow-[var(--shadow-lg)]" />
-                        <div
-                            class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                            <i v-if="!uploading" class="pi pi-camera text-white text-2xl drop-shadow-md"></i>
-                            <i v-else class="pi pi-spin pi-spinner text-white text-2xl"></i>
-                        </div>
-                    </div>
-                    <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="onFileSelect" />
-                    <p class="text-xs font-bold text-indigo-500 uppercase tracking-widest cursor-pointer hover:text-indigo-600 transition-colors"
-                        @click="triggerFileSelect">
-                        {{ uploading ? 'Uploading...' : 'Change Photo' }}
-                    </p>
-                </div>
-
-                <div class="h-px bg-[var(--border-color)]"></div>
-
-                <div class="space-y-5">
-                    <p class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">Security
-                        Settings</p>
-
-                    <div v-if="authStore.user?.googleId"
-                        class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-start gap-4 shadow-sm">
-                        <div class="bg-white p-2 rounded-xl shadow-sm">
-                            <i class="pi pi-google text-indigo-600 text-lg"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-indigo-900">Google Account</p>
-                            <p class="text-xs text-indigo-700/80 leading-relaxed mt-1">
-                                Your account is secured via Google. Manage your password in your Google security
-                                settings.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div v-else class="space-y-4">
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold text-[var(--text-secondary)]">Current Password</label>
-                            <InputText v-model="passwordData.currentPassword" type="password" class="w-full" />
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold text-[var(--text-secondary)]">New Password</label>
-                            <InputText v-model="passwordData.newPassword" type="password" class="w-full" />
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold text-[var(--text-secondary)]">Confirm Password</label>
-                            <InputText v-model="passwordData.confirmPassword" type="password" class="w-full" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-                    <Button label="Cancel" severity="secondary" text @click="showSettingsModal = false" />
-                    <Button v-if="!authStore.user?.googleId" label="Save Changes" :loading="isSaving"
-                        @click="handlePasswordUpdate" />
-                </div>
-            </div>
-        </Dialog>
+        </div>
     </div>
 </template>
+
+<style scoped>
+.page-fade-enter-active,
+.page-fade-leave-active {
+    transition: all 0.2s ease;
+}
+
+.page-fade-enter-from {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.page-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.animate-zoom-in {
+    animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+</style>
