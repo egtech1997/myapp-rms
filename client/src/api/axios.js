@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth.js'
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
@@ -30,3 +30,7 @@ apiClient.interceptors.response.use(
       }
     }
     return Promise.reject(error)
+  },
+)
+
+export default apiClient
