@@ -317,6 +317,31 @@ const filteredJobs = computed(() => {
     });
 });
 
+// --- ABOUT US: HR BOARD MEMBERS DATA ---
+// 🪄 Edit this array to change the people inside the About Us "Selection Board" dropdown
+const boardMembers = ref({
+    chairperson: {
+        name: "Dr. Roberto Santos",
+        role: "System Admin / Chairperson",
+        image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200",
+        bio: "Leads the Selection Board, ensuring all recruitment processes strictly adhere to PRIME-HRM standards and DepEd policies."
+    },
+    members: [
+        {
+            name: "Juan Miguel Luna",
+            role: "HRMO",
+            image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200",
+            bio: "Head of the Human Resource Management Office. Oversees the initial screening of all incoming applications."
+        },
+        {
+            name: "Elena G. Reyes",
+            role: "Evaluation Committee",
+            image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+            bio: "Lead evaluator for teaching and non-teaching personnel, focusing on competency-based assessments."
+        }
+    ]
+});
+
 // --- TEAM MEMBERS DATA ---
 const isTeamModalOpen = ref(false);
 const selectedMember = ref(null);
@@ -513,7 +538,7 @@ onMounted(() => {
             <div class="relative w-full max-w-6xl h-[650px] mx-auto perspective-book">
                 <div class="relative w-full h-full transform-3d border border-slate-200 shadow-sm rounded-md bg-white flex overflow-visible">
                     
-                    <div class="w-1/2 h-full border-r border-slate-200 p-12 bg-white rounded-l-md overflow-hidden relative z-10 cursor-pointer hover:bg-slate-50/50 transition-colors duration-300" @click="turnPage('prev')">
+                    <div class="w-1/2 h-full border-r border-slate-200 p-12 bg-white rounded-l-md overflow-hidden relative z-10 cursor-pointer hover:bg-slate-50/50 transition-colors duration-300" @click="turnPage('prev')" @mouseleave="expandedId = null">
                         <div v-if="renderedLeft" class="flex flex-col h-full relative">
                             <div class="flex items-center gap-3 mb-8">
                                 <div class="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
@@ -522,7 +547,7 @@ onMounted(() => {
                                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ renderedLeft.date }}</span>
                             </div>
                             
-                            <h3 @click.stop="toggleExpand(renderedLeft.id)" class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-pointer group flex items-start justify-between hover:text-slate-600 transition-colors">
+                            <h3 @mouseenter="expandedId = renderedLeft.id" @click.stop class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-default group flex items-start justify-between hover:text-slate-600 transition-colors">
                                 <span class="pr-4">{{ renderedLeft.title }}</span>
                                 <div class="w-8 h-8 rounded border border-slate-200 bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                     <i class="pi pi-arrow-up-right text-slate-700 text-xs"></i>
@@ -564,7 +589,7 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="w-1/2 h-full p-12 bg-white rounded-r-md overflow-hidden relative z-10 cursor-pointer hover:bg-slate-50/50 transition-colors duration-300" @click="turnPage('next')">
+                    <div class="w-1/2 h-full p-12 bg-white rounded-r-md overflow-hidden relative z-10 cursor-pointer hover:bg-slate-50/50 transition-colors duration-300" @click="turnPage('next')" @mouseleave="expandedId = null">
                         <div v-if="renderedRight" class="flex flex-col h-full relative">
                             <div class="flex items-center gap-3 mb-8">
                                 <div class="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
@@ -573,7 +598,7 @@ onMounted(() => {
                                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ renderedRight.date }}</span>
                             </div>
                             
-                            <h3 @click.stop="toggleExpand(renderedRight.id)" class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-pointer group flex items-start justify-between hover:text-slate-600 transition-colors">
+                            <h3 @mouseenter="expandedId = renderedRight.id" @click.stop class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-default group flex items-start justify-between hover:text-slate-600 transition-colors">
                                 <span class="pr-4">{{ renderedRight.title }}</span>
                                 <div class="w-8 h-8 rounded border border-slate-200 bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                     <i class="pi pi-arrow-up-right text-slate-700 text-xs"></i>
@@ -770,58 +795,36 @@ onMounted(() => {
                             <AccordionHeader class="font-bold text-white py-5 px-6 hover:bg-slate-800 transition-colors text-sm tracking-widest uppercase">
                                 Human Resources Management Placement Selection Board
                             </AccordionHeader>
-                            <AccordionContent class="py-12 flex justify-center bg-transparent overflow-x-auto w-full">
+                            <AccordionContent class="py-12 flex justify-center bg-transparent overflow-x-auto w-full px-6">
                                 
-                                <div class="min-w-[650px] flex flex-col items-center mx-auto transform scale-90 origin-top">
-                                    <div class="flex justify-center z-10 relative">
-                                        <div class="flex flex-col items-center p-4 border border-slate-600 bg-slate-900 w-56 rounded">
-                                            <span class="font-bold text-white text-sm text-center">Dr. Roberto Santos</span>
-                                            <span class="text-[10px] text-slate-400 font-semibold uppercase mt-1 tracking-widest">System Admin</span>
+                                <div class="flex flex-col items-center w-full">
+                                    
+                                    <div class="bg-slate-900 border border-slate-700 p-6 rounded shadow-lg flex flex-col sm:flex-row gap-6 items-center sm:items-start text-left max-w-2xl w-full relative z-10">
+                                        <img :src="boardMembers.chairperson.image" class="w-24 h-24 rounded object-cover grayscale-[20%] shrink-0" alt="Chairperson" />
+                                        <div>
+                                            <h4 class="text-white font-bold text-lg">{{ boardMembers.chairperson.name }}</h4>
+                                            <span class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{{ boardMembers.chairperson.role }}</span>
+                                            <p class="text-slate-300 text-sm mt-3 leading-relaxed">{{ boardMembers.chairperson.bio }}</p>
                                         </div>
                                     </div>
 
-                                    <div class="flex justify-center -my-px z-0 relative">
-                                        <svg width="600" height="30">
-                                            <line x1="300" y1="0" x2="300" y2="15" stroke="#475569" stroke-width="1" />
-                                            <line x1="180" y1="15" x2="420" y2="15" stroke="#475569" stroke-width="1" />
-                                            <line x1="180" y1="15" x2="180" y2="30" stroke="#475569" stroke-width="1" />
-                                            <line x1="420" y1="15" x2="420" y2="30" stroke="#475569" stroke-width="1" />
-                                        </svg>
+                                    <div class="w-px h-8 bg-slate-700 hidden md:block"></div>
+                                    <div class="w-full max-w-3xl border-t border-slate-700 hidden md:block relative">
+                                        <div class="absolute top-0 left-[25%] w-px h-8 bg-slate-700"></div>
+                                        <div class="absolute top-0 right-[25%] w-px h-8 bg-slate-700"></div>
                                     </div>
 
-                                    <div class="flex justify-center gap-[60px] z-10 relative">
-                                        <div class="flex flex-col items-center p-4 border border-slate-600 bg-slate-900 w-48 rounded">
-                                            <span class="font-bold text-white text-sm text-center">Juan Miguel Luna</span>
-                                            <span class="text-[10px] text-slate-400 font-semibold uppercase mt-1 tracking-widest">HRMO</span>
-                                        </div>
-                                        <div class="flex flex-col items-center p-4 border border-slate-600 bg-slate-900 w-48 rounded">
-                                            <span class="font-bold text-white text-sm text-center">Elena G. Reyes</span>
-                                            <span class="text-[10px] text-slate-400 font-semibold uppercase mt-1 tracking-widest">Evaluation Cmte.</span>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mt-8 md:mt-0 z-10">
+                                        <div v-for="(member, index) in boardMembers.members" :key="index" class="bg-slate-900 border border-slate-700 p-6 rounded shadow-md flex flex-col sm:flex-row gap-5 items-center sm:items-start text-left relative">
+                                            <img :src="member.image" class="w-20 h-20 rounded object-cover grayscale-[20%] shrink-0" alt="Board Member" />
+                                            <div>
+                                                <h4 class="text-white font-bold text-base">{{ member.name }}</h4>
+                                                <span class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{{ member.role }}</span>
+                                                <p class="text-slate-300 text-sm mt-3 leading-relaxed">{{ member.bio }}</p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div class="flex justify-center -my-px z-0 relative">
-                                        <svg width="600" height="30">
-                                            <line x1="180" y1="0" x2="180" y2="15" stroke="#475569" stroke-width="1" />
-                                            <line x1="420" y1="0" x2="420" y2="15" stroke="#475569" stroke-width="1" />
-                                            <line x1="84" y1="15" x2="516" y2="15" stroke="#475569" stroke-width="1" />
-                                            <line x1="84" y1="15" x2="84" y2="30" stroke="#475569" stroke-width="1" />
-                                            <line x1="300" y1="15" x2="300" y2="30" stroke="#475569" stroke-width="1" />
-                                            <line x1="516" y1="15" x2="516" y2="30" stroke="#475569" stroke-width="1" />
-                                        </svg>
-                                    </div>
-
-                                    <div class="flex justify-center gap-[56px] z-10 relative">
-                                        <div class="flex flex-col items-center p-3 border border-slate-700 bg-slate-800 w-40 rounded">
-                                            <span class="font-semibold text-slate-300 text-sm text-center">Personnel Unit</span>
-                                        </div>
-                                        <div class="flex flex-col items-center p-3 border border-slate-700 bg-slate-800 w-40 rounded">
-                                            <span class="font-semibold text-slate-300 text-sm text-center">Secretariat</span>
-                                        </div>
-                                        <div class="flex flex-col items-center p-3 border border-slate-700 bg-slate-800 w-40 rounded">
-                                            <span class="font-semibold text-slate-300 text-sm text-center">Applicant</span>
-                                        </div>
-                                    </div>
                                 </div>
                                 
                             </AccordionContent>
