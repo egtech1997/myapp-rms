@@ -12,33 +12,35 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.user,
 
-    // ✅ Logic: Checks if the user has ANY role other than 'user'
+    // ✅ Staff logic: Checks if user has any administrative-level role
     isStaff: (state) => {
       if (!state.user?.roles) return false
-      // Returns true if there is at least one role that is NOT 'user'
-      return state.user.roles.some((role) => role !== 'user')
+      const staffRoles = ['admin', 'super_admin', 'hr_manager', 'registrar']
+      return state.user.roles.some((role) => staffRoles.includes(role))
     },
 
-    // ✅ Helper to decide where the user belongs
+    // ✅ Permission Check: Does the user have a specific permission?
+    // Usage: authStore.can('edit_user')
+    can: (state) => (permission) => {
+      if (!state.user) return false
+      if (state.user.roles?.includes('super_admin')) return true // God mode
+      return state.user.permissions?.includes(permission) || false
+    },
+
     dashboardRoute: (state) => {
       if (!state.user) return '/auth/login'
-      // Use our new logic: Staff goes to Admin, everyone else to User
       return state.isStaff ? '/admin/dashboard' : '/user/dashboard'
     },
 
     hasRole: (state) => (roleName) => {
-      if (!state.user?.roles) return false
-      return state.user.roles.includes(roleName)
-    },
-
-    primaryRole: (state) => {
-      if (!state.user?.roles || state.user.roles.length === 0) return 'Guest'
-      return state.user.roles[0]
+      return state.user?.roles?.includes(roleName) || false
     },
   },
 
   actions: {
+    // 1. Initial Load: Check if we are already logged in via cookie
     async fetchCurrentUser() {
+      if (this.initialized) return
       try {
         const { data } = await apiClient.get('/auth/me')
         this.user = data.user
@@ -49,6 +51,22 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // 2. Standard Registration
+    async register(userData) {
+      this.loading = true
+      this.error = null
+      try {
+        const { data } = await apiClient.post('/auth/register', userData)
+        return data // Will likely tell user to check email for OTP
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Registration failed'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // 3. OTP Verification
     async verifyOtp(email, otp) {
       this.loading = true
       this.error = null
@@ -65,6 +83,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // 4. Standard Login
     async login(credentials) {
       this.loading = true
       this.error = null
@@ -80,12 +99,18 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    handleSocialLogin(userData) {
+      this.user = userData
+      this.initialized = true
+    },
+
     async logout() {
       try {
         await apiClient.post('/auth/logout')
       } finally {
         this.user = null
         this.initialized = true
+
         window.location.href = '/'
       }
     },

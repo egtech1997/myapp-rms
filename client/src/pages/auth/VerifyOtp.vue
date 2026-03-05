@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
@@ -7,18 +7,66 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
-const otp = ref('');
 const email = route.query.email || 'your email';
 const loading = ref(false);
 
+// Custom OTP Input Logic
+const otpDigits = ref(['', '', '', '', '', '']);
+const otpInputRefs = ref([]);
+
+const currentOtp = computed(() => otpDigits.value.join(''));
+
+const focusInput = (index) => {
+    if (otpInputRefs.value[index]) {
+        otpInputRefs.value[index].focus();
+    }
+};
+
+const handleInput = (e, index) => {
+    const value = e.target.value;
+
+    // Ensure only numeric values
+    if (!/^\d*$/.test(value)) {
+        otpDigits.value[index] = '';
+        return;
+    }
+
+    // Move to next input if a digit was entered
+    if (value && index < 5) {
+        focusInput(index + 1);
+    }
+};
+
+const handleKeydown = (e, index) => {
+    // Move to previous input on Backspace if current input is empty
+    if (e.key === 'Backspace' && !otpDigits.value[index] && index > 0) {
+        focusInput(index - 1);
+    }
+};
+
+const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+
+    for (let i = 0; i < pastedData.length; i++) {
+        otpDigits.value[i] = pastedData[i];
+    }
+
+    // Auto-focus the last filled box or the end
+    if (pastedData.length > 0) {
+        focusInput(Math.min(pastedData.length, 5));
+    }
+};
+
 const verify = async () => {
-    if (otp.value.length < 6) return;
+    if (currentOtp.value.length < 6) return;
+
     loading.value = true;
     try {
-        await authStore.verifyOtp(email, otp.value);
+        await authStore.verifyOtp(email, currentOtp.value);
         router.push(authStore.dashboardRoute);
     } catch (err) {
-        // Error handled in store
+        // Error is handled and populated within the store
     } finally {
         loading.value = false;
     }
@@ -26,59 +74,108 @@ const verify = async () => {
 </script>
 
 <template>
-    <div class="min-h-screen grid place-items-center bg-slate-50 px-4">
-        <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+    <div
+        class="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-[var(--text-main)] px-4 font-sans antialiased selection:bg-[var(--color-solar)] selection:text-black">
 
-            <div class="mb-8 text-center">
-                <div class="mx-auto mb-3 w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600
-                    flex items-center justify-center shadow-lg shadow-sky-100">
-                    <i class="pi pi-shield text-white text-sm"></i>
-                </div>
-                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Verify Identity</h2>
-                <p class="text-sm text-slate-500 mt-1 px-4">
-                    Please enter the 6-digit code sent to <br />
-                    <span class="font-semibold text-slate-900">{{ email }}</span>
-                </p>
-            </div>
+        <div
+            class="w-full max-w-[400px] bg-[var(--surface)] rounded-xl border border-[var(--border-main)] shadow-sm animate-fade-in-up">
 
-            <div class="space-y-6">
-                <div class="space-y-3 text-center">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Verification Code
-                    </label>
-                    <div class="flex justify-center">
-                        <InputOtp v-model="otp" :length="6" integerOnly :pt="{
-                            input: {
-                                class: 'w-12 h-14 !rounded-xl text-xl font-bold border-slate-200 bg-slate-50 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all text-center mx-1'
-                            }
-                        }" />
+            <div class="p-8 sm:p-10">
+                <div class="mb-8 text-center">
+                    <div
+                        class="mx-auto mb-5 w-10 h-10 rounded-lg bg-[var(--color-solar)] flex items-center justify-center shadow-sm border border-[var(--border-main)]">
+                        <i class="pi pi-shield text-black text-lg"></i>
                     </div>
+                    <h2 class="text-xl font-bold text-[var(--text-main)] tracking-tight">
+                        Verify your identity
+                    </h2>
+                    <p class="text-sm text-[var(--text-muted)] mt-1.5 leading-relaxed">
+                        We've sent a 6-digit code to <br />
+                        <span class="font-semibold text-[var(--text-main)]">{{ email }}</span>
+                    </p>
                 </div>
 
-                <Message v-if="authStore.error" severity="error" class="!text-xs" variant="simple">
-                    {{ authStore.error }}
-                </Message>
+                <div v-if="authStore.error"
+                    class="mb-6 flex items-start gap-3 p-3.5 rounded-lg bg-red-50/50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 animate-fade-in">
+                    <i class="pi pi-exclamation-circle mt-0.5 text-sm"></i>
+                    <span class="text-sm font-medium leading-tight">{{ authStore.error }}</span>
+                </div>
 
-                <Button @click="verify" :loading="loading" label="Verify Account" icon="pi pi-check-circle"
-                    class="w-full !rounded-xl !py-3 !bg-slate-900 border-none hover:!bg-slate-800 transition-all shadow-lg shadow-slate-200" />
+                <form @submit.prevent="verify" class="space-y-6">
+                    <div class="space-y-3">
+                        <label
+                            class="block text-center text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                            Verification Code
+                        </label>
+
+                        <div class="flex justify-between gap-2 sm:gap-3">
+                            <input v-for="(digit, i) in otpDigits" :key="i"
+                                :ref="el => { if (el) otpInputRefs[i] = el }" v-model="otpDigits[i]"
+                                @input="handleInput($event, i)" @keydown="handleKeydown($event, i)" @paste="handlePaste"
+                                type="text" inputmode="numeric" maxlength="1"
+                                class="w-11 sm:w-12 h-12 sm:h-14 text-center text-lg font-bold rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
+                                required />
+                        </div>
+                    </div>
+
+                    <button type="submit" :disabled="loading || currentOtp.length < 6"
+                        class="w-full h-11 mt-4 bg-[var(--text-main)] text-[var(--surface)] text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i v-if="loading" class="pi pi-spin pi-spinner text-sm"></i>
+                        <span>{{ loading ? 'Verifying...' : 'Verify account' }}</span>
+                    </button>
+                </form>
             </div>
 
-            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-                <p class="text-xs text-slate-500">
-                    Didn't receive the code?
-                    <button
-                        class="font-bold text-sky-600 hover:text-sky-700 bg-transparent border-none p-0 cursor-pointer transition-colors">
-                        Resend Code
-                    </button>
-                </p>
-                <div class="mt-4">
+            <div class="px-8 py-5 bg-[var(--bg-app)] border-t border-[var(--border-main)]">
+                <div class="flex flex-col items-center justify-center gap-4">
+                    <p class="text-sm text-[var(--text-muted)] text-center">
+                        Didn't receive the code?
+                        <button type="button"
+                            class="font-semibold text-[var(--text-main)] hover:underline ml-1 focus:outline-none">
+                            Resend code
+                        </button>
+                    </p>
+
                     <router-link to="/auth/login"
-                        class="text-xs font-medium text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1">
+                        class="text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5">
                         <i class="pi pi-arrow-left text-[10px]"></i>
-                        Back to Login
+                        Back to login
                     </router-link>
                 </div>
             </div>
+
         </div>
     </div>
 </template>
+
+<style scoped>
+.animate-fade-in-up {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+</style>

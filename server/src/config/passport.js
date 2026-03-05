@@ -16,45 +16,52 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const email = profile.emails[0].value;
+        const email = profile.emails[0].value.toLowerCase();
+        const isAdminEmail = email.endsWith("@deped.gov.ph");
+        const requiredRole = isAdminEmail ? "admin" : "user";
+
+        const targetRole = await Role.findOne({ name: requiredRole });
 
         let user = await User.findOne({ email }).populate("roles");
 
         if (user) {
-          // Update existing user
-          user.lastLogin = Date.now();
-          if (!user.googleId) {
-            user.googleId = profile.id;
-            user.isVerified = true;
+          const currentRoleNames = user.roles.map((r) => r.name);
+          const needsPromotion =
+            isAdminEmail &&
+            !currentRoleNames.includes("admin") &&
+            !currentRoleNames.includes("super_admin");
+
+          if (needsPromotion && targetRole) {
+            user.roles = [targetRole._id];
           }
-          // CRITICAL: validateBeforeSave: false allows saving without a password
+
+          user.lastLogin = Date.now();
+          user.googleId = profile.id;
+          user.isVerified = true;
+
           await user.save({ validateBeforeSave: false });
-          return done(null, user);
+
+          const updatedUser = await User.findById(user._id).populate("roles");
+          return done(null, updatedUser);
         }
 
-        // Create new user
-        const defaultRole = await Role.findOne({ name: "user" });
-
-        // Note: .create() runs validation. If your model requires a password,
-        // this will fail. We use new User() + .save() instead for more control.
         const newUser = new User({
-          username: profile.displayName,
+          username:
+            profile.displayName.split(" ")[0].toLowerCase() +
+            Math.floor(1000 + Math.random() * 9000),
           email: email,
           googleId: profile.id,
           avatar: profile.photos[0]?.value,
           isVerified: true,
-          roles: defaultRole ? [defaultRole._id] : [],
+          roles: targetRole ? [targetRole._id] : [],
         });
 
-        // Skip password validation for social login
         await newUser.save({ validateBeforeSave: false });
-
-        const populatedUser = await User.findById(newUser._id).populate(
+        const populatedNewUser = await User.findById(newUser._id).populate(
           "roles",
         );
-        return done(null, populatedUser);
+        return done(null, populatedNewUser);
       } catch (error) {
-        console.error("💥 Google Strategy Error:", error);
         return done(error, null);
       }
     },

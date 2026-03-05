@@ -2,148 +2,145 @@ import mongoose from "mongoose";
 
 const applicationSchema = new mongoose.Schema(
   {
-    // Unique application code
-    applicationCode: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
-
-    // Snapshot of personal information at time of application
-    personalInfo: {
-      firstName: { type: String, required: true, trim: true },
-      middleName: { type: String, trim: true },
-      lastName: { type: String, required: true, trim: true },
-      suffix: { type: String, trim: true },
-      sex: { type: String, enum: ["male", "female", "prefer_not_to_say"] },
-      birthDate: Date, // age can be derived
-      civilStatus: String,
-      religion: String,
-      disability: String,
-      ethnicGroup: String,
-      emails: [String],
-      contacts: [String],
-      address: {
-        sitio: String,
-        barangay: String,
-        municipality: String,
-        city: String,
-        province: String,
-        region: String,
-        zipCode: String,
-      },
-      eligibility: [String],
-      visibility: {
-        // privacy flags
-        showEmail: { type: Boolean, default: false },
-        showPhone: { type: Boolean, default: false },
-        showAddress: { type: Boolean, default: false },
-      },
-    },
-
-    // Education, Training, Experience arrays
-    education: [
-      {
-        title: String,
-        units: Number,
-        school: String,
-        yearGraduated: Number,
-      },
-    ],
-
-    training: [
-      {
-        title: String,
-        dateIssued: Date,
-        hours: Number,
-        provider: String,
-      },
-    ],
-
-    experience: [
-      {
-        title: String,
-        months: Number,
-        company: String,
-        responsibilities: String,
-      },
-    ],
-
-    // Job/application references
+    applicationCode: { type: String, unique: true, index: true },
     submittedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     submittedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Job",
       required: true,
-      index: true,
+    },
+    category: {
+      type: String,
+      enum: ["teaching", "teaching_related", "non_teaching"],
+      required: true,
     },
 
-    // Status flow
+    // 🔒 Master Lock: Unlimited edits allowed UNTIL this is true
+    isVerified: { type: Boolean, default: false },
+    verifiedAt: Date,
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    /**
+     * SECTION A: APPLICANT DATA (Snapshot from Profile)
+     * These fields are filled from the Profile model but stored here.
+     */
+    applicantData: {
+      personalInfo: { type: mongoose.Schema.Types.Mixed },
+      education: [
+        {
+          level: {
+            type: String,
+            enum: ["Vocational", "Bachelor", "Masteral", "Doctorate"],
+          },
+          degree: String,
+          units: Number,
+          school: String,
+          yearGraduated: Number,
+        },
+      ],
+      training: [
+        {
+          title: String,
+          hours: Number,
+          dateIssued: Date,
+          provider: String,
+        },
+      ],
+      experience: [
+        {
+          position: String,
+          company: String,
+          months: Number,
+          isGovernment: { type: Boolean, default: false },
+        },
+      ],
+      performanceRating: {
+        score: Number, // e.g., 4.500
+        adjective: String, // e.g., "Very Satisfactory"
+        periodCovered: String,
+      },
+    },
+
+    /**
+     * SECTION B: HR RATING (Point System - DepEd MSP)
+     */
+    hrRating: {
+      educationPoints: { type: Number, default: 0 },
+      trainingPoints: { type: Number, default: 0 }, // Only last 5 years
+      experiencePoints: { type: Number, default: 0 },
+      performancePoints: { type: Number, default: 0 }, // Recent 1 year
+      outstandingAccomplishments: { type: Number, default: 0 },
+      appEducationPoints: { type: Number, default: 0 },
+      appLearningPoints: { type: Number, default: 0 },
+      potentialPoints: {
+        writtenTest: { type: Number, default: 0 },
+        bei: { type: Number, default: 0 }, // Behavioral Event Interview
+        workSample: { type: Number, default: 0 },
+      },
+      remarks: String,
+    },
+
+    totalScore: { type: Number, default: 0 },
     status: {
       type: String,
       enum: [
         "applied",
-        "reviewing",
-        "rated",
+        "verifying",
+        "comparative_assessment",
         "ranked",
         "disqualified",
-        "hired",
       ],
       default: "applied",
-      index: true,
     },
-
-    // Reviews by HR
-    review: [
-      {
-        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        at: { type: Date, default: Date.now },
-        qualified: Boolean,
-        matchedFields: [String], // e.g., skills, experience
-        notes: String,
-      },
-    ],
-
-    // Optional snapshot for audit/logging
-    applicantSnapshot: { type: mongoose.Schema.Types.Mixed },
-
-    // Multi-reviewer support (optional for scaling)
-    reviewers: [
-      {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        assignedAt: { type: Date, default: Date.now },
-        completed: { type: Boolean, default: false },
-      },
-    ],
-
-    // Soft delete
-    deletedAt: Date,
-    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-
-    // Tags for filtering/search
-    tags: [String],
-
-    // Derived fields (optional for dashboard)
-    totalExperienceMonths: Number,
-    skillsMatchScore: Number,
+    isQualified: { type: Boolean, default: true },
+    disqualificationReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
 
-// 🔹 Indexing for performance
-applicationSchema.index({ submittedTo: 1, status: 1 });
-applicationSchema.index({ submittedBy: 1 });
-applicationSchema.index({ applicationCode: 1 }, { unique: true });
-applicationSchema.index({
-  "personalInfo.lastName": 1,
-  "personalInfo.firstName": 1,
+/**
+ * 🔹 AUTO-INCREMENT CODE: APP-YYYY-0001 (Per Job)
+ */
+applicationSchema.pre("save", async function (next) {
+  if (this.isNew && !this.applicationCode) {
+    const year = new Date().getFullYear();
+    const count = await mongoose.model("Application").countDocuments({
+      submittedTo: this.submittedTo,
+      createdAt: {
+        $gte: new Date(year, 0, 1),
+        $lte: new Date(year, 11, 31, 23, 59, 59),
+      },
+    });
+    this.applicationCode = `APP-${year}-${String(count + 1).padStart(4, "0")}`;
+  }
+
+  // 🔹 AUTO-CALCULATE TOTAL SCORE
+  const r = this.hrRating;
+  this.totalScore =
+    r.educationPoints +
+    r.trainingPoints +
+    r.experiencePoints +
+    r.performancePoints +
+    r.outstandingAccomplishments +
+    r.appEducationPoints +
+    r.appLearningPoints +
+    (r.potentialPoints?.writtenTest || 0) +
+    (r.potentialPoints?.bei || 0) +
+    (r.potentialPoints?.workSample || 0);
+
+  next();
 });
-applicationSchema.index({ "review.reviewedBy": 1, status: 1 });
 
 export default mongoose.model("Application", applicationSchema);

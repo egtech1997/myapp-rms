@@ -7,43 +7,124 @@ const routes = [
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
   },
-  // Auth Group
+
+  // ==========================================
+  // AUTHENTICATION ROUTES
+  // ==========================================
   {
     path: '/auth/register',
+    name: 'Register',
     component: () => import('@/pages/auth/Register.vue'),
+    meta: { guestOnly: true },
   },
   {
     path: '/auth/login',
+    name: 'Login',
     component: () => import('@/pages/auth/Login.vue'),
+    meta: { guestOnly: true },
   },
   {
     path: '/auth/verify-otp',
+    name: 'VerifyOtp',
     component: () => import('@/pages/auth/VerifyOtp.vue'),
     props: (route) => ({ email: route.query.email }),
+    meta: { guestOnly: true },
   },
 
-  // User Role Group
+  // ==========================================
+  // APPLICANT / USER ROUTES
+  // ==========================================
   {
-    path: '/user/dashboard',
-    name: 'UserDashboard',
-    component: () => import('@/pages/user/Dashboard.vue'),
+    path: '/vacancies',
+    name: 'Job Vacancies',
+    component: () => import('@/pages/user/Vacancies.vue'),
+    // Assuming guests can view vacancies, but applying requires auth
+  },
+  {
+    path: '/user',
     meta: { requiresAuth: true, role: 'user' },
-  },
-  // YOUR JOBS ROUTE (Perfectly set up!)
-  {
-    path: '/user/jobs',
-    name: 'UserJobs',
-    component: () => import('@/pages/user/Jobs.vue'),
-    meta: { requiresAuth: true, role: 'user'},
+    children: [
+      {
+        path: 'dashboard',
+        name: 'User Dashboard',
+        component: () => import('@/pages/user/Dashboard.vue'),
+      },
+      {
+        path: 'applications',
+        name: 'My Applications',
+        component: () => import('@/pages/user/Applications.vue'),
+      },
+    ],
   },
 
-  // Admin Role Group
+  // ==========================================
+  // ADMIN ROUTES
+  // ==========================================
   {
-    path: '/admin/dashboard',
-    name: 'AdminDashboard',
-    component: () => import('@/pages/admin/Dashboard.vue'),
+    path: '/admin',
+    component: () => import('@/layouts/AdminLayout.vue'),
     meta: { requiresAuth: true, role: 'admin' },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/dashboard',
+      },
+      {
+        path: 'dashboard',
+        name: 'Admin Dashboard',
+        component: () => import('@/pages/admin/Dashboard.vue'),
+      },
+      {
+        path: 'roles-permissions',
+        name: 'Roles & Permissions',
+        component: () => import('@/pages/admin/RolesPermissions.vue'),
+      },
+      {
+        path: 'user-list',
+        name: 'User List',
+        component: () => import('@/pages/admin/UserList.vue'),
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/pages/admin/Settings.vue'),
+      },
+      {
+        path: 'audit-logs',
+        name: 'Audit Logs',
+        component: () => import('@/pages/admin/AuditLogs.vue'),
+      },
+      {
+        path: 'vacancies',
+        name: 'Manage Vacancies',
+        component: () => import('@/pages/admin/Vacancies.vue'),
+      },
+      {
+        path: 'applicants',
+        name: 'Applicants List',
+        component: () => import('@/pages/admin/Applicants.vue'),
+      },
+      {
+        path: 'evaluations',
+        name: 'Evaluations',
+        component: () => import('@/pages/admin/Evaluations.vue'),
+      },
+      {
+        path: 'rqa',
+        name: 'Registry of Qualified Applicants',
+        component: () => import('@/pages/admin/RQA.vue'),
+      },
+      {
+        path: 'announcements',
+        name: 'Announcements',
+        component: () => import('@/pages/admin/Announcements.vue'),
+      },
+    ],
   },
+
+  // ==========================================
+  // FALLBACK ROUTE
+  // ==========================================
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',
@@ -56,9 +137,10 @@ const router = createRouter({
 })
 
 // Navigation Guard
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
 
+  // 1. Ensure auth is initialized before routing
   if (!authStore.initialized) {
     await authStore.fetchCurrentUser()
   }
@@ -70,22 +152,24 @@ router.beforeEach(async (to) => {
     return authStore.dashboardRoute
   }
 
-  // Auth requirement
+  // 4. Auth requirement
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { path: '/auth/login', query: { redirect: to.fullPath } }
   }
 
-  // Role protection
+  // 5. Role protection
   if (to.meta.role) {
-    // If route needs 'admin' but user is NOT staff
     if (to.meta.role === 'admin' && !authStore.isStaff) {
       return '/user/dashboard'
     }
-    // If route needs 'user' but user is NOT even a 'user'
-    if (to.meta.role === 'user' && !authStore.hasRole('user')) {
-      return authStore.dashboardRoute
+    // Added a more specific check here
+    if (to.meta.role === 'user' && !isLoggedIn) {
+      return '/auth/login'
     }
   }
+
+  // 6. Proceed normally
+  return true
 })
 
 export default router

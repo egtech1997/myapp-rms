@@ -1,28 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @import 'tailwindcss';
 
-@theme {
-  /* Updated font stack: Targets Avenir first, then falls back to system sans-serif */
-  --font-avenir: "Avenir Next", "Avenir", "Inter", sans-serif;
-  
-  --font-inter: 'Inter', sans-serif;
-  --color-corp-bg: #f8fafb;
-  --color-corp-sidebar: #111827;
-  --color-corp-border: #eef1f4;
-  
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-200: #bfdbfe;
-  --primary-300: #93c5fd;
-  --primary-400: #60a5fa;
-  --primary-500: #2563eb;
-  --primary-600: #1d4ed8;
-  --primary-700: #1e40af;
-  --primary-800: #1e3a8a;
-  --primary-900: #172554;
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-  --surface-0: #ffffff;
-  --surface-50: #f8fafc;
-  --surface-100: #f1f5f9;
-  --surface-900: #0f172a;
+  /* SOLAR HIGHLIGHTS */
+  --color-solar: #eab308;
+  --color-solar-hover: #ca8a04;
+
+  /* NEUTRAL WHITE PALETTE (Light Mode) */
+  --bg-app: #f8fafc; /* Soft slate tint for the page background */
+  --surface: #ffffff; /* Pure white for cards/sidebar/header */
+  --border-main: #e2e8f0; /* Light gray border */
+
+  /* TEXT */
+  --text-main: #0f172a; /* Deep slate (almost black) */
+  --text-muted: #64748b; /* Medium gray for labels */
+}
+
+/* DARK MODE OVERRIDES */
+.dark {
+  --bg-app: #020617; /* Pure dark navy/black */
+  --surface: #0f172a; /* Dark slate surface */
+  --border-main: #1e293b; /* Muted border */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+/* =====================================================
+   BASE STYLES (Standard CSS - No @apply)
+===================================================== */
+html,
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global Transition for Dark Mode / Hover states */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Custom Scrollbar (Standard CSS) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-main);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

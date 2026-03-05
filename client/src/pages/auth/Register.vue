@@ -7,6 +7,7 @@ const router = useRouter();
 const form = ref({ username: '', email: '', password: '' });
 const loading = ref(false);
 const error = ref('');
+const showPassword = ref(false);
 
 const handleRegister = async () => {
     loading.value = true;
@@ -29,50 +30,116 @@ const handleRegister = async () => {
 </script>
 
 <template>
-    <div class="min-h-screen grid place-items-center bg-slate-50 px-4">
-        <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-            <div class="mb-6 text-center">
-                <div class="mx-auto mb-3 w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500
-                    flex items-center justify-center shadow">
-                    <i class="pi pi-user-plus text-white text-sm"></i>
+    <div
+        class="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-[var(--text-main)] px-4 font-sans antialiased selection:bg-[var(--color-solar)] selection:text-black">
+
+        <div
+            class="w-full max-w-[400px] bg-[var(--surface)] rounded-xl border border-[var(--border-main)] shadow-sm animate-fade-in-up">
+
+            <div class="p-8 sm:p-10">
+                <div class="mb-8 text-center">
+                    <div
+                        class="mx-auto mb-5 w-10 h-10 rounded-lg bg-[var(--color-solar)] flex items-center justify-center shadow-sm border border-[var(--border-main)]">
+                        <i class="pi pi-user-plus text-black text-lg"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-[var(--text-main)] tracking-tight">
+                        Create an account
+                    </h2>
+                    <p class="text-sm text-[var(--text-muted)] mt-1.5">
+                        Join the DepEd GNC talent pool
+                    </p>
                 </div>
-                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Create Account</h2>
-                <p class="text-sm text-slate-500 mt-1">Join the DepEd Guihulngan City Talent Pool</p>
+
+                <div v-if="error"
+                    class="mb-6 flex items-start gap-3 p-3.5 rounded-lg bg-red-50/50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 animate-fade-in">
+                    <i class="pi pi-exclamation-circle mt-0.5 text-sm"></i>
+                    <span class="text-sm font-medium leading-tight">{{ error }}</span>
+                </div>
+
+                <form @submit.prevent="handleRegister" class="space-y-5">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                            Full Name
+                        </label>
+                        <input v-model="form.username" type="text" placeholder="Juan Dela Cruz"
+                            class="w-full h-11 px-3.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
+                            required />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                            Email
+                        </label>
+                        <input v-model="form.email" type="email" placeholder="name@example.com"
+                            class="w-full h-11 px-3.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
+                            required />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                            Password
+                        </label>
+                        <div class="relative">
+                            <input v-model="form.password" :type="showPassword ? 'text' : 'password'"
+                                placeholder="••••••••"
+                                class="w-full h-11 pl-3.5 pr-10 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
+                                required />
+                            <button type="button" @click="showPassword = !showPassword"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] focus:outline-none transition-colors">
+                                <i :class="['pi', showPassword ? 'pi-eye-slash' : 'pi-eye']" class="text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" :disabled="loading"
+                        class="w-full h-11 mt-2 bg-[var(--text-main)] text-[var(--surface)] text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i v-if="loading" class="pi pi-spin pi-spinner text-sm"></i>
+                        <span>{{ loading ? 'Registering...' : 'Create account' }}</span>
+                    </button>
+                </form>
             </div>
 
-            <form @submit.prevent="handleRegister" class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Full Name</label>
-                    <InputText v-model="form.username" type="text" placeholder="Juan Dela Cruz"
-                        class="w-full !rounded-xl !py-2.5 !px-3" required />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Email Address</label>
-                    <InputText v-model="form.email" type="email" placeholder="name@example.com"
-                        class="w-full !rounded-xl !py-2.5 !px-3" required />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Password</label>
-                    <Password v-model="form.password" toggleMask :feedback="true" placeholder="••••••••" class="w-full"
-                        inputClass="w-full !rounded-xl !py-2.5 !px-3" required />
-                </div>
-
-                <Message v-if="error" severity="error" class="!text-xs mt-2" variant="simple">
-                    {{ error }}
-                </Message>
-
-                <Button type="submit" :loading="loading" label="Register" icon="pi pi-check"
-                    class="w-full !rounded-xl !py-2.5 !bg-slate-900 border-none hover:!bg-slate-800 transition-transform duration-200 hover:scale-[1.02] active:scale-95" />
-            </form>
-
-            <div class="mt-6 text-center text-xs text-slate-500">
-                Already Have An Account?
-                <router-link to="/auth/login" class="font-bold text-sky-600 hover:underline">
-                    Sign in Here
-                </router-link>
+            <div class="px-8 py-5 bg-[var(--bg-app)] border-t border-[var(--border-main)] text-center">
+                <p class="text-sm text-[var(--text-muted)]">
+                    Already have an account?
+                    <router-link to="/auth/login" class="font-semibold text-[var(--text-main)] hover:underline ml-1">
+                        Sign in
+                    </router-link>
+                </p>
             </div>
+
         </div>
     </div>
 </template>
+
+<style scoped>
+.animate-fade-in-up {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+</style>
