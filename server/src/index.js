@@ -1,4 +1,4 @@
-import "dotenv/config"; // 👈 This MUST be the very first line. It loads .env immediately.
+import "dotenv/config";
 import connectDB from "./config/db.js";
 import app from "./app.js";
 

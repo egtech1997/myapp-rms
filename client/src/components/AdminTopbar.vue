@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, inject } from 'vue' // <-- Added inject
 import { useAuthStore } from '@/stores/auth'
 import { useRoute } from 'vue-router'
 import apiClient from '@/api/axios'
@@ -13,10 +13,14 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['update:isCollapsed', 'show-toast'])
+// Removed 'show-toast' from emits
+const emit = defineEmits(['update:isCollapsed'])
 
 const authStore = useAuthStore()
 const route = useRoute()
+
+// --- NEW: Inject global SweetAlert2 Toast ---
+const toast = inject('$toast')
 
 // Local UI State
 const isDark = ref(false)
@@ -75,10 +79,22 @@ const uploadFile = async (fileOrBlob, isCropped = false) => {
     try {
         const { data } = await apiClient.patch('/auth/update-avatar', formData)
         authStore.user = { ...data.user, avatarUrl: `${data.user.avatarUrl}?t=${Date.now()}` }
-        emit('show-toast', 'Profile Updated', 'Your photo was saved successfully.', 'success')
+
+        // --- NEW: Using SweetAlert ---
+        toast.fire({
+            icon: 'success',
+            title: 'Profile Updated',
+            text: 'Your photo was saved successfully.'
+        })
+
         selectedImage.value = null
     } catch (err) {
-        emit('show-toast', 'Upload Failed', 'Could not update your profile photo.', 'error')
+        // --- NEW: Using SweetAlert ---
+        toast.fire({
+            icon: 'error',
+            title: 'Upload Failed',
+            text: 'Could not update your profile photo.'
+        })
     } finally {
         uploading.value = false
         if (fileInput.value) fileInput.value.value = '' // Reset input
@@ -92,17 +108,34 @@ const uploadCroppedImage = () => {
 
 const handlePasswordUpdate = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-        emit('show-toast', 'Validation Error', 'Passwords do not match.', 'error')
+        // --- NEW: Using SweetAlert ---
+        toast.fire({
+            icon: 'warning', // Used warning icon here instead of error
+            title: 'Validation Error',
+            text: 'Passwords do not match.'
+        })
         return
     }
     isSaving.value = true
     try {
         await apiClient.patch('/auth/update-password', passwordData)
-        emit('show-toast', 'Security Updated', 'Your password was changed successfully.', 'success')
+
+        // --- NEW: Using SweetAlert ---
+        toast.fire({
+            icon: 'success',
+            title: 'Security Updated',
+            text: 'Your password was changed successfully.'
+        })
+
         showSettingsModal.value = false
         Object.assign(passwordData, { currentPassword: '', newPassword: '', confirmPassword: '' })
     } catch (err) {
-        emit('show-toast', 'Update Failed', err.response?.data?.message || 'An error occurred.', 'error')
+        // --- NEW: Using SweetAlert ---
+        toast.fire({
+            icon: 'error',
+            title: 'Update Failed',
+            text: err.response?.data?.message || 'An error occurred.'
+        })
     } finally { isSaving.value = false }
 }
 </script>

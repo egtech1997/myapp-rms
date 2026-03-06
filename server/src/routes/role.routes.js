@@ -9,9 +9,9 @@ router.use(protect);
 
 router
   .route("/")
-  .get(requirePermission("view:roles"), roleController.getAllRoles)
+  .get(requirePermission("role_view"), roleController.getAllRoles)
   .post(
-    requirePermission("manage:roles"),
+    requirePermission("role_manage"),
     validate(roleValidator.createOrUpdate),
     roleController.createRole,
   );
@@ -19,10 +19,10 @@ router
 router
   .route("/:id")
   .patch(
-    requirePermission("manage:roles"),
+    requirePermission("role_manage"),
     validate(roleValidator.createOrUpdate),
     roleController.updateRole,
   )
-  .delete(requirePermission("manage:roles"), roleController.deleteRole);
+  .delete(requirePermission("role_manage"), roleController.deleteRole);
 
 export default router;

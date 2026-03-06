@@ -1,19 +1,22 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, inject } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from 'primevue/usetoast'
 import apiClient from '@/api/axios'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
 
+const route = useRoute()
 const authStore = useAuthStore();
-const toast = useToast();
+
+
+const toast = inject('$toast');
+
 // UI State
 const showSettingsModal = ref(false)
 const showUserDropdown = ref(false)
 const uploading = ref(false)
 const isSaving = ref(false)
-
 
 // Cropping Logic
 const fileInput = ref(null);
@@ -39,7 +42,8 @@ const onFileSelect = (event) => {
     const file = event.target.files[0]
     if (!file) return
     if (file.size > 10 * 1024 * 1024) {
-        toast.add({ severity: 'error', summary: 'File Too Large', detail: 'Max size is 10MB', life: 3000 })
+        // --- NEW: SweetAlert Syntax ---
+        toast.fire({ icon: 'error', title: 'File Too Large', text: 'Max size is 10MB' })
         return
     }
 
@@ -62,10 +66,12 @@ const uploadFile = async (fileOrBlob, isCropped = false) => {
             ...data.user,
             avatarUrl: `${data.user.avatarUrl}?t=${Date.now()}`
         }
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Profile picture updated', life: 3000 })
+        // --- NEW: SweetAlert Syntax ---
+        toast.fire({ icon: 'success', title: 'Success', text: 'Profile picture updated' })
         selectedImage.value = null
     } catch (err) {
-        toast.add({ severity: 'error', summary: 'Upload Failed', detail: err.response?.data?.message || 'Server error', life: 3000 })
+        // --- NEW: SweetAlert Syntax ---
+        toast.fire({ icon: 'error', title: 'Upload Failed', text: err.response?.data?.message || 'Server error' })
     } finally {
         uploading.value = false
         if (fileInput.value) fileInput.value.value = ''
@@ -80,7 +86,8 @@ const uploadCroppedImage = () => {
 
 const handlePasswordUpdate = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-        toast.add({ severity: 'error', detail: 'Passwords do not match', life: 3000 })
+        // --- NEW: SweetAlert Syntax ---
+        toast.fire({ icon: 'warning', title: 'Validation Error', text: 'Passwords do not match' })
         return
     }
 
@@ -90,11 +97,13 @@ const handlePasswordUpdate = async () => {
             currentPassword: passwordData.currentPassword,
             newPassword: passwordData.newPassword
         })
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Password updated', life: 3000 })
+        // --- NEW: SweetAlert Syntax ---
+        toast.fire({ icon: 'success', title: 'Success', text: 'Password updated' })
         showSettingsModal.value = false
         Object.assign(passwordData, { currentPassword: '', newPassword: '', confirmPassword: '' })
     } catch (err) {
-        toast.add({ severity: 'error', detail: err.response?.data?.message || 'Update failed', life: 4000 })
+        // --- NEW: SweetAlert Syntax ---
+        toast.fire({ icon: 'error', title: 'Update Failed', text: err.response?.data?.message || 'Update failed' })
     } finally {
         isSaving.value = false
     }
@@ -102,9 +111,7 @@ const handlePasswordUpdate = async () => {
 </script>
 <template>
     <div class="min-h-screen flex flex-col font-inter text-sm text-slate-600 antialiased"
-         style="background-image: linear-gradient(rgba(248, 250, 252, 0.50), rgba(248, 250, 252, 0.50)), url('https://image2url.com/r2/default/images/1772169455473-54bb76c7-1d32-4152-8411-9e38daab5695.png'); background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;">
-        
-        <Toast />
+        style="background-image: linear-gradient(rgba(248, 250, 252, 0.50), rgba(248, 250, 252, 0.50)), url('https://image2url.com/r2/default/images/1772169455473-54bb76c7-1d32-4152-8411-9e38daab5695.png'); background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;">
 
         <header
             class="sticky top-0 z-30 bg-[var(--surface-0)]/90 backdrop-blur-md shadow-[var(--shadow-sm)] h-[64px] flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all">

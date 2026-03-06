@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import apiClient from '@/api/axios'
 
 export const useRoleStore = defineStore('roleStore', {
   state: () => ({
@@ -10,7 +10,7 @@ export const useRoleStore = defineStore('roleStore', {
     async fetchRoles() {
       this.loading = true
       try {
-        const response = await axios.get('/api/v1/roles')
+        const response = await apiClient.get('/v1/roles')
         this.roles = response.data.data
         return this.roles
       } catch (error) {
@@ -21,12 +21,14 @@ export const useRoleStore = defineStore('roleStore', {
     },
     async upsertRole(roleData) {
       if (roleData._id) {
-        return await axios.patch(`/api/v1/roles/${roleData._id}`, roleData)
+        // 👇 Same here
+        return await apiClient.patch(`/v1/roles/${roleData._id}`, roleData)
       }
-      return await axios.post('/api/v1/roles', roleData)
+      return await apiClient.post('/v1/roles', roleData)
     },
     async deleteRole(id) {
-      return await axios.delete(`/api/v1/roles/${id}`)
+      // 👇 And here
+      return await apiClient.delete(`/v1/roles/${id}`)
     },
   },
 })

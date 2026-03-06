@@ -38,7 +38,6 @@ const routes = [
     path: '/vacancies',
     name: 'Job Vacancies',
     component: () => import('@/pages/user/Vacancies.vue'),
-    // Assuming guests can view vacancies, but applying requires auth
   },
   {
     path: '/user',
@@ -78,11 +77,13 @@ const routes = [
         path: 'roles-permissions',
         name: 'Roles & Permissions',
         component: () => import('@/pages/admin/RolesPermissions.vue'),
+        meta: { permissions: ['role_view'] },
       },
       {
         path: 'user-list',
         name: 'User List',
         component: () => import('@/pages/admin/UserList.vue'),
+        meta: { permissions: ['user_view'] },
       },
       {
         path: 'settings',
@@ -122,9 +123,6 @@ const routes = [
     ],
   },
 
-  // ==========================================
-  // FALLBACK ROUTE
-  // ==========================================
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',
@@ -137,6 +135,7 @@ const router = createRouter({
 })
 
 // Navigation Guard
+// Navigation Guard
 router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
 
@@ -147,24 +146,22 @@ router.beforeEach(async (to, from) => {
 
   const isLoggedIn = authStore.isAuthenticated
 
-  // If already logged in, don't let them see /auth pages
-  if (isLoggedIn && to.path.startsWith('/auth')) {
-    return authStore.dashboardRoute
+  // 2. Prevent logged-in users from accessing Guest routes (Login/Register)
+  if (to.meta.guestOnly && isLoggedIn) {
+    return authStore.dashboardRoute || '/'
   }
 
-  // 4. Auth requirement
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { path: '/auth/login', query: { redirect: to.fullPath } }
   }
 
-  // 5. Role protection
-  if (to.meta.role) {
-    if (to.meta.role === 'admin' && !authStore.isStaff) {
-      return '/user/dashboard'
-    }
-    // Added a more specific check here
-    if (to.meta.role === 'user' && !isLoggedIn) {
-      return '/auth/login'
+  if (to.meta.role === 'admin' && !authStore.isStaff) {
+    return '/user/dashboard'
+  }
+
+  if (to.meta.permission) {
+    if (!authStore.can(to.meta.permission)) {
+      return '/admin/dashboard'
     }
   }
 

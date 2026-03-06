@@ -12,33 +12,24 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.user,
 
-    // ✅ Staff logic: Checks if user has any administrative-level role
     isStaff: (state) => {
       if (!state.user?.roles) return false
       const staffRoles = ['admin', 'super_admin', 'hr_manager', 'registrar']
       return state.user.roles.some((role) => staffRoles.includes(role))
     },
 
-    // ✅ Permission Check: Does the user have a specific permission?
-    // Usage: authStore.can('edit_user')
     can: (state) => (permission) => {
       if (!state.user) return false
-      if (state.user.roles?.includes('super_admin')) return true // God mode
+
+      if (state.user.roles?.includes('super_admin')) return true
+
+      if (state.user.permissions?.includes('all')) return true
+
       return state.user.permissions?.includes(permission) || false
-    },
-
-    dashboardRoute: (state) => {
-      if (!state.user) return '/auth/login'
-      return state.isStaff ? '/admin/dashboard' : '/user/dashboard'
-    },
-
-    hasRole: (state) => (roleName) => {
-      return state.user?.roles?.includes(roleName) || false
     },
   },
 
   actions: {
-    // 1. Initial Load: Check if we are already logged in via cookie
     async fetchCurrentUser() {
       if (this.initialized) return
       try {
@@ -51,13 +42,12 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // 2. Standard Registration
     async register(userData) {
       this.loading = true
       this.error = null
       try {
         const { data } = await apiClient.post('/auth/register', userData)
-        return data // Will likely tell user to check email for OTP
+        return data
       } catch (err) {
         this.error = err.response?.data?.message || 'Registration failed'
         throw err
@@ -66,7 +56,6 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // 3. OTP Verification
     async verifyOtp(email, otp) {
       this.loading = true
       this.error = null

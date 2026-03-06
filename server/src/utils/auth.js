@@ -5,12 +5,15 @@ export const sendTokenCookie = (res, user) => {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
-  res.cookie("token", token, {
+  const cookieOptions = {
     httpOnly: true,
+    // MUST be false for http://localhost development
     secure: process.env.NODE_ENV === "production",
-    sameSite: "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
+    // Lax is standard for localhost; None requires HTTPS/Secure:true
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
 
+  res.cookie("token", token, cookieOptions);
   return token;
 };
