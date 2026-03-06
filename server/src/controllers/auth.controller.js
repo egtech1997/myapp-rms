@@ -43,6 +43,7 @@ export const login = catchAsync(async (req, res, next) => {
     user: formatUserResponse(user),
   });
 });
+
 export const googleAuthCallback = catchAsync(async (req, res, next) => {
   if (!req.user) {
     return res.redirect(
@@ -55,14 +56,17 @@ export const googleAuthCallback = catchAsync(async (req, res, next) => {
   await updateLoginTimestamp(user);
   sendTokenCookie(res, user);
 
-  const roleNames = user.roles.map((r) => r.name);
-  const isAdmin =
-    roleNames.includes("admin") || roleNames.includes("super_admin");
+  // FIXED: This now exactly matches your Frontend Pinia logic
+  const isDepEd = user.email.toLowerCase().endsWith("@deped.gov.ph");
+  const hasStaffRole = user.roles.some(
+    (r) => r.name !== "user" && r.name !== "applicant",
+  );
 
-  const redirectTarget = isAdmin ? "admin" : "user";
+  const redirectTarget = isDepEd || hasStaffRole ? "admin" : "user";
 
   res.redirect(`${process.env.CLIENT_URL}/${redirectTarget}/dashboard`);
 });
+
 export const logout = (req, res, next) => {
   res.cookie("token", "loggedout", {
     httpOnly: true,

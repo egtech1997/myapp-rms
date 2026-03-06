@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import * as otpService from "./otp.service.js";
 
 export const registerUserLogic = async (userData) => {
-  const { email } = userData;
+  const { email, password } = userData;
   const { otp, expiresAt } = otpService.generateOTP();
   const hashedOtp = otpService.hashOTP(otp);
 
@@ -13,13 +13,17 @@ export const registerUserLogic = async (userData) => {
 
   const targetRole = await Role.findOne({ name: roleName });
   if (!targetRole) {
-    throw new Error(`System role '${roleName}' not found. Please seed the DB.`);
+    throw new Error(`Role '${roleName}' not found. Please seed the database.`);
   }
 
   let user = await User.findOne({ email });
+
   if (user) {
-    user.roles = [targetRole._id];
+    if (user.roles.length === 0) user.roles = [targetRole._id];
     user.otp = { code: hashedOtp, expiresAt };
+
+    if (password) user.password = password;
+
     await user.save();
   } else {
     user = await User.create({

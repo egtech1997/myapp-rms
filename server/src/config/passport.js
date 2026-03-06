@@ -18,14 +18,15 @@ passport.use(
       try {
         const email = profile.emails[0].value.toLowerCase();
         const isAdminEmail = email.endsWith("@deped.gov.ph");
-        const requiredRole = isAdminEmail ? "admin" : "user";
+        const requiredRoleName = isAdminEmail ? "admin" : "user";
 
-        const targetRole = await Role.findOne({ name: requiredRole });
+        const targetRole = await Role.findOne({ name: requiredRoleName });
 
         let user = await User.findOne({ email }).populate("roles");
 
         if (user) {
-          const currentRoleNames = user.roles.map((r) => r.name);
+          const currentRoleNames = user.roles.map((r) => r.name.toLowerCase());
+
           const needsPromotion =
             isAdminEmail &&
             !currentRoleNames.includes("admin") &&
@@ -35,9 +36,10 @@ passport.use(
             user.roles = [targetRole._id];
           }
 
-          user.lastLogin = Date.now();
           user.googleId = profile.id;
           user.isVerified = true;
+          user.lastLogin = Date.now();
+          if (!user.avatar) user.avatar = profile.photos[0]?.value;
 
           await user.save({ validateBeforeSave: false });
 
@@ -45,10 +47,11 @@ passport.use(
           return done(null, updatedUser);
         }
 
+        const baseName = profile.name?.givenName?.toLowerCase() || "user";
+        const randomId = Math.floor(1000 + Math.random() * 9000);
+
         const newUser = new User({
-          username:
-            profile.displayName.split(" ")[0].toLowerCase() +
-            Math.floor(1000 + Math.random() * 9000),
+          username: `${baseName}${randomId}`,
           email: email,
           googleId: profile.id,
           avatar: profile.photos[0]?.value,
@@ -57,11 +60,13 @@ passport.use(
         });
 
         await newUser.save({ validateBeforeSave: false });
+
         const populatedNewUser = await User.findById(newUser._id).populate(
           "roles",
         );
         return done(null, populatedNewUser);
       } catch (error) {
+        console.error("💥 Google Strategy Error:", error);
         return done(error, null);
       }
     },
@@ -75,7 +80,8 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id).populate("roles");
-    done(null, user || false);
+    if (!user) return done(null, false);
+    done(null, user);
   } catch (error) {
     console.error("💥 Deserialize Error:", error);
     done(error, null);
