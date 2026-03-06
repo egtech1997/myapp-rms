@@ -23,7 +23,7 @@ const handleSubmit = async () => {
 
 <template>
     <div
-        class="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-[var(--text-main)] px-4 font-sans antialiased selection:bg-[var(--color-solar)] selection:text-black">
+        class="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-[var(--text-main)] px-4 font-sans antialiased selection:bg-[var(--color-primary-light)] selection:text-[var(--color-primary-dark)]">
 
         <div
             class="w-full max-w-[400px] bg-[var(--surface)] rounded-xl border border-[var(--border-main)] shadow-sm animate-fade-in-up">
@@ -31,8 +31,8 @@ const handleSubmit = async () => {
             <div class="p-8 sm:p-10">
                 <div class="mb-8 text-center">
                     <div
-                        class="mx-auto mb-5 w-10 h-10 rounded-lg bg-[var(--color-solar)] flex items-center justify-center shadow-sm border border-[var(--border-main)]">
-                        <i class="pi pi-lock text-black text-lg"></i>
+                        class="mx-auto mb-5 w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shadow-md shadow-blue-900/20">
+                        <i class="pi pi-lock text-white text-lg"></i>
                     </div>
                     <h2 class="text-xl font-bold text-[var(--text-main)] tracking-tight">
                         Forgot your password?
@@ -96,36 +96,3 @@ const handleSubmit = async () => {
         </div>
     </div>
 </template>
-
-<style scoped>
-.animate-fade-in-up {
-    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-</style>

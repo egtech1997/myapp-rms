@@ -312,7 +312,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
             <div v-else-if="filteredUsers.length === 0" class="py-20 flex flex-col items-center gap-3 text-[var(--text-muted)]">
                 <i class="pi pi-users text-4xl text-slate-300"></i>
                 <p class="text-sm font-medium">No users found</p>
-                <button v-if="hasActiveFilters" @click="clearFilters" class="text-xs text-blue-500 hover:underline">Clear filters</button>
+                <button v-if="hasActiveFilters" @click="clearFilters" class="text-xs text-[var(--color-primary)] hover:underline">Clear filters</button>
             </div>
 
             <!-- Table -->
@@ -420,10 +420,9 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
             </div>
         </div>
 
-    </div>
 
-    <!-- ── User Management Modal ──────────────────────────────────────────── -->
-    <Teleport to="body">
+        <!-- ── User Management Modal ──────────────────────────────────────────── -->
+        <Teleport to="body">
         <div v-if="showModal && selectedUser"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
             @click.self="closeModal">
@@ -457,7 +456,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                         :class="[
                             'flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors',
                             modalTab === tab
-                                ? 'text-[var(--text-main)] border-b-2 border-[var(--text-main)] bg-[var(--surface)]'
+                                ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--surface)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                         ]">
                         <i :class="['pi mr-1.5', tab === 'info' ? 'pi-user' : tab === 'roles' ? 'pi-shield' : 'pi-key']" class="text-[11px]"></i>
@@ -554,7 +553,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             :class="[
                                 'flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all select-none',
                                 selectedRoles.includes(role._id)
-                                    ? 'bg-blue-50 border-blue-200'
+                                    ? 'bg-[var(--color-primary-light)] border-[var(--color-primary-ring)]'
                                     : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-gray-300',
                                 (!canManage || isSuperAdmin(selectedUser)) ? 'opacity-60 cursor-not-allowed' : ''
                             ]">
@@ -564,7 +563,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                                 :disabled="!canManage || isSuperAdmin(selectedUser)"
                                 class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed" />
                             <div class="flex-1">
-                                <p :class="['text-sm font-semibold', selectedRoles.includes(role._id) ? 'text-blue-700' : 'text-[var(--text-main)]']">
+                                <p :class="['text-sm font-semibold', selectedRoles.includes(role._id) ? 'text-[var(--color-primary)]' : 'text-[var(--text-main)]']">
                                     {{ role.name }}
                                 </p>
                                 <p class="text-xs text-[var(--text-muted)]">
@@ -580,7 +579,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
 
                     <div v-if="canManage && !isSuperAdmin(selectedUser)" class="pt-2 border-t border-[var(--border-main)]">
                         <button @click="handleUpdateRoles" :disabled="modalLoading"
-                            class="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                            class="w-full h-10 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                             <i v-if="modalLoading" class="pi pi-spin pi-spinner text-sm"></i>
                             <i v-else class="pi pi-save text-sm"></i>
                             Save Role Changes
@@ -634,29 +633,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
 
             </div>
         </div>
-    </Teleport>
+        </Teleport>
+    </div>
 </template>
 
-<style scoped>
-.animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
-}
-
-.animate-zoom-in {
-    animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes zoomIn {
-    from { opacity: 0; transform: scale(0.96) translateY(-8px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--border-main); border-radius: 20px; }
-</style>

@@ -130,7 +130,7 @@ const isExpired = (d) => d && new Date(d) < new Date()
 
                     <div class="flex items-start justify-between gap-3 mb-3">
                         <div>
-                            <p class="font-bold text-[var(--text-main)] leading-tight group-hover:text-blue-600 transition-colors">{{ job.positionTitle }}</p>
+                            <p class="font-bold text-[var(--text-main)] leading-tight group-hover:text-[var(--color-primary)] transition-colors">{{ job.positionTitle }}</p>
                             <p class="text-xs text-[var(--text-muted)] mt-1">{{ job.positionCode }} · {{ job.placeOfAssignment }}</p>
                         </div>
                         <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0', trackClass[job.hiringTrack] || 'bg-gray-100 text-gray-600 border-gray-200']">
@@ -159,10 +159,9 @@ const isExpired = (d) => d && new Date(d) < new Date()
                 Showing {{ filteredJobs.length }} open position{{ filteredJobs.length !== 1 ? 's' : '' }}
             </p>
         </div>
-    </div>
 
-    <!-- Job Detail Modal -->
-    <Teleport to="body">
+        <!-- Job Detail Modal -->
+        <Teleport to="body">
         <div v-if="showModal && selectedJob"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
             @click.self="closeModal">
@@ -252,29 +251,18 @@ const isExpired = (d) => d && new Date(d) < new Date()
                     <button v-if="!applySuccess"
                         @click="applyToJob"
                         :disabled="applying"
-                        class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                        class="bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
                         <i :class="['pi text-xs', applying ? 'pi-spin pi-spinner' : 'pi-send']"></i>
                         {{ applying ? 'Submitting...' : 'Apply Now' }}
                     </button>
                     <router-link v-else to="/user/applications"
-                        class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                        class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
                         <i class="pi pi-folder-open text-xs"></i> View Applications
                     </router-link>
                 </div>
             </div>
         </div>
-    </Teleport>
+        </Teleport>
+    </div>
 </template>
 
-<style scoped>
-.animate-fade-in { animation: fadeIn 0.2s ease-out; }
-.animate-zoom-in { animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes zoomIn {
-    from { opacity: 0; transform: scale(0.96) translateY(-8px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--border-main); border-radius: 20px; }
-</style>

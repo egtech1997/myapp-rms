@@ -193,11 +193,8 @@ const handleCreateRole = async () => {
                 <p class="text-sm text-[var(--text-muted)]">Manage system access and modular permissions.</p>
             </div>
             <button @click="showCreateModal = true"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                class="bg-[var(--text-main)] hover:opacity-90 text-[var(--surface)] px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity flex items-center gap-2">
+                <i class="pi pi-plus text-xs"></i>
                 Create Role
             </button>
         </div>
@@ -223,7 +220,7 @@ const handleCreateRole = async () => {
                 <div class="flex-1 w-full flex flex-col md:flex-row items-center gap-4">
                     <label class="text-sm font-semibold text-[var(--text-main)] whitespace-nowrap">Role Name</label>
                     <input v-model="activeRole.name" type="text" :disabled="isSuperAdmin"
-                        class="w-full md:max-w-md border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 transition-colors" />
+                        class="w-full md:max-w-md border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] disabled:bg-gray-100 disabled:text-gray-500 transition-colors" />
                 </div>
             </div>
 
@@ -267,29 +264,18 @@ const handleCreateRole = async () => {
                     Discard
                 </button>
                 <button @click="handleSaveChanges" :disabled="isSaving || isSuperAdmin"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
-                    <svg v-if="isSaving" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
-                        fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                    </svg>
+                    class="bg-[var(--text-main)] hover:opacity-90 text-[var(--surface)] px-6 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i v-if="isSaving" class="pi pi-spin pi-spinner text-xs"></i>
                     {{ isSaving ? 'Updating...' : 'Update Role' }}
                 </button>
             </div>
         </div>
 
         <div v-else
-            class="flex-1 flex items-center justify-center bg-[var(--surface)] border border-[var(--border-main)] rounded-xl">
-            <div class="text-center text-[var(--text-muted)]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <p>No roles found. Create a role to get started.</p>
+            class="flex-1 flex items-center justify-center bg-[var(--surface)] border border-[var(--border-main)] rounded-xl py-20">
+            <div class="text-center text-[var(--text-muted)] flex flex-col items-center gap-3">
+                <i class="pi pi-shield text-4xl text-slate-300"></i>
+                <p class="text-sm">No roles found. Create a role to get started.</p>
             </div>
         </div>
 
@@ -301,12 +287,8 @@ const handleCreateRole = async () => {
             class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-zoom-in">
             <div class="px-6 py-4 border-b border-[var(--border-main)] flex justify-between items-center">
                 <h3 class="text-lg font-bold text-[var(--text-main)]">Create New Role</h3>
-                <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                <button @click="showCreateModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                    <i class="pi pi-times text-sm"></i>
                 </button>
             </div>
 
@@ -314,13 +296,13 @@ const handleCreateRole = async () => {
                 <div>
                     <label class="block text-sm font-medium text-[var(--text-main)] mb-1.5">Role Name</label>
                     <input v-model="newRoleName" type="text" placeholder="e.g. HR Manager"
-                        class="w-full border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
+                        class="w-full border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-colors" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-[var(--text-main)] mb-1.5">Description
                         (Optional)</label>
                     <textarea v-model="newRoleDesc" rows="3" placeholder="Brief description of this role..."
-                        class="w-full border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none"></textarea>
+                        class="w-full border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-colors resize-none"></textarea>
                 </div>
             </div>
 
@@ -328,7 +310,7 @@ const handleCreateRole = async () => {
                 <button @click="showCreateModal = false"
                     class="px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">Cancel</button>
                 <button @click="handleCreateRole" :disabled="!newRoleName || isSaving"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                     {{ isSaving ? 'Creating...' : 'Create Role' }}
                 </button>
             </div>
@@ -336,56 +318,3 @@ const handleCreateRole = async () => {
     </div>
 </template>
 
-<style scoped>
-.animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
-}
-
-.animate-zoom-in {
-    animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes zoomIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-/* Horizontal Scrollbar for Roles List */
-.custom-scrollbar::-webkit-scrollbar {
-    height: 6px;
-    /* Horizontal scrollbar thickness */
-    width: 6px;
-    /* Vertical scrollbar thickness */
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: var(--border-main);
-    border-radius: 20px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #cbd5e1;
-    /* Tailwind slate-300 */
-}
-</style>

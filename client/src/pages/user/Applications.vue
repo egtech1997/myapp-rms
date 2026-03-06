@@ -137,7 +137,7 @@ const openApp = (app) => {
 
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-[var(--text-main)] truncate group-hover:text-blue-600 transition-colors">
+                    <p class="text-sm font-bold text-[var(--text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
                         {{ app.job?.positionTitle || 'Position' }}
                     </p>
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-[var(--text-muted)]">
@@ -163,10 +163,8 @@ const openApp = (app) => {
             </div>
         </div>
 
-    </div>
-
-    <!-- ── Application Detail Modal ──────────────────────────────────────── -->
-    <Teleport to="body">
+        <!-- ── Application Detail Modal ──────────────────────────────────────── -->
+        <Teleport to="body">
         <div v-if="showModal && selectedApp"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
             @click.self="showModal = false">
@@ -239,18 +237,7 @@ const openApp = (app) => {
                 </div>
             </div>
         </div>
-    </Teleport>
+        </Teleport>
+    </div>
 </template>
 
-<style scoped>
-.animate-fade-in { animation: fadeIn 0.2s ease-out; }
-.animate-zoom-in { animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes zoomIn {
-    from { opacity: 0; transform: scale(0.96) translateY(-8px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--border-main); border-radius: 20px; }
-</style>

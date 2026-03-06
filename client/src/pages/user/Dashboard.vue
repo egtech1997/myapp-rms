@@ -114,7 +114,7 @@ const memberSince = computed(() => {
 
             <div class="col-span-2 sm:col-span-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 flex flex-col gap-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
-                    <i class="pi pi-search text-blue-600"></i>
+                    <i class="pi pi-search text-[var(--color-primary)]"></i>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-[var(--text-main)]">{{ loadingApps ? '—' : activeApps }}</p>
@@ -140,7 +140,7 @@ const memberSince = computed(() => {
                 <i class="pi pi-folder-open text-3xl text-slate-300"></i>
                 <p class="text-sm font-medium">No applications yet</p>
                 <router-link to="/vacancies"
-                    class="text-xs font-semibold text-blue-500 hover:underline flex items-center gap-1">
+                    class="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
                     Browse open vacancies <i class="pi pi-arrow-right text-[10px]"></i>
                 </router-link>
             </div>
@@ -165,7 +165,7 @@ const memberSince = computed(() => {
             <router-link to="/vacancies"
                 class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 flex items-center gap-4 hover:border-blue-300 hover:shadow-sm transition-all group">
                 <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <i class="pi pi-briefcase text-blue-600"></i>
+                    <i class="pi pi-briefcase text-[var(--color-primary)]"></i>
                 </div>
                 <div>
                     <p class="text-sm font-bold text-[var(--text-main)]">Browse Vacancies</p>

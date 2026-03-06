@@ -34,6 +34,18 @@ const Toast = Swal.mixin({
 app.provide('$toast', Toast)
 app.provide('$swal', Swal)
 
+app.directive('click-outside', {
+  mounted(el, binding) {
+    el._clickOutsideHandler = (e) => {
+      if (!el.contains(e.target)) binding.value(e)
+    }
+    document.addEventListener('mousedown', el._clickOutsideHandler)
+  },
+  unmounted(el) {
+    document.removeEventListener('mousedown', el._clickOutsideHandler)
+  },
+})
+
 app.directive('can', {
   mounted(el, binding) {
     const authStore = useAuthStore()

@@ -119,7 +119,7 @@ const quickLinks = [
                     <i class="pi pi-briefcase text-3xl text-slate-300"></i>
                     <p class="text-sm">No vacancies yet</p>
                     <router-link to="/admin/vacancies"
-                        class="text-xs font-semibold text-blue-500 hover:underline">Create one</router-link>
+                        class="text-xs font-semibold text-[var(--color-primary)] hover:underline">Create one</router-link>
                 </div>
 
                 <div v-else class="divide-y divide-[var(--border-main)]">

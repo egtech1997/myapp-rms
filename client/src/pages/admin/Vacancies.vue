@@ -278,7 +278,7 @@ const sortIcon = (field) => {
                     <i :class="['pi pi-refresh text-sm', { 'animate-spin': loading }]"></i>
                 </button>
                 <button v-if="canManage" @click="openCreate"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center gap-2">
+                    class="bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center gap-2">
                     <i class="pi pi-plus text-xs"></i> Post Vacancy
                 </button>
             </div>
@@ -356,8 +356,8 @@ const sortIcon = (field) => {
                 <i class="pi pi-briefcase text-4xl text-slate-300"></i>
                 <p class="text-sm font-medium">No job vacancies found</p>
                 <button v-if="hasActiveFilters" @click="clearFilters"
-                    class="text-xs text-blue-500 hover:underline">Clear filters</button>
-                <button v-else-if="canManage" @click="openCreate" class="text-xs text-blue-500 hover:underline">Post
+                    class="text-xs text-[var(--color-primary)] hover:underline">Clear filters</button>
+                <button v-else-if="canManage" @click="openCreate" class="text-xs text-[var(--color-primary)] hover:underline">Post
                     your first vacancy</button>
             </div>
 
@@ -493,10 +493,9 @@ const sortIcon = (field) => {
                 </table>
             </div>
         </div>
-    </div>
 
-    <!-- ── Create / Edit Modal ────────────────────────────────────────────── -->
-    <Teleport to="body">
+        <!-- ── Create / Edit Modal ────────────────────────────────────────────── -->
+        <Teleport to="body">
         <div v-if="showModal"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
             @click.self="closeModal">
@@ -529,7 +528,7 @@ const sortIcon = (field) => {
                             <h4
                                 class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
                                 <span
-                                    class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                                    class="w-5 h-5 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-[10px] font-bold">1</span>
                                 Basic Information
                             </h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -585,7 +584,7 @@ const sortIcon = (field) => {
                             <h4
                                 class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
                                 <span
-                                    class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                                    class="w-5 h-5 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-[10px] font-bold">2</span>
                                 Salary & Status
                             </h4>
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -623,7 +622,7 @@ const sortIcon = (field) => {
                             <h4
                                 class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
                                 <span
-                                    class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                                    class="w-5 h-5 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-[10px] font-bold">3</span>
                                 Qualification Standards (QS)
                             </h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -659,7 +658,7 @@ const sortIcon = (field) => {
                             <h4
                                 class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
                                 <span
-                                    class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">4</span>
+                                    class="w-5 h-5 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-[10px] font-bold">4</span>
                                 Plantilla Item Numbers
                                 <span class="text-[var(--text-muted)] font-normal normal-case tracking-normal">({{
                                     form.itemNumbers.filter(n => n).length}} vacancy slot{{
@@ -693,7 +692,7 @@ const sortIcon = (field) => {
                         Cancel
                     </button>
                     <button @click="handleSubmit" :disabled="modalLoading"
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
+                        class="bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
                         <i v-if="modalLoading" class="pi pi-spin pi-spinner text-sm"></i>
                         <i v-else :class="isEditing ? 'pi pi-save' : 'pi pi-send'" class="text-sm"></i>
                         {{ modalLoading ? 'Saving...' : (isEditing ? 'Save Changes' : 'Post Vacancy') }}
@@ -701,63 +700,7 @@ const sortIcon = (field) => {
                 </div>
             </div>
         </div>
-    </Teleport>
+        </Teleport>
+    </div>
 </template>
 
-<style scoped>
-/* .field {
-    @apply w-full h-9 px-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow;
-}
-
-textarea.field {
-    @apply h-auto py-2;
-}
-
-select.field {
-    @apply appearance-none cursor-pointer;
-}
-    */
-
-.animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
-}
-
-.animate-zoom-in {
-    animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes zoomIn {
-    from {
-        opacity: 0;
-        transform: scale(0.96) translateY(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: var(--border-main);
-    border-radius: 20px;
-}
-</style>
