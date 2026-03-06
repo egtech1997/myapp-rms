@@ -40,32 +40,40 @@ const goBack = () => {
 
 <template>
     <div class="min-h-[80vh] flex items-center justify-center p-6 w-full font-sans">
-        
-        <div class="max-w-lg w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-10 text-center relative overflow-hidden emerge-visible">
-            
-            <div class="absolute -top-32 -right-32 w-64 h-64 bg-slate-100 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
-            <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-slate-100 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
-            
+
+        <div
+            class="max-w-lg w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-10 text-center relative overflow-hidden emerge-visible">
+
+            <div
+                class="absolute -top-32 -right-32 w-64 h-64 bg-slate-100 rounded-full blur-3xl opacity-60 pointer-events-none">
+            </div>
+            <div
+                class="absolute -bottom-32 -left-32 w-64 h-64 bg-slate-100 rounded-full blur-3xl opacity-60 pointer-events-none">
+            </div>
+
             <div class="relative z-10">
-                <div class="w-20 h-20 mx-auto bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-6 shadow-inner transform -rotate-3 transition-transform hover:rotate-0 duration-300">
+                <div
+                    class="w-20 h-20 mx-auto bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-6 shadow-inner transform -rotate-3 transition-transform hover:rotate-0 duration-300">
                     <i :class="[errorDetails.icon, 'text-4xl text-slate-400']"></i>
                 </div>
-                
+
                 <h1 class="text-7xl font-black text-[#020617] mb-2 tracking-tighter drop-shadow-sm">
                     {{ code }}
                 </h1>
-                
+
                 <h2 class="text-xl font-bold text-slate-800 mb-4">{{ errorDetails.title }}</h2>
                 <p class="text-sm text-slate-500 mb-10 leading-relaxed max-w-sm mx-auto font-medium">
                     {{ errorDetails.msg }}
                 </p>
-                
+
                 <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <button @click="goBack" class="w-full sm:w-auto px-6 py-3 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 hover:text-slate-900 transition-colors outline-none flex items-center justify-center gap-2">
+                    <button @click="goBack"
+                        class="w-full sm:w-auto px-6 py-3 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 hover:text-slate-900 transition-colors outline-none flex items-center justify-center gap-2">
                         <i class="pi pi-arrow-left text-[10px]"></i> Go Back
                     </button>
-                    
-                    <router-link to="/admin/dashboard" class="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#020617] text-white font-bold text-xs uppercase tracking-widest hover:bg-slate-800 shadow-lg shadow-slate-900/20 hover:-translate-y-0.5 transition-all outline-none flex items-center justify-center gap-2">
+
+                    <router-link to="/admin/dashboard"
+                        class="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#020617] text-white font-bold text-xs uppercase tracking-widest hover:bg-slate-800 shadow-lg shadow-slate-900/20 hover:-translate-y-0.5 transition-all outline-none flex items-center justify-center gap-2">
                         <i class="pi pi-home text-[10px]"></i> Dashboard
                     </router-link>
                 </div>
@@ -85,6 +93,7 @@ const goBack = () => {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);

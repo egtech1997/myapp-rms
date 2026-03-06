@@ -27,10 +27,8 @@ const seedSystem = async () => {
     const adminRole = roles.find((r) => r.name === "admin");
     const userRole = roles.find((r) => r.name === "user");
 
-    // 3. HASH PASSWORD
     const commonPassword = await bcrypt.hash("Password123!", 12);
 
-    // 4. CREATE DUMMY USERS
     const dummyUsers = [
       {
         username: "super_admin",
@@ -40,15 +38,15 @@ const seedSystem = async () => {
         isVerified: true,
       },
       {
-        username: "admin",
+        username: "admin_user",
         email: "admin@deped.gov.ph",
         password: commonPassword,
         roles: [adminRole._id],
         isVerified: true,
       },
       {
-        username: "juan_applicant",
-        email: "juan.delacruz@gmail.com",
+        username: "user_user",
+        email: "user@gmail.com",
         password: commonPassword,
         roles: [userRole._id],
         isVerified: true,
@@ -61,9 +59,9 @@ const seedSystem = async () => {
     console.log("🚀 SYSTEM SEEDED SUCCESSFULLY");
     console.log("-----------------------------------------------");
     console.log("👤 SUPER ADMIN: superadmin@deped.gov.ph");
-    console.log("👤 ADMIN:       hr.verify@deped.gov.ph");
-    console.log("👤 APPLICANT:   juan.delacruz@gmail.com");
-    console.log("🔑 PASSWORD:    Password123!");
+    console.log("👤 ADMIN:       admin@deped.gov.ph");
+    console.log("👤 USER:        user@gmail.com");
+    console.log("🔑 PASSWORD:    123");
     console.log("-----------------------------------------------");
 
     process.exit(0);

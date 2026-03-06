@@ -13,6 +13,7 @@ export const protect = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // CRITICAL: populate("roles") must happen here so req.user always has role names
     const user = await User.findById(decoded.id).populate("roles");
 
     if (!user) {
@@ -38,19 +39,16 @@ export const requirePermission = (permission) => {
       return res.status(403).json({ message: "Forbidden: No roles found" });
     }
 
-    // 1. Bypass by Role Name (Your existing logic)
     const isSuperAdmin = req.user.roles.some(
       (role) => role.name === "super_admin" || role.name === "Super Admin",
     );
     if (isSuperAdmin) return next();
 
-    // 2. NEW: Bypass by "all" permission (Matches your Vue frontend logic)
     const hasWildcard = req.user.roles.some((role) =>
       role.permissions?.includes("all"),
     );
     if (hasWildcard) return next();
 
-    // 3. Standard specific permission check
     const hasPermission = req.user.roles.some((role) =>
       role.permissions?.includes(permission),
     );

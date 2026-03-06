@@ -84,13 +84,13 @@ const routes = [
         path: 'roles-permissions',
         name: 'Roles & Permissions',
         component: () => import('@/pages/admin/RolesPermissions.vue'),
-        meta: { permissions: ['role_view'] },
+        meta: { permission: 'role_view' }, // Fixed typo from 'permissions' array to string
       },
       {
         path: 'user-list',
         name: 'User List',
         component: () => import('@/pages/admin/UserList.vue'),
-        meta: { permissions: ['user_view'] },
+        meta: { permission: 'user_view' },
       },
       {
         path: 'settings',
@@ -130,6 +130,12 @@ const routes = [
     ],
   },
 
+  // Catch-all for 404
+  {
+    path: '/not-authorized',
+    name: 'NotAuthorized',
+    component: () => import('@/components/errors/NotAuthorized.vue'),
+  },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',
@@ -142,7 +148,6 @@ const router = createRouter({
 })
 
 // Navigation Guard
-// Navigation Guard
 router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
 
@@ -153,26 +158,37 @@ router.beforeEach(async (to, from) => {
 
   const isLoggedIn = authStore.isAuthenticated
 
-  // 2. Prevent logged-in users from accessing Guest routes (Login/Register)
+  // 2. Protect Guest routes (Login/Register)
   if (to.meta.guestOnly && isLoggedIn) {
-    return authStore.dashboardRoute || '/'
+    return authStore.dashboardRoute
   }
 
+  // 3. Protect Auth-required routes
   if (to.meta.requiresAuth && !isLoggedIn) {
     return { path: '/auth/login', query: { redirect: to.fullPath } }
   }
 
-  if (to.meta.role === 'admin' && !authStore.isStaff) {
-    return '/user/dashboard'
-  }
+  // If the user IS logged in, enforce the strict Admin vs User boundaries:
+  if (isLoggedIn) {
+    // 4. ADMIN BOUNDARY: "User" role trying to access /admin
+    // If route requires admin, but user is NOT an admin
+    if (to.meta.role === 'admin' && !authStore.isAdmin) {
+      return '/not-authorized' // Or redirect to '/user/dashboard' if you prefer
+    }
 
-  if (to.meta.permission) {
-    if (!authStore.can(to.meta.permission)) {
+    // 5. USER BOUNDARY: "Admin" role trying to access /user
+    // If route requires user, but user IS an admin
+    if (to.meta.role === 'user' && authStore.isAdmin) {
       return '/admin/dashboard'
+    }
+
+    // 6. Specific Permission Checks inside Admin
+    if (to.meta.permission && !authStore.can(to.meta.permission)) {
+      return '/admin/dashboard' // Bump them back to admin root if they lack permission
     }
   }
 
-  // 6. Proceed normally
+  // 7. Proceed normally
   return true
 })
 
