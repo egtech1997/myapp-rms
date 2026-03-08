@@ -1,44 +1,74 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 
 const authStore = useAuthStore()
+const toast = inject('$toast')
 
 const loading = ref(true)
 const saving  = ref(false)
 const activeTab = ref('personal')
-const toast = ref(null)
 
 const tabs = [
-  { id: 'personal',    label: 'Personal Info',     icon: 'pi-user'           },
-  { id: 'contact',     label: 'Contact & Address', icon: 'pi-map-marker'     },
-  { id: 'education',   label: 'Education',         icon: 'pi-graduation-cap' },
-  { id: 'eligibility', label: 'Eligibility',       icon: 'pi-verified'       },
-  { id: 'training',    label: 'Training',          icon: 'pi-star'           },
-  { id: 'experience',  label: 'Experience',        icon: 'pi-briefcase'      },
+  { id: 'personal',    label: 'Personal Info',        icon: 'pi-user'           },
+  { id: 'family',      label: 'Family Background',    icon: 'pi-users'          },
+  { id: 'education',   label: 'Education',            icon: 'pi-graduation-cap' },
+  { id: 'eligibility', label: 'Eligibility',          icon: 'pi-verified'       },
+  { id: 'experience',  label: 'Work Experience',      icon: 'pi-briefcase'      },
+  { id: 'training',    label: 'L&D / Trainings',      icon: 'pi-book'           },
+  { id: 'voluntary',   label: 'Voluntary Work',       icon: 'pi-heart'          },
+  { id: 'others',      label: 'Other Info',           icon: 'pi-list'           },
 ]
 
 const form = reactive({
   name: { firstName: '', middleName: '', lastName: '', suffix: '' },
   sex: '',
   birthDate: '',
+  ethnicGroup: '',
+  religion: '',
   civilStatus: '',
-  bio: '',
-  contact: { phone: '', email: '' },
+  contact: { phones: [''], emails: [''] },
   address: { sitio: '', barangay: '', municipality: '', city: '', province: '', zipCode: '', country: 'Philippines' },
+  family: {
+    spouse: { firstName: '', middleName: '', lastName: '', suffix: '', occupation: '', employer: '', businessAddress: '', phone: '' },
+    father: { firstName: '', middleName: '', lastName: '', suffix: '' },
+    mother: { firstName: '', middleName: '', lastName: '', suffix: '' },
+    children: [],
+  },
   education: [],
   eligibility: [],
-  training: [],
   experience: [],
-  performanceRating: { score: '', adjective: '', periodCovered: '' },
-  links: { facebook: '', linkedin: '' },
+  voluntaryWork: [],
+  training: [],
+  competencies: [],
+  specialSkills: [],
+  nonAcademicDistinctions: [],
+  memberships: [],
+  performanceRating: { score: null, adjective: '', periodCovered: '' },
+  visibility: { phone: false, email: false, address: false },
 })
 
-const avatarSrc = computed(() =>
-  authStore.user?.avatarUrl
-  || `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'U')}&background=1d4ed8&color=fff&bold=true`
-)
+// ── COMPLETENESS ─────────────────────────────────────────────────
+const completenessStats = computed(() => {
+  const sections = {
+    personal:    !!(form.name.firstName && form.name.lastName && form.birthDate && form.sex && form.address.province),
+    education:   form.education.length > 0,
+    eligibility: form.eligibility.length > 0,
+    experience:  form.experience.length > 0,
+    training:    form.training.length > 0,
+    family:      !!(form.family.father.lastName || form.family.mother.lastName),
+    others:      (form.competencies.length > 0 || form.specialSkills.length > 0),
+  }
+  const keys = Object.keys(sections)
+  const completedCount = keys.filter(k => sections[k]).length
+  const percent = Math.round((completedCount / keys.length) * 100)
+  const criticalMissing = []
+  if (!sections.education) criticalMissing.push('Educational Background')
+  if (!sections.eligibility) criticalMissing.push('Civil Service Eligibility')
+  if (!sections.experience) criticalMissing.push('Work Experience')
+  return { percent, sections, criticalMissing }
+})
 
 const fullName = computed(() => {
   const { firstName, middleName, lastName, suffix } = form.name
@@ -46,450 +76,908 @@ const fullName = computed(() => {
   return [firstName, mi, lastName, suffix].filter(Boolean).join(' ') || authStore.user?.username
 })
 
-// ── Helpers to add/remove list items ──────────────────────────────
-const addEducation = () => form.education.push({ level: '', degree: '', units: '', school: '', yearGraduated: '' })
-const removeEducation = (i) => form.education.splice(i, 1)
+// ── AGE CALC ──────────────────────────────────────────────────────
+const calcAge = (dateStr) => {
+  if (!dateStr) return null
+  const today = new Date()
+  const birth = new Date(dateStr)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
 
-const addEligibility = () => form.eligibility.push({ name: '', placeOfExam: '', dateOfExam: '', rating: '' })
-const removeEligibility = (i) => form.eligibility.splice(i, 1)
+// ── HELPERS ───────────────────────────────────────────────────────
+const addPhone = () => form.contact.phones.push('')
+const removePhone = (i) => { if (form.contact.phones.length > 1) form.contact.phones.splice(i, 1) }
+const addEmail = () => form.contact.emails.push('')
+const removeEmail = (i) => { if (form.contact.emails.length > 1) form.contact.emails.splice(i, 1) }
 
-const addTraining = () => form.training.push({ title: '', hours: '', dateIssued: '', provider: '' })
-const removeTraining = (i) => form.training.splice(i, 1)
+const addResponsibility = (exp) => exp.keyResponsibilities.push('')
+const removeResponsibility = (exp, i) => exp.keyResponsibilities.splice(i, 1)
 
-const addExperience = () => form.experience.push({ position: '', company: '', months: '', isGovernment: false, monthlySalary: '' })
-const removeExperience = (i) => form.experience.splice(i, 1)
+const addItem = (list) => {
+  if (list === 'children')     form.family.children.push({ firstName: '', middleName: '', lastName: '', suffix: '', birthDate: '' })
+  if (list === 'education')    form.education.push({ level: '', school: '', degree: '', periodFrom: '', periodTo: '', notGraduated: false, unitsEarned: null, yearGraduated: null, honorsReceived: '' })
+  if (list === 'eligibility')  form.eligibility.push({ name: '', rating: '', dateOfExam: '', placeOfExam: '', licenseNumber: '', licenseValidity: '' })
+  if (list === 'experience')   form.experience.push({ periodFrom: '', periodTo: '', position: '', company: '', monthlySalary: null, salaryGrade: '', statusOfAppointment: 'Permanent', isGovernment: false, keyResponsibilities: [] })
+  if (list === 'voluntary')    form.voluntaryWork.push({ organization: '', periodFrom: '', periodTo: '', hours: null, position: '' })
+  if (list === 'training')     form.training.push({ title: '', periodFrom: '', periodTo: '', hours: 0, typeOfLD: 'Technical', provider: '' })
+  if (list === 'competencies') form.competencies.push('')
+  if (list === 'skills')       form.specialSkills.push('')
+  if (list === 'distinctions') form.nonAcademicDistinctions.push('')
+  if (list === 'memberships')  form.memberships.push('')
+}
 
-// ── Load profile ───────────────────────────────────────────────────
+const removeItem = (list, index) => {
+  if (list === 'children')     form.family.children.splice(index, 1)
+  if (list === 'education')    form.education.splice(index, 1)
+  if (list === 'eligibility')  form.eligibility.splice(index, 1)
+  if (list === 'experience')   form.experience.splice(index, 1)
+  if (list === 'voluntary')    form.voluntaryWork.splice(index, 1)
+  if (list === 'training')     form.training.splice(index, 1)
+  if (list === 'competencies') form.competencies.splice(index, 1)
+  if (list === 'skills')       form.specialSkills.splice(index, 1)
+  if (list === 'distinctions') form.nonAcademicDistinctions.splice(index, 1)
+  if (list === 'memberships')  form.memberships.splice(index, 1)
+}
+
+// ── LOAD ──────────────────────────────────────────────────────────
 const loadProfile = async () => {
   try {
     const { data } = await apiClient.get('/v1/profile/me')
     if (data.data) {
-      const p = data.data
-      Object.assign(form.name,              p.name              || {})
-      Object.assign(form.contact,           p.contact           || {})
-      Object.assign(form.address,           p.address           || {})
-      Object.assign(form.links,             p.links             || {})
-      Object.assign(form.performanceRating, p.performanceRating || {})
-      form.sex          = p.sex          || ''
-      form.civilStatus  = p.civilStatus  || ''
-      form.bio          = p.bio          || ''
-      form.birthDate    = p.birthDate ? p.birthDate.substring(0, 10) : ''
-      form.education    = p.education   || []
-      form.eligibility  = p.eligibility || []
-      form.training     = p.training    || []
-      form.experience   = p.experience  || []
+      const d = data.data
+      if (d.sex !== undefined)         form.sex         = d.sex
+      if (d.birthDate)                 form.birthDate   = d.birthDate.substring(0, 10)
+      if (d.ethnicGroup !== undefined) form.ethnicGroup = d.ethnicGroup
+      if (d.religion !== undefined)    form.religion    = d.religion
+      if (d.civilStatus !== undefined) form.civilStatus = d.civilStatus
+      if (d.name)    Object.assign(form.name,    d.name)
+      if (d.address) Object.assign(form.address, d.address)
+      if (d.visibility) Object.assign(form.visibility, d.visibility)
+      if (d.performanceRating) Object.assign(form.performanceRating, d.performanceRating)
+      // Contact — support old single-value format
+      if (d.contact) {
+        if (d.contact.phones?.length) form.contact.phones = d.contact.phones
+        else if (d.contact.phone)     form.contact.phones = [d.contact.phone]
+        if (d.contact.emails?.length) form.contact.emails = d.contact.emails
+        else if (d.contact.email)     form.contact.emails = [d.contact.email]
+      }
+      // Family — deep merge
+      if (d.family) {
+        if (d.family.spouse)   Object.assign(form.family.spouse,  d.family.spouse)
+        if (d.family.father)   Object.assign(form.family.father,  d.family.father)
+        if (d.family.mother)   Object.assign(form.family.mother,  d.family.mother)
+        if (d.family.children) form.family.children = d.family.children.map(c => ({
+          firstName: c.firstName || c.name || '', middleName: c.middleName || '',
+          lastName: c.lastName || '', suffix: c.suffix || '',
+          birthDate: c.birthDate ? new Date(c.birthDate).toISOString().substring(0, 10) : '',
+        }))
+      }
+      // Arrays
+      if (d.education)               form.education               = d.education.map(e => ({ ...e, birthDate: e.birthDate ? new Date(e.birthDate).toISOString().substring(0, 10) : '' }))
+      if (d.eligibility)             form.eligibility             = d.eligibility.map(e => ({ ...e, dateOfExam: e.dateOfExam ? new Date(e.dateOfExam).toISOString().substring(0, 10) : '', licenseValidity: e.licenseValidity ? new Date(e.licenseValidity).toISOString().substring(0, 10) : '' }))
+      if (d.experience)              form.experience              = d.experience.map(e => ({ ...e, periodFrom: e.periodFrom ? new Date(e.periodFrom).toISOString().substring(0, 10) : '', periodTo: e.periodTo ? new Date(e.periodTo).toISOString().substring(0, 10) : '', keyResponsibilities: e.keyResponsibilities || [] }))
+      if (d.voluntaryWork)           form.voluntaryWork           = d.voluntaryWork.map(v => ({ ...v, periodFrom: v.periodFrom ? new Date(v.periodFrom).toISOString().substring(0, 10) : '', periodTo: v.periodTo ? new Date(v.periodTo).toISOString().substring(0, 10) : '' }))
+      if (d.training)                form.training                = d.training.map(t => ({ ...t, periodFrom: t.periodFrom ? new Date(t.periodFrom).toISOString().substring(0, 10) : '', periodTo: t.periodTo ? new Date(t.periodTo).toISOString().substring(0, 10) : '' }))
+      if (d.competencies)            form.competencies            = d.competencies
+      if (d.specialSkills)           form.specialSkills           = d.specialSkills
+      if (d.nonAcademicDistinctions) form.nonAcademicDistinctions = d.nonAcademicDistinctions
+      if (d.memberships)             form.memberships             = d.memberships
     }
-  } catch {
-    // no profile yet — form stays blank
-  } finally {
+  } catch (err) { } finally {
     loading.value = false
   }
 }
 
-// ── Save ───────────────────────────────────────────────────────────
-const save = async () => {
-  if (!form.name.firstName.trim() || !form.name.lastName.trim()) {
-    alert('First name and last name are required.')
-    return
-  }
+// ── SAVE ──────────────────────────────────────────────────────────
+const saveProfile = async () => {
   saving.value = true
   try {
-    await apiClient.put('/v1/profile/me', form)
-    showToast('Profile saved successfully.', 'success')
+    const payload = JSON.parse(JSON.stringify(form))
+    const stripKeys = ['_id', 'id', '__v', 'user', 'createdAt', 'updatedAt', 'fullName', 'age']
+    stripKeys.forEach(k => delete payload[k])
+    // Clean contact arrays
+    payload.contact.phones = (payload.contact.phones || []).filter(p => p.trim())
+    payload.contact.emails = (payload.contact.emails || []).filter(e => e.trim())
+    // Filter incomplete arrays
+    payload.experience    = (payload.experience    || []).filter(e => e.position?.trim() && e.company?.trim())
+    payload.voluntaryWork = (payload.voluntaryWork || []).filter(v => v.organization?.trim())
+    payload.education     = (payload.education     || []).filter(e => e.level && e.school?.trim())
+    payload.eligibility   = (payload.eligibility   || []).filter(e => e.name?.trim())
+    payload.training      = (payload.training      || []).filter(t => t.title?.trim())
+    // Clean responsibilities
+    payload.experience.forEach(e => {
+      e.keyResponsibilities = (e.keyResponsibilities || []).filter(r => r.trim())
+    })
+    await apiClient.put('/v1/profile/me', payload)
+    toast.fire({ icon: 'success', title: 'Success', text: 'PDS records updated.' })
   } catch (err) {
-    showToast(err.response?.data?.message || 'Save failed.', 'error')
+    toast.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'Update failed.' })
   } finally {
     saving.value = false
   }
 }
 
-const toastMsg  = ref('')
-const toastType = ref('success')
-const toastVisible = ref(false)
-let toastTimer = null
-
-const showToast = (msg, type = 'success') => {
-  toastMsg.value   = msg
-  toastType.value  = type
-  toastVisible.value = true
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toastVisible.value = false }, 3000)
-}
-
 onMounted(loadProfile)
+
+const F = 'w-full h-11 px-4 text-sm bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] text-[var(--text-main)] transition-all'
+const LABEL = 'text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider'
+const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 shadow-sm'
 </script>
 
 <template>
-  <div class="animate-fade-in-up max-w-3xl mx-auto py-2">
+  <div class="animate-fade-in-up max-w-5xl mx-auto py-4 px-4 sm:px-6">
 
-    <!-- Toast -->
-    <Transition name="slide-down">
-      <div v-if="toastVisible"
-        :class="['fixed top-20 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border',
-          toastType === 'success'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-            : 'bg-red-50 border-red-200 text-red-700']">
-        <i :class="['pi', toastType === 'success' ? 'pi-check-circle' : 'pi-times-circle']"></i>
-        {{ toastMsg }}
+    <!-- HEADER -->
+    <div :class="[SECTION, 'mb-6 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group']">
+      <div class="absolute -top-24 -right-24 w-64 h-64 bg-[var(--color-primary)]/5 rounded-full blur-3xl transition-all duration-700 group-hover:bg-[var(--color-primary)]/10"></div>
+      <div class="relative w-24 h-24 flex-shrink-0">
+        <svg class="w-full h-full transform -rotate-90">
+          <circle cx="48" cy="48" r="40" stroke="currentColor" stroke-width="8" fill="transparent" class="text-[var(--border-main)]" />
+          <circle cx="48" cy="48" r="40" stroke="currentColor" stroke-width="8" fill="transparent"
+            :stroke-dasharray="251.2" :stroke-dashoffset="251.2 - (251.2 * completenessStats.percent) / 100"
+            class="text-[var(--color-primary)] transition-all duration-1000 ease-out" stroke-linecap="round" />
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span class="text-xl font-black text-[var(--text-main)]">{{ completenessStats.percent }}%</span>
+          <span class="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest text-center leading-none">Data<br/>Ready</span>
+        </div>
       </div>
-    </Transition>
-
-    <!-- Header card -->
-    <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 mb-6 flex items-center gap-5">
-      <img :src="avatarSrc" :alt="authStore.user?.username"
-        class="w-16 h-16 rounded-full object-cover border-4 border-[var(--color-primary-light)] shrink-0" />
-      <div class="min-w-0">
-        <h1 class="text-lg font-bold text-[var(--text-main)] truncate">{{ fullName }}</h1>
-        <p class="text-sm text-[var(--text-muted)] truncate">{{ authStore.user?.email }}</p>
-        <span class="inline-flex items-center gap-1.5 mt-1.5 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2.5 py-0.5 rounded-full">
-          <i class="pi pi-user text-[10px]"></i> Applicant
-        </span>
+      <div class="flex-1 text-center md:text-left relative z-10">
+        <h2 class="text-lg font-black text-[var(--text-main)] tracking-tight">Personal Data Sheet (CS Form 212)</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-1 font-medium">{{ fullName }}</p>
+        <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
+          <template v-if="completenessStats.criticalMissing.length > 0">
+            <span v-for="miss in completenessStats.criticalMissing" :key="miss"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-[10px] font-black border border-red-100 uppercase tracking-tighter">
+              <i class="pi pi-exclamation-triangle"></i> {{ miss }} Missing
+            </span>
+          </template>
+          <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 uppercase tracking-tighter">
+            <i class="pi pi-check-circle"></i> Profile Validated
+          </span>
+        </div>
       </div>
     </div>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="space-y-4">
-      <div v-for="n in 4" :key="n" class="h-12 bg-[var(--border-main)] rounded-xl animate-pulse"></div>
+    <!-- TABS -->
+    <div class="flex gap-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-1.5 mb-8 overflow-x-auto no-scrollbar shadow-sm">
+      <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+        :class="['flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all relative',
+          activeTab === tab.id ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)]']">
+        <i :class="['pi text-[11px]', tab.icon]"></i>{{ tab.label }}
+        <div v-if="completenessStats.sections[tab.id]"
+          class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-white"></div>
+      </button>
     </div>
 
-    <template v-else>
-      <!-- Tabs -->
-      <div class="flex gap-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-1 mb-6 overflow-x-auto">
-        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-          :class="['flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors',
-            activeTab === tab.id
-              ? 'bg-[var(--color-primary)] text-white shadow-sm'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-2)]']">
-          <i :class="['pi text-[11px]', tab.icon]"></i>
-          {{ tab.label }}
-        </button>
-      </div>
+    <!-- LOADING -->
+    <div v-if="loading" class="flex flex-col gap-4">
+      <div v-for="n in 5" :key="n" class="h-16 bg-[var(--bg-app)] animate-pulse rounded-2xl"></div>
+    </div>
 
-      <!-- ── PERSONAL INFO ─────────────────────────────────────── -->
-      <div v-if="activeTab === 'personal'"
-        class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 space-y-5">
+    <div v-else class="space-y-8 pb-32">
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">First Name *</label>
-            <input v-model="form.name.firstName" class="input" placeholder="Juan" />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Middle Name</label>
-            <input v-model="form.name.middleName" class="input" placeholder="Santos" />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Last Name *</label>
-            <input v-model="form.name.lastName" class="input" placeholder="Dela Cruz" />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Suffix</label>
-            <input v-model="form.name.suffix" class="input" placeholder="Jr., Sr., III" />
-          </div>
-        </div>
+      <!-- ══ TAB 1: PERSONAL ════════════════════════════════════════ -->
+      <section v-if="activeTab === 'personal'" class="space-y-6 animate-fade-in">
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Sex</label>
-            <select v-model="form.sex" class="input">
-              <option value="">Select</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
+        <!-- Name -->
+        <div :class="SECTION">
+          <div class="flex items-center gap-2 mb-5">
+            <i class="pi pi-user text-[var(--color-primary)] text-sm"></i>
+            <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">I. Personal Information</h3>
           </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Birth Date</label>
-            <input v-model="form.birthDate" type="date" class="input" />
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">First Name <span class="text-red-400">*</span></label>
+              <input v-model="form.name.firstName" :class="F" placeholder="Juan" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Middle Name</label>
+              <input v-model="form.name.middleName" :class="F" placeholder="Santos" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Last Name <span class="text-red-400">*</span></label>
+              <input v-model="form.name.lastName" :class="F" placeholder="Dela Cruz" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Suffix</label>
+              <input v-model="form.name.suffix" :class="F" placeholder="Jr. / Sr. / III" />
+            </div>
           </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Civil Status</label>
-            <select v-model="form.civilStatus" class="input">
-              <option value="">Select</option>
-              <option>Single</option>
-              <option>Married</option>
-              <option>Widowed</option>
-              <option>Separated</option>
-              <option>Other</option>
-            </select>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Date of Birth <span class="text-red-400">*</span></label>
+              <input v-model="form.birthDate" type="date" :class="F" />
+              <p v-if="form.birthDate" class="text-[10px] text-[var(--text-muted)]">Age: {{ calcAge(form.birthDate) }} years old</p>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Sex <span class="text-red-400">*</span></label>
+              <select v-model="form.sex" :class="F">
+                <option value="">Select...</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Civil Status</label>
+              <select v-model="form.civilStatus" :class="F">
+                <option value="">Select...</option>
+                <option>Single</option><option>Married</option>
+                <option>Widowed</option><option>Separated</option><option>Other</option>
+              </select>
+            </div>
           </div>
-        </div>
-
-        <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Bio <span class="normal-case font-normal">(max 240 chars)</span></label>
-          <textarea v-model="form.bio" class="input resize-none" rows="3" maxlength="240"
-            placeholder="A short bio about yourself..."></textarea>
-          <p class="text-[11px] text-[var(--text-faint)] text-right">{{ form.bio.length }}/240</p>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Facebook URL</label>
-            <input v-model="form.links.facebook" class="input" placeholder="https://facebook.com/..." />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">LinkedIn URL</label>
-            <input v-model="form.links.linkedin" class="input" placeholder="https://linkedin.com/in/..." />
-          </div>
-        </div>
-      </div>
-
-      <!-- ── CONTACT & ADDRESS ─────────────────────────────────── -->
-      <div v-if="activeTab === 'contact'"
-        class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 space-y-6">
-
-        <div>
-          <h3 class="text-sm font-bold text-[var(--text-main)] mb-4">Contact Information</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Phone Number</label>
-              <input v-model="form.contact.phone" class="input" placeholder="09xx-xxx-xxxx" />
+              <label :class="LABEL">Ethnic Group</label>
+              <input v-model="form.ethnicGroup" :class="F" placeholder="e.g. Tagalog, Bisaya, Ilocano..." />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Contact Email</label>
-              <input v-model="form.contact.email" type="email" class="input" placeholder="you@email.com" />
+              <label :class="LABEL">Religion</label>
+              <input v-model="form.religion" :class="F" placeholder="e.g. Roman Catholic, Islam..." />
             </div>
           </div>
         </div>
 
-        <div>
-          <h3 class="text-sm font-bold text-[var(--text-main)] mb-4">Address</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Sitio / Purok</label>
-              <input v-model="form.address.sitio" class="input" placeholder="Purok 1" />
+        <!-- Contact (dynamic arrays) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div :class="SECTION">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Mobile Numbers</h3>
+              <button @click="addPhone" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest">+ Add Number</button>
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Barangay</label>
-              <input v-model="form.address.barangay" class="input" placeholder="Brgy. Name" />
+            <div class="space-y-2">
+              <div v-for="(phone, i) in form.contact.phones" :key="'ph'+i" class="flex gap-2 animate-fade-in">
+                <div class="relative flex-1">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-xs">+63</span>
+                  <input v-model="form.contact.phones[i]" :class="F" class="pl-10" placeholder="9xx-xxx-xxxx" type="tel" />
+                </div>
+                <button @click="removePhone(i)" :disabled="form.contact.phones.length === 1"
+                  class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Municipality</label>
-              <input v-model="form.address.municipality" class="input" placeholder="Municipality" />
+          </div>
+          <div :class="SECTION">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Email Addresses</h3>
+              <button @click="addEmail" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest">+ Add Email</button>
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">City</label>
-              <input v-model="form.address.city" class="input" placeholder="City" />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Province</label>
-              <input v-model="form.address.province" class="input" placeholder="Province" />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">ZIP Code</label>
-              <input v-model="form.address.zipCode" class="input" placeholder="6000" />
+            <div class="space-y-2">
+              <div v-for="(email, i) in form.contact.emails" :key="'em'+i" class="flex gap-2 animate-fade-in">
+                <input v-model="form.contact.emails[i]" :class="[F, 'flex-1']" placeholder="you@example.com" type="email" />
+                <button @click="removeEmail(i)" :disabled="form.contact.emails.length === 1"
+                  class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- ── EDUCATION ─────────────────────────────────────────── -->
-      <div v-if="activeTab === 'education'"
-        class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 space-y-4">
+        <!-- Address -->
+        <div :class="SECTION">
+          <h3 class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest mb-4">Residential Address</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2 flex flex-col gap-1.5">
+              <label :class="LABEL">Sitio / House No. / Street</label>
+              <input v-model="form.address.sitio" :class="F" placeholder="Block 4, Lot 7, Magsaysay St." />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Barangay</label>
+              <input v-model="form.address.barangay" :class="F" placeholder="Barangay" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Municipality / City</label>
+              <input v-model="form.address.municipality" :class="F" placeholder="Municipality" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Province <span class="text-red-400">*</span></label>
+              <input v-model="form.address.province" :class="F" placeholder="Province" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">ZIP Code</label>
+              <input v-model="form.address.zipCode" :class="F" placeholder="6214" />
+            </div>
+          </div>
+        </div>
+      </section>
 
+      <!-- ══ TAB 2: FAMILY ══════════════════════════════════════════ -->
+      <section v-if="activeTab === 'family'" class="space-y-6 animate-fade-in">
+
+        <!-- Spouse -->
+        <div :class="SECTION">
+          <div class="flex items-center gap-2 mb-5">
+            <i class="pi pi-users text-[var(--color-primary)] text-sm"></i>
+            <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">II. Family Background</h3>
+          </div>
+          <p class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest border-b border-[var(--border-main)] pb-2 mb-4">Spouse Information</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">First Name</label>
+              <input v-model="form.family.spouse.firstName" :class="F" placeholder="First Name" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Middle Name</label>
+              <input v-model="form.family.spouse.middleName" :class="F" placeholder="Middle Name" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Last Name</label>
+              <input v-model="form.family.spouse.lastName" :class="F" placeholder="Last Name" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Suffix</label>
+              <input v-model="form.family.spouse.suffix" :class="F" placeholder="Jr. / Sr." />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Occupation</label>
+              <input v-model="form.family.spouse.occupation" :class="F" placeholder="e.g. Teacher, Nurse..." />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Employer / Business Name</label>
+              <input v-model="form.family.spouse.employer" :class="F" placeholder="Department / Company" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Contact Number</label>
+              <input v-model="form.family.spouse.phone" :class="F" placeholder="09xx-xxx-xxxx" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Father & Mother -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div :class="SECTION">
+            <p class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest border-b border-[var(--border-main)] pb-2 mb-4">Father's Name</p>
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">First Name</label>
+                  <input v-model="form.family.father.firstName" :class="F" placeholder="First Name" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Middle Name</label>
+                  <input v-model="form.family.father.middleName" :class="F" placeholder="Middle Name" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Last Name</label>
+                  <input v-model="form.family.father.lastName" :class="F" placeholder="Last Name" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Suffix</label>
+                  <input v-model="form.family.father.suffix" :class="F" placeholder="Jr. / Sr." />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div :class="SECTION">
+            <p class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest border-b border-[var(--border-main)] pb-2 mb-4">Mother's Maiden Name</p>
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">First Name</label>
+                  <input v-model="form.family.mother.firstName" :class="F" placeholder="First Name" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Middle Name</label>
+                  <input v-model="form.family.mother.middleName" :class="F" placeholder="Middle Name" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Last Name</label>
+                  <input v-model="form.family.mother.lastName" :class="F" placeholder="Last Name" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Suffix</label>
+                  <input v-model="form.family.mother.suffix" :class="F" placeholder="(if any)" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Children -->
+        <div :class="SECTION">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Children</p>
+            <button @click="addItem('children')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest">+ Add Child</button>
+          </div>
+          <div v-if="form.family.children.length === 0" class="text-center py-6 text-[var(--text-faint)] text-xs">
+            No children added yet.
+          </div>
+          <div class="space-y-4">
+            <div v-for="(child, i) in form.family.children" :key="i" class="p-4 bg-[var(--bg-app)] rounded-xl border border-[var(--border-main)] animate-fade-in">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Child #{{ i + 1 }}
+                  <span v-if="child.birthDate" class="text-[var(--color-primary)] ml-2">Age: {{ calcAge(child.birthDate) }}</span>
+                </span>
+                <button @click="removeItem('children', i)" class="text-red-400 hover:text-red-600 transition-colors text-xs">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label :class="LABEL">First Name</label>
+                  <input v-model="child.firstName" :class="F" placeholder="First Name" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label :class="LABEL">Middle Name</label>
+                  <input v-model="child.middleName" :class="F" placeholder="Middle Name" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label :class="LABEL">Last Name</label>
+                  <input v-model="child.lastName" :class="F" placeholder="Last Name" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label :class="LABEL">Suffix</label>
+                  <input v-model="child.suffix" :class="F" placeholder="Jr./Sr." />
+                </div>
+              </div>
+              <div class="mt-3 flex flex-col gap-1 max-w-xs">
+                <label :class="LABEL">Date of Birth</label>
+                <input v-model="child.birthDate" type="date" :class="F" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ TAB 3: EDUCATION ═══════════════════════════════════════ -->
+      <section v-if="activeTab === 'education'" class="space-y-6 animate-fade-in">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-[var(--text-main)]">Educational Background</h3>
-          <button @click="addEducation"
-            class="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:underline">
-            <i class="pi pi-plus text-[10px]"></i> Add
-          </button>
+          <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">III. Educational Background</h3>
+          <button @click="addItem('education')" class="btn-primary h-9 px-5 text-xs font-bold">+ Add Level</button>
         </div>
-
-        <div v-if="form.education.length === 0"
-          class="text-center py-10 text-[var(--text-muted)] text-sm">
-          <i class="pi pi-graduation-cap text-3xl mb-2 block"></i>
-          No education entries yet. Click "Add" to start.
+        <div v-if="form.education.length === 0" :class="[SECTION, 'text-center py-10']">
+          <i class="pi pi-graduation-cap text-3xl text-[var(--text-faint)] mb-3 block"></i>
+          <p class="text-sm font-bold text-[var(--text-muted)]">No educational records yet.</p>
+          <p class="text-xs text-[var(--text-faint)] mt-1">Click "Add Level" to start — from Elementary to Doctorate.</p>
         </div>
-
-        <div v-for="(edu, i) in form.education" :key="i"
-          class="border border-[var(--border-main)] rounded-xl p-4 space-y-3 relative">
-          <button @click="removeEducation(i)"
-            class="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors"
-            aria-label="Remove">
-            <i class="pi pi-trash text-sm"></i>
-          </button>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div v-for="(edu, i) in form.education" :key="i" :class="[SECTION, 'relative transition-all hover:border-[var(--color-primary-ring)]']">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center">
+                <i class="pi pi-graduation-cap text-[var(--color-primary)] text-xs"></i>
+              </div>
+              <span class="text-xs font-black text-[var(--text-main)] uppercase tracking-widest">{{ edu.level || `Record #${i+1}` }}</span>
+            </div>
+            <button @click="removeItem('education', i)" class="text-red-400 hover:text-red-600 transition-colors text-sm">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Level</label>
-              <select v-model="edu.level" class="input">
-                <option value="">Select</option>
-                <option>Vocational</option>
+              <label :class="LABEL">Level <span class="text-red-400">*</span></label>
+              <select v-model="edu.level" :class="F">
+                <option value="">Select Level...</option>
+                <option>Elementary</option>
+                <option>Secondary</option>
+                <option>Vocational / Trade Course</option>
                 <option>Bachelor</option>
                 <option>Masteral</option>
                 <option>Doctorate</option>
               </select>
             </div>
+            <div class="sm:col-span-2 flex flex-col gap-1.5">
+              <label :class="LABEL">School / University Name <span class="text-red-400">*</span></label>
+              <input v-model="edu.school" :class="F" placeholder="e.g. University of the Philippines" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Degree / Course</label>
-              <input v-model="edu.degree" class="input" placeholder="e.g. BSEd Major in English" />
+              <label :class="LABEL">Degree / Course Title <span class="text-red-400">*</span></label>
+              <input v-model="edu.degree" :class="F" placeholder="e.g. Bachelor of Secondary Education" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">School / University</label>
-              <input v-model="edu.school" class="input" placeholder="School name" />
+              <label :class="LABEL">Honors / Awards Received</label>
+              <input v-model="edu.honorsReceived" :class="F" placeholder="e.g. Cum Laude, With Honors" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Year From</label>
+              <input v-model="edu.periodFrom" :class="F" placeholder="2008" type="number" min="1950" max="2100" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Year Graduated</label>
-              <input v-model.number="edu.yearGraduated" type="number" class="input" placeholder="2020" min="1900" max="2100" />
+              <label :class="LABEL">Year To</label>
+              <input v-model="edu.periodTo" :class="F" placeholder="2012" type="number" min="1950" max="2100" />
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Units Earned (if not graduated)</label>
-              <input v-model.number="edu.units" type="number" class="input" placeholder="e.g. 18" />
+          </div>
+          <!-- Graduated toggle -->
+          <div class="p-4 bg-[var(--bg-app)] rounded-xl border border-[var(--border-main)]">
+            <label class="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" v-model="edu.notGraduated" class="w-4 h-4 rounded accent-[var(--color-primary)]" />
+              <div>
+                <span class="text-xs font-bold text-[var(--text-main)]">Did not graduate / No degree received</span>
+                <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Check this if you attended but did not complete the program.</p>
+              </div>
+            </label>
+            <div class="mt-4 grid grid-cols-2 gap-4" v-if="edu.notGraduated">
+              <div class="flex flex-col gap-1.5">
+                <label :class="LABEL">Units Earned</label>
+                <input v-model.number="edu.unitsEarned" type="number" :class="F" placeholder="e.g. 75 units" min="0" />
+              </div>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-4" v-else>
+              <div class="flex flex-col gap-1.5">
+                <label :class="LABEL">Year Graduated</label>
+                <input v-model.number="edu.yearGraduated" type="number" :class="F" placeholder="e.g. 2012" min="1950" max="2100" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- ── ELIGIBILITY ──────────────────────────────────────────── -->
-      <div v-if="activeTab === 'eligibility'"
-        class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 space-y-4">
-
+      <!-- ══ TAB 4: ELIGIBILITY ══════════════════════════════════════ -->
+      <section v-if="activeTab === 'eligibility'" class="space-y-6 animate-fade-in">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-[var(--text-main)]">Civil Service Eligibility</h3>
-          <button @click="addEligibility"
-            class="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:underline">
-            <i class="pi pi-plus text-[10px]"></i> Add
-          </button>
+          <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">IV. Civil Service Eligibility</h3>
+          <button @click="addItem('eligibility')" class="btn-primary h-9 px-5 text-xs font-bold">+ Add Record</button>
         </div>
-
-        <div v-if="form.eligibility.length === 0"
-          class="text-center py-10 text-[var(--text-muted)] text-sm">
-          <i class="pi pi-verified text-3xl mb-2 block"></i>
-          No eligibility entries yet. Click "Add" to start.
+        <div v-if="form.eligibility.length === 0" :class="[SECTION, 'text-center py-10']">
+          <i class="pi pi-verified text-3xl text-[var(--text-faint)] mb-3 block"></i>
+          <p class="text-sm font-bold text-[var(--text-muted)]">No eligibility records.</p>
+          <p class="text-xs text-[var(--text-faint)] mt-1">Add LET, CS Professional/Sub-Professional, Bar, Board exams, etc.</p>
         </div>
-
-        <div v-for="(el, i) in form.eligibility" :key="i"
-          class="border border-[var(--border-main)] rounded-xl p-4 space-y-3 relative">
-          <button @click="removeEligibility(i)"
-            class="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors" aria-label="Remove">
-            <i class="pi pi-trash text-sm"></i>
-          </button>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="flex flex-col gap-1.5 sm:col-span-2">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Name of Eligibility</label>
-              <input v-model="el.name" class="input" placeholder="e.g. Civil Service Professional" />
+        <div v-for="(el, i) in form.eligibility" :key="i" :class="[SECTION, 'relative transition-all hover:border-[var(--color-primary-ring)]']">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center">
+                <i class="pi pi-verified text-[var(--color-primary)] text-xs"></i>
+              </div>
+              <span class="text-xs font-black text-[var(--text-main)] uppercase tracking-widest">{{ el.name || `Record #${i+1}` }}</span>
+            </div>
+            <button @click="removeItem('eligibility', i)" class="text-red-400 hover:text-red-600 transition-colors">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Eligibility / Exam Title <span class="text-red-400">*</span></label>
+              <input v-model="el.name" :class="F" placeholder="e.g. Licensure Exam for Teachers (LET)" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Place of Examination</label>
-              <input v-model="el.placeOfExam" class="input" placeholder="e.g. Cebu City" />
+              <label :class="LABEL">Rating / Score (%)</label>
+              <input v-model="el.rating" :class="F" placeholder="e.g. 82.40" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Date of Examination</label>
+              <input v-model="el.dateOfExam" type="date" :class="F" />
+            </div>
+            <div class="sm:col-span-2 flex flex-col gap-1.5">
+              <label :class="LABEL">Place / Venue of Examination</label>
+              <input v-model="el.placeOfExam" :class="F" placeholder="e.g. University of Negros Occidental - Recoletos, Bacolod City" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-[var(--bg-app)] rounded-xl border border-[var(--border-main)]">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">License / Certificate Number <span class="text-[var(--text-faint)] normal-case font-normal">(if applicable)</span></label>
+              <input v-model="el.licenseNumber" :class="F" placeholder="e.g. 0000000" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Date of Examination</label>
-              <input v-model="el.dateOfExam" type="date" class="input" />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Rating</label>
-              <input v-model="el.rating" class="input" placeholder="e.g. 81.38%" />
+              <label :class="LABEL">License Validity / Expiry Date</label>
+              <input v-model="el.licenseValidity" type="date" :class="F" />
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- ── TRAINING ───────────────────────────────────────────── -->
-      <div v-if="activeTab === 'training'"
-        class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 space-y-4">
-
+      <!-- ══ TAB 5: EXPERIENCE ════════════════════════════════════════ -->
+      <section v-if="activeTab === 'experience'" class="space-y-6 animate-fade-in">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-[var(--text-main)]">Training & Seminars</h3>
-          <button @click="addTraining"
-            class="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:underline">
-            <i class="pi pi-plus text-[10px]"></i> Add
-          </button>
+          <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">V. Work Experience</h3>
+          <button @click="addItem('experience')" class="btn-primary h-9 px-5 text-xs font-bold">+ Add Service Record</button>
         </div>
-
-        <div v-if="form.training.length === 0"
-          class="text-center py-10 text-[var(--text-muted)] text-sm">
-          <i class="pi pi-star text-3xl mb-2 block"></i>
-          No training entries yet. Click "Add" to start.
+        <div v-if="form.experience.length === 0" :class="[SECTION, 'text-center py-10']">
+          <i class="pi pi-briefcase text-3xl text-[var(--text-faint)] mb-3 block"></i>
+          <p class="text-sm font-bold text-[var(--text-muted)]">No work experience records yet.</p>
         </div>
-
-        <div v-for="(tr, i) in form.training" :key="i"
-          class="border border-[var(--border-main)] rounded-xl p-4 space-y-3 relative">
-          <button @click="removeTraining(i)"
-            class="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors"
-            aria-label="Remove">
-            <i class="pi pi-trash text-sm"></i>
-          </button>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="flex flex-col gap-1.5 sm:col-span-2">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Training Title</label>
-              <input v-model="tr.title" class="input" placeholder="e.g. School-Based INSET" />
+        <div v-for="(exp, i) in form.experience" :key="i" :class="[SECTION, 'relative transition-all hover:border-[var(--color-primary-ring)]']">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center">
+                <i class="pi pi-briefcase text-[var(--color-primary)] text-xs"></i>
+              </div>
+              <div>
+                <span class="text-xs font-black text-[var(--text-main)]">{{ exp.position || `Record #${i+1}` }}</span>
+                <span v-if="exp.company" class="text-[10px] text-[var(--text-muted)] ml-2">@ {{ exp.company }}</span>
+              </div>
+            </div>
+            <button @click="removeItem('experience', i)" class="text-red-400 hover:text-red-600 transition-colors">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Position Title <span class="text-red-400">*</span></label>
+              <input v-model="exp.position" :class="F" placeholder="e.g. Teacher I, Administrative Officer II" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Provider / Organizer</label>
-              <input v-model="tr.provider" class="input" placeholder="Provider name" />
+              <label :class="LABEL">Department / Agency / Company <span class="text-red-400">*</span></label>
+              <input v-model="exp.company" :class="F" placeholder="e.g. DepEd Division of Guihulngan City" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Date From</label>
+              <input v-model="exp.periodFrom" type="date" :class="F" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Hours</label>
-              <input v-model.number="tr.hours" type="number" class="input" placeholder="e.g. 8" min="0" />
+              <label :class="LABEL">Date To <span class="text-[var(--text-faint)] normal-case font-normal">(leave blank if current)</span></label>
+              <input v-model="exp.periodTo" type="date" :class="F" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Date Issued / Completed</label>
-              <input v-model="tr.dateIssued" type="date" class="input" />
+              <label :class="LABEL">Monthly Salary (₱)</label>
+              <input v-model.number="exp.monthlySalary" type="number" :class="F" placeholder="0.00" min="0" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Salary Grade / Step</label>
+              <input v-model="exp.salaryGrade" :class="F" placeholder="e.g. SG-11/1" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Status of Appointment</label>
+              <select v-model="exp.statusOfAppointment" :class="F">
+                <option>Permanent</option><option>Temporary</option>
+                <option>Coterminous</option><option>Contractual</option>
+                <option>Casual</option><option>Job Order</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-3 pt-6">
+              <input type="checkbox" v-model="exp.isGovernment" :id="`gov-${i}`" class="w-4 h-4 accent-[var(--color-primary)]" />
+              <label :for="`gov-${i}`" class="text-xs font-bold text-[var(--text-main)] cursor-pointer">Government Service</label>
+            </div>
+          </div>
+          <!-- Key Responsibilities -->
+          <div class="p-4 bg-[var(--bg-app)] rounded-xl border border-[var(--border-main)]">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <p class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Key Responsibilities</p>
+                <p class="text-[10px] text-[var(--text-faint)] mt-0.5">Optional — describe major duties performed in this role.</p>
+              </div>
+              <button @click="addResponsibility(exp)" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest">+ Add</button>
+            </div>
+            <div class="space-y-2">
+              <div v-for="(resp, ri) in exp.keyResponsibilities" :key="ri" class="flex gap-2 animate-fade-in">
+                <div class="w-5 h-11 flex items-center justify-center shrink-0">
+                  <div class="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]"></div>
+                </div>
+                <input v-model="exp.keyResponsibilities[ri]" :class="[F, 'flex-1']"
+                  :placeholder="`e.g. Prepared lesson plans and conducted daily classes`" />
+                <button @click="removeResponsibility(exp, ri)" class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+              <p v-if="exp.keyResponsibilities.length === 0" class="text-xs text-[var(--text-faint)] italic py-2">No responsibilities listed.</p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- ── EXPERIENCE ─────────────────────────────────────────── -->
-      <div v-if="activeTab === 'experience'"
-        class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 space-y-4">
-
+      <!-- ══ TAB 6: L&D / TRAININGS ══════════════════════════════════ -->
+      <section v-if="activeTab === 'training'" class="space-y-6 animate-fade-in">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-[var(--text-main)]">Work Experience</h3>
-          <button @click="addExperience"
-            class="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:underline">
-            <i class="pi pi-plus text-[10px]"></i> Add
-          </button>
+          <div>
+            <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">VII. Learning &amp; Development (Trainings)</h3>
+            <p class="text-[10px] text-[var(--text-muted)] mt-1">Include seminars, workshops, conferences, technical trainings, tech-voc certifications, etc.</p>
+          </div>
+          <button @click="addItem('training')" class="btn-primary h-9 px-5 text-xs font-bold shrink-0">+ Add Training</button>
         </div>
-
-        <div v-if="form.experience.length === 0"
-          class="text-center py-10 text-[var(--text-muted)] text-sm">
-          <i class="pi pi-briefcase text-3xl mb-2 block"></i>
-          No experience entries yet. Click "Add" to start.
+        <div v-if="form.training.length === 0" :class="[SECTION, 'text-center py-10']">
+          <i class="pi pi-book text-3xl text-[var(--text-faint)] mb-3 block"></i>
+          <p class="text-sm font-bold text-[var(--text-muted)]">No training records yet.</p>
         </div>
+        <div v-for="(t, i) in form.training" :key="i" :class="[SECTION, 'relative transition-all hover:border-[var(--color-primary-ring)]']">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center">
+                <i class="pi pi-book text-[var(--color-primary)] text-xs"></i>
+              </div>
+              <div>
+                <span class="text-xs font-black text-[var(--text-main)]">{{ t.title || `Training #${i+1}` }}</span>
+                <span v-if="t.typeOfLD" class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[var(--color-primary-light)] text-[var(--color-primary)]">{{ t.typeOfLD }}</span>
+              </div>
+            </div>
+            <button @click="removeItem('training', i)" class="text-red-400 hover:text-red-600 transition-colors">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+          <div class="flex flex-col gap-1.5 mb-4">
+            <label :class="LABEL">Training / Seminar Title <span class="text-red-400">*</span></label>
+            <input v-model="t.title" :class="F" placeholder="e.g. Advanced Training on ICT Integration in DepEd Schools" />
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Date From</label>
+              <input v-model="t.periodFrom" type="date" :class="F" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Date To</label>
+              <input v-model="t.periodTo" type="date" :class="F" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">No. of Hours <span class="text-red-400">*</span></label>
+              <input v-model.number="t.hours" type="number" :class="F" placeholder="e.g. 8" min="0" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Type of L&amp;D</label>
+              <select v-model="t.typeOfLD" :class="F">
+                <option>Technical</option>
+                <option>Managerial</option>
+                <option>Supervisory</option>
+                <option>Academic</option>
+                <option>Foundation</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label :class="LABEL">Conducted by / Provider / Sponsor</label>
+            <input v-model="t.provider" :class="F" placeholder="e.g. DepEd Region VII, CSC, TESDA, State College..." />
+          </div>
+        </div>
+      </section>
 
-        <div v-for="(exp, i) in form.experience" :key="i"
-          class="border border-[var(--border-main)] rounded-xl p-4 space-y-3 relative">
-          <button @click="removeExperience(i)"
-            class="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors"
-            aria-label="Remove">
-            <i class="pi pi-trash text-sm"></i>
-          </button>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Position / Designation</label>
-              <input v-model="exp.position" class="input" placeholder="e.g. Teacher I" />
+      <!-- ══ TAB 7: VOLUNTARY WORK ════════════════════════════════════ -->
+      <section v-if="activeTab === 'voluntary'" class="space-y-6 animate-fade-in">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">VI. Voluntary Work / Involvement</h3>
+            <p class="text-[10px] text-[var(--text-muted)] mt-1">Include community service, civic organizations, NGOs, and other unpaid contributions.</p>
+          </div>
+          <button @click="addItem('voluntary')" class="btn-primary h-9 px-5 text-xs font-bold shrink-0">+ Add Entry</button>
+        </div>
+        <div v-if="form.voluntaryWork.length === 0" :class="[SECTION, 'text-center py-10']">
+          <i class="pi pi-heart text-3xl text-[var(--text-faint)] mb-3 block"></i>
+          <p class="text-sm font-bold text-[var(--text-muted)]">No voluntary work records.</p>
+        </div>
+        <div v-for="(v, i) in form.voluntaryWork" :key="i" :class="[SECTION, 'relative transition-all hover:border-[var(--color-primary-ring)]']">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 space-y-3">
+              <div class="flex flex-col gap-1.5">
+                <label :class="LABEL">Organization / Group Name <span class="text-red-400">*</span></label>
+                <input v-model="v.organization" :class="F" placeholder="e.g. Red Cross Chapter, Rotary Club..." />
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Position / Nature of Work</label>
+                  <input v-model="v.position" :class="F" placeholder="e.g. Volunteer, Coordinator" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Date From</label>
+                  <input v-model="v.periodFrom" type="date" :class="F" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label :class="LABEL">Date To</label>
+                  <input v-model="v.periodTo" type="date" :class="F" />
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5 max-w-xs">
+                <label :class="LABEL">Number of Hours</label>
+                <input v-model.number="v.hours" type="number" :class="F" placeholder="e.g. 120" min="0" />
+              </div>
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Company / Agency</label>
-              <input v-model="exp.company" class="input" placeholder="e.g. DepEd Division of..." />
+            <button @click="removeItem('voluntary', i)" class="text-red-400 hover:text-red-600 transition-colors mt-1 shrink-0">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ TAB 8: OTHERS ═══════════════════════════════════════════ -->
+      <section v-if="activeTab === 'others'" class="space-y-6 animate-fade-in">
+        <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">VIII. Other Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <!-- Special Skills & Hobbies -->
+          <div :class="SECTION">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Special Skills &amp; Hobbies</p>
+                <p class="text-[10px] text-[var(--text-muted)] mt-0.5">e.g. Computer Programming, Playing Guitar, Drawing...</p>
+              </div>
+              <button @click="addItem('skills')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest shrink-0">+ Add</button>
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Duration (months)</label>
-              <input v-model.number="exp.months" type="number" class="input" placeholder="e.g. 12" min="0" />
+            <div class="space-y-2">
+              <div v-for="(item, i) in form.specialSkills" :key="i" class="flex gap-2 animate-fade-in">
+                <input v-model="form.specialSkills[i]" :class="[F, 'flex-1']" placeholder="e.g. Microsoft Excel, Public Speaking..." />
+                <button @click="removeItem('skills', i)" class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+              <p v-if="form.specialSkills.length === 0" class="text-xs text-[var(--text-faint)] italic py-2">None listed yet.</p>
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Monthly Salary</label>
-              <input v-model.number="exp.monthlySalary" type="number" class="input" placeholder="e.g. 30000" min="0" />
+          </div>
+
+          <!-- Non-Academic Distinctions -->
+          <div :class="SECTION">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Non-Academic Distinctions</p>
+                <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Awards, recognitions, honors outside academics — e.g. Best Teacher Award, Community Leadership Award...</p>
+              </div>
+              <button @click="addItem('distinctions')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest shrink-0">+ Add</button>
             </div>
-            <div class="flex items-center gap-2 pt-1">
-              <input :id="`gov-${i}`" v-model="exp.isGovernment" type="checkbox"
-                class="w-4 h-4 rounded accent-[var(--color-primary)]" />
-              <label :for="`gov-${i}`" class="text-sm text-[var(--text-main)] cursor-pointer">Government position</label>
+            <div class="space-y-2">
+              <div v-for="(item, i) in form.nonAcademicDistinctions" :key="i" class="flex gap-2 animate-fade-in">
+                <input v-model="form.nonAcademicDistinctions[i]" :class="[F, 'flex-1']" placeholder="e.g. Most Outstanding Teacher, Division Level, 2023" />
+                <button @click="removeItem('distinctions', i)" class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+              <p v-if="form.nonAcademicDistinctions.length === 0" class="text-xs text-[var(--text-faint)] italic py-2">None listed yet.</p>
+            </div>
+          </div>
+
+          <!-- Membership in Organizations -->
+          <div :class="SECTION">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Membership in Organizations</p>
+                <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Professional organizations, associations, clubs, civic groups — include role and year.</p>
+              </div>
+              <button @click="addItem('memberships')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest shrink-0">+ Add</button>
+            </div>
+            <div class="space-y-2">
+              <div v-for="(item, i) in form.memberships" :key="i" class="flex gap-2 animate-fade-in">
+                <input v-model="form.memberships[i]" :class="[F, 'flex-1']" placeholder="e.g. Philippine Association of Classroom Teachers (PACT), Member, 2021" />
+                <button @click="removeItem('memberships', i)" class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+              <p v-if="form.memberships.length === 0" class="text-xs text-[var(--text-faint)] italic py-2">None listed yet.</p>
+            </div>
+          </div>
+
+          <!-- Core Competencies -->
+          <div :class="SECTION">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <p class="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Core Competencies</p>
+                <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Professional competencies relevant to the position — used for job matching and evaluation.</p>
+              </div>
+              <button @click="addItem('competencies')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest shrink-0">+ Add</button>
+            </div>
+            <div class="space-y-2">
+              <div v-for="(item, i) in form.competencies" :key="i" class="flex gap-2 animate-fade-in">
+                <input v-model="form.competencies[i]" :class="[F, 'flex-1']" placeholder="e.g. Classroom Management, Curriculum Planning, Student Assessment..." />
+                <button @click="removeItem('competencies', i)" class="w-11 h-11 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+              <p v-if="form.competencies.length === 0" class="text-xs text-[var(--text-faint)] italic py-2">None listed yet.</p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Save button -->
-      <div class="flex justify-end mt-6">
-        <button @click="save" :disabled="saving"
-          class="btn-primary h-10 px-6 text-sm disabled:opacity-50 flex items-center gap-2">
-          <i v-if="saving" class="pi pi-spin pi-spinner text-xs"></i>
-          <i v-else class="pi pi-save text-xs"></i>
-          {{ saving ? 'Saving...' : 'Save Profile' }}
-        </button>
-      </div>
-    </template>
+    </div><!-- /v-else -->
+
+    <!-- STICKY SAVE -->
+    <div class="fixed bottom-8 right-8 z-40">
+      <button @click="saveProfile" :disabled="saving"
+        class="group btn-primary px-8 h-14 rounded-2xl shadow-2xl flex items-center gap-3 transition-all hover:scale-[1.05] active:scale-[0.95] disabled:opacity-70">
+        <i :class="saving ? 'pi pi-spin pi-spinner' : 'pi pi-save'" class="text-lg"></i>
+        <span class="font-black uppercase tracking-widest text-sm">{{ saving ? 'Saving...' : 'Save PDS Profile' }}</span>
+      </button>
+    </div>
+
   </div>
 </template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar { display: none; }
+</style>

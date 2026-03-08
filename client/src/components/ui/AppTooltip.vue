@@ -1,10 +1,3 @@
-<!--
-  AppTooltip — Hover/focus tooltip (4 directions)
-  Usage:
-    <AppTooltip content="Save your work" placement="top">
-      <AppButton icon="pi-save" variant="ghost" />
-    </AppTooltip>
--->
 <script setup>
 import { ref } from 'vue'
 

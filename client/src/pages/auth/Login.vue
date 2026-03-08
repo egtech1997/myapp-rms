@@ -47,7 +47,7 @@ const handleGoogleLogin = () => {
             <div class="p-8 sm:p-10">
                 <div class="mb-8 text-center">
                     <div
-                        class="mx-auto mb-5 w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shadow-md shadow-blue-900/20">
+                        class="mx-auto mb-5 w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shadow-md">
                         <i class="pi pi-shield text-white text-lg"></i>
                     </div>
                     <h2 class="text-xl font-bold text-[var(--text-main)] tracking-tight">
@@ -98,7 +98,7 @@ const handleGoogleLogin = () => {
                     </div>
 
                     <button type="submit" :disabled="loading"
-                        class="w-full h-11 mt-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-900/20">
+                        class="w-full h-11 mt-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
                         <i v-if="loading" class="pi pi-spin pi-spinner text-sm"></i>
                         <span>{{ loading ? 'Signing in...' : 'Sign In' }}</span>
                     </button>

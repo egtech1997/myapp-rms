@@ -97,7 +97,7 @@ const handlePwUpdate = async () => {
 }
 
 const avatarSrc = () => authStore.user?.avatarUrl
-    || `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'A')}&background=1d4ed8&color=fff&bold=true`
+    || `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'A')}&background=4A4D8F&color=fff&bold=true`
 </script>
 
 <template>
@@ -253,7 +253,7 @@ const avatarSrc = () => authStore.user?.avatarUrl
             <!-- Password Tab -->
             <div v-if="settingsTab === 'password'" class="flex flex-col gap-4">
                 <div v-if="authStore.user?.googleId"
-                    class="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700"
+                    class="flex items-start gap-3 p-3 rounded-xl bg-[var(--color-primary-light)] border border-[var(--border-main)] text-[var(--color-primary)]"
                     role="alert">
                     <i class="pi pi-info-circle mt-0.5 shrink-0 text-sm" aria-hidden="true"></i>
                     <p class="text-sm">Google account — manage password via Google settings.</p>

@@ -1,21 +1,3 @@
-<!--
-  AppDropdown — Positioned dropdown menu
-  ─────────────────────────────────────────────────────────────
-  Usage:
-    <AppDropdown :items="menuItems">
-      <template #trigger>
-        <AppButton icon="pi-ellipsis-v" variant="ghost" />
-      </template>
-    </AppDropdown>
-
-    Items format:
-    [
-      { label: 'Edit',   icon: 'pi-pencil', action: () => edit() },
-      { label: 'Delete', icon: 'pi-trash',  action: () => del(), danger: true },
-      { type: 'divider' },
-      { label: 'Export', icon: 'pi-download', href: '/export' },
-    ]
--->
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 

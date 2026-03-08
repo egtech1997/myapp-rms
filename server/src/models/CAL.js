@@ -17,10 +17,17 @@ const calSchema = new mongoose.Schema(
         },
         applicantName: String,
         totalPoints: Number,
-
-        potentialPoints: Number,
+        
+        // Tie-breaker points (DO 007, s. 2023)
+        residencyPriority: { type: Boolean, default: false },
+        boardRating: { type: Number, default: 0 },
+        educationPoints: { type: Number, default: 0 },
+        experiencePoints: { type: Number, default: 0 },
+        trainingPoints: { type: Number, default: 0 },
+        coiPoints: { type: Number, default: 0 }, // Classroom Observation
+        
         rank: Number,
-        isTieBroken: { type: Boolean, default: false },
+        isTie: { type: Boolean, default: false },
         tieBreakerNote: String,
       },
     ],
@@ -54,30 +61,50 @@ const calSchema = new mongoose.Schema(
 );
 
 /**
- * 🔹 ADVANCED SORTING & TIE-BREAKING LOGIC
+ * 🔹 ADVANCED SORTING & TIE-BREAKING LOGIC (DO 007, s. 2023)
  */
 calSchema.pre("save", async function () {
   if (this.rankings && this.rankings.length > 0) {
     this.rankings.sort((a, b) => {
-      // 1. Primary Sort: Total Points (Descending)
-      if (b.totalPoints !== a.totalPoints) {
-        return b.totalPoints - a.totalPoints;
-      }
-      // 2. Secondary Sort: Potential Points (Tie-Breaker)
-      return b.potentialPoints - a.potentialPoints;
+      // 1. Primary: Total Points
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      
+      // 2. Secondary: Localization Law (Residency)
+      if (b.residencyPriority !== a.residencyPriority) return b.residencyPriority ? 1 : -1;
+      
+      // 3. Board Rating
+      if (b.boardRating !== a.boardRating) return b.boardRating - a.boardRating;
+      
+      // 4. Education Points
+      if (b.educationPoints !== a.educationPoints) return b.educationPoints - a.educationPoints;
+      
+      // 5. Experience Points
+      if (b.experiencePoints !== a.experiencePoints) return b.experiencePoints - a.experiencePoints;
+      
+      // 6. Training Points
+      if (b.trainingPoints !== a.trainingPoints) return b.trainingPoints - a.trainingPoints;
+      
+      // 7. Classroom Observation (COI)
+      return b.coiPoints - a.coiPoints;
     });
 
-    // Assign Ranks and Flag Ties
+    // Assign Ranks and Flag Remaining Ties
     this.rankings.forEach((item, index) => {
       item.rank = index + 1;
-
-      // Check if the person above has the same total points
-      if (
-        index > 0 &&
-        this.rankings[index - 1].totalPoints === item.totalPoints
-      ) {
-        item.isTieBroken = true;
-        item.tieBreakerNote = "Tie broken via Potential Points";
+      const prev = this.rankings[index - 1];
+      
+      if (prev && 
+          prev.totalPoints === item.totalPoints && 
+          prev.residencyPriority === item.residencyPriority &&
+          prev.boardRating === item.boardRating &&
+          prev.educationPoints === item.educationPoints &&
+          prev.experiencePoints === item.experiencePoints &&
+          prev.trainingPoints === item.trainingPoints &&
+          prev.coiPoints === item.coiPoints) {
+        item.isTie = true;
+        item.tieBreakerNote = "Persistent tie - requires draw lots";
+      } else {
+        item.isTie = false;
       }
     });
   }

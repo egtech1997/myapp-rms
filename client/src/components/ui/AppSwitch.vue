@@ -1,9 +1,3 @@
-<!--
-  AppSwitch — Toggle switch
-  Usage:
-    <AppSwitch v-model="isActive" label="Enable notifications" />
-    <AppSwitch v-model="darkMode" label="Dark mode" size="sm" />
--->
 <script setup>
 defineOptions({ name: 'AppSwitch' })
 

@@ -1,6 +1,9 @@
 // Core data display
-export { default as StatCard }       from './StatCard.vue'
-export { default as EmptyState }     from './EmptyState.vue'
+export { default as StatCard }        from './StatCard.vue'
+export { default as EmptyState }      from './EmptyState.vue'
+export { default as AppTableReport }  from './AppTableReport.vue'
+export { default as AppDataTable }    from './AppDataTable.vue'
+export { default as AppPageHeader }   from './AppPageHeader.vue'
 
 // Form inputs
 export { default as AppInput }       from './AppInput.vue'
@@ -16,6 +19,7 @@ export { default as AppBadge }       from './AppBadge.vue'
 export { default as AppCard }        from './AppCard.vue'
 export { default as AppAvatar }      from './AppAvatar.vue'
 export { default as AppModal }       from './AppModal.vue'
+export { default as AppDrawer }      from './AppDrawer.vue'
 export { default as AppTabs }        from './AppTabs.vue'
 export { default as AppAlert }       from './AppAlert.vue'
 

@@ -1,14 +1,3 @@
-<!--
-  AppModal — Premium accessible dialog with spring entrance
-  ─────────────────────────────────────────────────────────────
-  Motion contract:
-    Backdrop → fade in 220ms ease-out
-    Panel    → scale(0.94) + translateY(16px) → natural in 320ms spring
-    Exit     → scale(0.97) + opacity → 0 in 180ms ease-in (exits faster)
-
-  Features: focus trap, Escape key, click-outside, size variants,
-            scrollable body, ARIA dialog, header/footer slots.
--->
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 
@@ -17,6 +6,8 @@ defineOptions({ name: 'AppModal' })
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title:      { type: String, default: '' },
+  subtitle:   { type: String, default: '' },
+  icon:       { type: String, default: '' },
   size:       { type: String, default: 'md',
     validator: (v) => ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'full'].includes(v) },
   persistent: { type: Boolean, default: false },
@@ -114,37 +105,45 @@ const sizeMap = {
           ref="panelRef"
           tabindex="-1"
           :class="[
-            'modal-panel relative w-full flex flex-col overflow-hidden',
-            'bg-[var(--surface)] rounded-2xl outline-none',
-            'border border-[var(--border-main)]',
+            'modal-panel relative w-full flex flex-col overflow-hidden outline-none',
+            'bg-[var(--surface)] rounded-2xl',
             sizeMap[size],
             scrollable ? 'max-h-[90vh]' : '',
           ]"
           style="
+            border: 1px solid var(--border-main);
             box-shadow:
-              0 0 0 0.5px rgba(0,0,0,0.08),
-              0 4px 8px rgba(0,0,0,0.06),
-              0 16px 32px rgba(0,0,0,0.10),
-              0 48px 80px rgba(0,0,0,0.14);
+              0 0 0 0.5px rgba(0,0,0,0.05),
+              0 2px 6px rgba(0,0,0,0.04),
+              0 12px 28px rgba(0,0,0,0.08),
+              0 40px 72px rgba(0,0,0,0.12);
             margin: auto;
           ">
+
+          <!-- Blue accent strip -->
+          <div style="height: 3px; background: var(--color-primary); border-radius: 1rem 1rem 0 0; flex-shrink: 0;"></div>
 
           <!-- Header -->
           <slot name="header">
             <div v-if="!hideHeader"
-              class="flex items-center justify-between px-6 py-4 border-b border-[var(--border-main)] shrink-0"
-              style="background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface-2) 60%, var(--surface)) 100%);">
-              <div>
-                <h2 v-if="title" id="modal-title"
-                  class="text-[15px] font-bold text-[var(--text-main)] tracking-tight leading-snug">
-                  {{ title }}
-                </h2>
+              class="flex items-center justify-between px-6 py-4 border-b border-[var(--border-main)] shrink-0 bg-[var(--surface)]">
+              <div class="flex items-center gap-3 min-w-0">
+                <div v-if="icon" class="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center flex-shrink-0">
+                  <i :class="['pi text-sm', icon]" aria-hidden="true"></i>
+                </div>
+                <div class="min-w-0">
+                  <h2 v-if="title" id="modal-title"
+                    class="text-base font-bold text-[var(--text-main)] tracking-tight leading-snug">
+                    {{ title }}
+                  </h2>
+                  <p v-if="subtitle" class="text-xs text-[var(--text-muted)] mt-0.5 leading-snug">{{ subtitle }}</p>
+                </div>
               </div>
               <button
                 type="button"
                 class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)]
-                       hover:bg-[var(--surface-2)] hover:text-[var(--text-main)]
-                       transition-colors duration-[var(--dur-fast)]"
+                       hover:bg-[var(--bg-app)] hover:text-[var(--text-main)]
+                       transition-colors flex-shrink-0 ml-4"
                 aria-label="Close dialog"
                 @click="close">
                 <i class="pi pi-times text-sm" aria-hidden="true"></i>
@@ -162,8 +161,7 @@ const sizeMap = {
 
           <!-- Footer -->
           <div v-if="$slots.footer"
-            class="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-[var(--border-main)]
-                   bg-[var(--surface-2)] shrink-0">
+            class="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-[var(--border-main)] bg-[var(--bg-app)] shrink-0">
             <slot name="footer" />
           </div>
         </div>

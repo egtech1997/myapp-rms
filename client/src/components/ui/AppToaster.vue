@@ -1,21 +1,3 @@
-<!--
-  AppToaster — Sonner-style stacked toast container
-  ─────────────────────────────────────────────────────────────
-  Mount once in App.vue:
-    <AppToaster />
-
-  Then use anywhere:
-    const toast = useToast()
-    toast.success('Saved!')
-    toast.error('Failed.', { description: 'Network error.' })
-    toast.promise(saveData(), { loading: 'Saving...', success: 'Saved!', error: 'Failed.' })
-
-  Stacking behavior:
-    - Up to 3 toasts visible at once
-    - New toasts appear at the bottom (most recent = front)
-    - Older toasts shrink and fade behind (Sonner stacked effect)
-    - Hover expands to show all visible toasts
--->
 <script setup>
 import { ref, computed } from 'vue'
 import AppToast from './AppToast.vue'

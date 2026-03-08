@@ -1,17 +1,3 @@
-<!--
-  AppButton — Premium Design System Button
-  ─────────────────────────────────────────────────────────────
-  Variants:  primary | secondary | danger | ghost | link | outline
-  Sizes:     xs | sm | md (default) | lg | xl
-  Props:     loading, disabled, icon (left), iconRight, block (full-width)
-
-  Motion contract:
-    - Enter hover → translateY(-1px) + shadow lift in 150ms ease-out
-    - Active press → scale(0.98) + shadow compress in 80ms crisp
-    - Release → spring back in 220ms ease-out
-    - Shimmer sweep on primary hover (GPU-accelerated)
-    - Spinner replaces left icon during loading (no layout shift)
--->
 <script setup>
 defineOptions({ name: 'AppButton' })
 
@@ -19,7 +5,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'danger', 'ghost', 'link', 'outline'].includes(v),
+    validator: (v) => ['primary', 'secondary', 'danger', 'ghost', 'link', 'outline', 'gold'].includes(v),
   },
   size: {
     type: String,
@@ -44,6 +30,7 @@ const variantClass = {
   ghost:     'btn-ghost',
   link:      'btn-link',
   outline:   'btn-outline',
+  gold:      'btn-gold',
 }
 
 const sizeMap = {

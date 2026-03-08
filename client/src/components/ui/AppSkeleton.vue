@@ -1,13 +1,3 @@
-<!--
-  AppSkeleton — Content loading placeholder
-  Shapes: line | circle | rect | paragraph | table | card
-  Usage:
-    Single line:      <AppSkeleton width="60%" />
-    Paragraph block:  <AppSkeleton type="paragraph" :lines="4" />
-    Circle:           <AppSkeleton type="circle" size="40px" />
-    Table rows:       <AppSkeleton type="table" :rows="5" :cols="4" />
-    Card:             <AppSkeleton type="card" />
--->
 <script setup>
 defineOptions({ name: 'AppSkeleton' })
 

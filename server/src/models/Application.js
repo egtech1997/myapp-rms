@@ -43,41 +43,53 @@ const applicationSchema = new mongoose.Schema(
         {
           level: {
             type: String,
-            enum: ["Vocational", "Bachelor", "Masteral", "Doctorate"],
+            enum: ["Elementary", "Secondary", "Vocational", "Bachelor", "Masteral", "Doctorate"],
           },
           degree: String,
-          units: Number,
           school: String,
+          periodFrom: String,
+          periodTo: String,
+          unitsEarned: Number,
           yearGraduated: Number,
+          honorsReceived: String,
         },
       ],
       eligibility: [
         {
-          name:        String,
-          placeOfExam: String,
-          dateOfExam:  Date,
-          rating:      String,
+          name: { type: String, trim: true },
+          rating: { type: String, trim: true },
+          dateOfExam: Date,
+          placeOfExam: { type: String, trim: true },
+          licenseNumber: String,
+          licenseValidity: Date,
         },
       ],
       training: [
         {
-          title: String,
-          hours: Number,
-          dateIssued: Date,
+          title: { type: String, required: true },
+          periodFrom: Date,
+          periodTo: Date,
+          hours: { type: Number, required: true },
+          typeOfLD: String,
           provider: String,
         },
       ],
       experience: [
         {
-          position: String,
-          company: String,
-          months: Number,
+          periodFrom: { type: Date, required: true },
+          periodTo: Date,
+          position: { type: String, required: true },
+          company: { type: String, required: true },
+          monthlySalary: Number,
+          salaryGrade: String,
+          statusOfAppointment: String,
           isGovernment: { type: Boolean, default: false },
         },
       ],
+      competencies: [{ type: String }],
       performanceRating: {
-        score: Number, // e.g., 4.500
-        adjective: String, // e.g., "Very Satisfactory"
+        score: Number,
+        adjective: String,
         periodCovered: String,
       },
     },
@@ -124,9 +136,25 @@ const applicationSchema = new mongoose.Schema(
         "comparative_assessment",
         "ranked",
         "disqualified",
+        "appointed",
       ],
       default: "applied",
     },
+    appointmentData: {
+      dateAppointed: Date,
+      effectiveDate: Date,
+      itemNumber: String,
+      remarks: String,
+    },
+    // 📂 ATTACHMENTS (Proofs for verification)
+    attachments: [
+      {
+        type: { type: String, enum: ["transcript", "diploma", "eligibility", "training", "experience", "pds_signed", "id_proof"] },
+        fileUrl: String,
+        fileName: String,
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     isQualified: { type: Boolean, default: true },
     disqualificationReason: {
       type: String,
@@ -146,19 +174,19 @@ const applicationSchema = new mongoose.Schema(
  * jobId4 = last 4 hex chars of the job's _id, ensuring uniqueness
  * even when the same positionCode is reused across different job postings.
  */
+// AUTO-CALCULATE TOTAL SCORE (Weighted based on Rubric)
 applicationSchema.pre("save", async function () {
   if (this.isNew && !this.applicationCode) {
     const jobSuffix = this.submittedTo.toString().slice(-4).toUpperCase();
-
     const count = await mongoose.model("Application").countDocuments({
       submittedTo: this.submittedTo,
     });
     this.applicationCode = `APP-${jobSuffix}-${String(count + 1).padStart(4, "0")}`;
   }
 
-  // AUTO-CALCULATE TOTAL SCORE
-  const r = this.hrRating;
-  if (r) {
+  // Only calculate score if it's being evaluated
+  if (this.hrRating) {
+    const r = this.hrRating;
     this.totalScore =
       (r.educationPoints || 0) +
       (r.trainingPoints || 0) +
@@ -171,6 +199,26 @@ applicationSchema.pre("save", async function () {
       (r.potentialPoints?.bei || 0) +
       (r.potentialPoints?.workSample || 0);
   }
+});
+
+// 🛡️ DEEP SEARCH INDEX
+applicationSchema.index({
+  "applicantData.personalInfo.firstName": "text",
+  "applicantData.personalInfo.lastName": "text",
+  "applicantData.education.degree": "text",
+  "applicantData.education.school": "text",
+  "applicantData.experience.position": "text",
+  "applicantData.experience.company": "text",
+  "applicantData.eligibility.name": "text",
+  "applicationCode": "text"
+}, {
+  weights: {
+    "applicantData.personalInfo.lastName": 10,
+    "applicationCode": 10,
+    "applicantData.education.degree": 5,
+    "applicantData.experience.position": 3
+  },
+  name: "DeepSearchIndex"
 });
 
 export default mongoose.model("Application", applicationSchema);

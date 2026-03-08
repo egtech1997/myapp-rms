@@ -21,7 +21,7 @@ onMounted(async () => {
     style="background: var(--bg-app);">
     <div
       class="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
-      style="background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%); box-shadow: var(--shadow-primary);">
+      style="background: linear-gradient(180deg, #5558A0 0%, #4A4D8F 100%); box-shadow: var(--shadow-primary);">
       <i class="pi pi-shield text-white text-base" aria-hidden="true"></i>
     </div>
     <div class="flex flex-col items-center gap-1">

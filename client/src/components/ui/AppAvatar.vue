@@ -1,15 +1,3 @@
-<!--
-  AppAvatar — Avatar with image, initials fallback, and presence indicator
-  ─────────────────────────────────────────────────────────────
-  Usage:
-    <AppAvatar src="/photo.jpg" name="Juan dela Cruz" size="lg" />
-    <AppAvatar name="Admin User" variant="primary" online />
-    <AppAvatar :src="null" name="Maria Santos" size="xl" shape="square" />
-    <!-- Avatar group -->
-    <div class="flex -space-x-2">
-      <AppAvatar v-for="u in users" :key="u.id" :name="u.name" :src="u.avatar" size="sm" bordered />
-    </div>
--->
 <script setup>
 import { computed } from 'vue'
 
@@ -38,10 +26,10 @@ const initials = computed(() => {
 
 // Deterministic color from name string
 const PALETTE = [
-  ['#1d4ed8', '#eff6ff'],  // blue
+  ['#4A4D8F', '#EDEDF8'],  // purple navy
   ['#7c3aed', '#ede9fe'],  // violet
   ['#059669', '#ecfdf5'],  // green
-  ['#d97706', '#fffbeb'],  // amber
+  ['#EFBF04', '#FFFDE7'],  // soft gold
   ['#dc2626', '#fff1f2'],  // red
   ['#0891b2', '#ecfeff'],  // cyan
   ['#db2777', '#fdf2f8'],  // pink

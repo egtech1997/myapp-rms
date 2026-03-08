@@ -14,7 +14,7 @@ export const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // CRITICAL: populate("roles") must happen here so req.user always has role names
-    const user = await User.findById(decoded.id).populate("roles");
+    const user = await User.findById(decoded.id).select('-password -otp -passwordResetToken -passwordResetExpires').populate("roles");
 
     if (!user) {
       return res.status(401).json({ message: "User no longer exists" });

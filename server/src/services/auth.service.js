@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import * as otpService from "./otp.service.js";
 
 export const registerUserLogic = async (userData) => {
-  const { email, password } = userData;
+  const { email, password, username } = userData;
   const { otp, expiresAt } = otpService.generateOTP();
   const hashedOtp = otpService.hashOTP(otp);
 
@@ -27,8 +27,11 @@ export const registerUserLogic = async (userData) => {
     user.otp = { code: hashedOtp, expiresAt };
     await user.save({ validateBeforeSave: false });
   } else {
+    // Only pass whitelisted fields to prevent mass assignment
     user = await User.create({
-      ...userData,
+      username,
+      email,
+      password,
       roles: [targetRole._id],
       otp: { code: hashedOtp, expiresAt },
     });

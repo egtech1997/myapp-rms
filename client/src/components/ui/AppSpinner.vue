@@ -1,10 +1,3 @@
-<!--
-  AppSpinner — Loading spinner with optional label
-  Usage:
-    <AppSpinner />
-    <AppSpinner size="lg" label="Loading applicants..." />
-    <AppSpinner size="sm" color="white" />
--->
 <script setup>
 defineOptions({ name: 'AppSpinner' })
 

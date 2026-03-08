@@ -4,6 +4,7 @@ import { useRoute, useRouter, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import apiClient from '@/api/axios'
+import NotificationCenter from '@/components/NotificationCenter.vue'
 
 const route         = useRoute()
 const router        = useRouter()
@@ -14,7 +15,7 @@ const settingsStore = useSettingsStore()
 const showMobileMenu  = ref(false)
 const showDropdown    = ref(false)
 const showSettings    = ref(false)
-const settingsTab     = ref('photo')
+const settingsTab     = ref('profile')
 const uploading       = ref(false)
 const isSaving        = ref(false)
 const fileInput       = ref(null)
@@ -23,6 +24,36 @@ const showNewPw       = ref(false)
 const showConfirmPw   = ref(false)
 
 const pw = reactive({ current: '', new: '', confirm: '' })
+
+// ── Account profile form ────────────────────────────────────────
+const profileForm = reactive({ username: '', bio: '', links: { facebook: '', linkedin: '', twitter: '' } })
+
+const openSettings = (tab = 'profile') => {
+    // Pre-populate from authStore
+    profileForm.username       = authStore.user?.username || ''
+    profileForm.bio            = authStore.user?.bio      || ''
+    profileForm.links.facebook = authStore.user?.links?.facebook || ''
+    profileForm.links.linkedin = authStore.user?.links?.linkedin || ''
+    profileForm.links.twitter  = authStore.user?.links?.twitter  || ''
+    settingsTab.value = tab
+    showDropdown.value = false
+    showSettings.value = true
+}
+
+const saveProfileInfo = async () => {
+    isSaving.value = true
+    try {
+        const { data } = await apiClient.patch('/auth/update-me', {
+            username: profileForm.username.trim(),
+            bio:      profileForm.bio,
+            links:    profileForm.links,
+        })
+        authStore.user = { ...authStore.user, ...data.user }
+        showSettings.value = false
+    } catch (err) {
+        alert(err.response?.data?.message || 'Update failed.')
+    } finally { isSaving.value = false }
+}
 
 // ── Avatar upload ────────────────────────────────────────────────
 const triggerFile = () => fileInput.value?.click()
@@ -61,13 +92,14 @@ const handlePwUpdate = async () => {
 
 const navLinks = [
     { label: 'Dashboard',       to: '/user/dashboard',    icon: 'pi-home'        },
+    { label: 'Job Vacancies',   to: '/user/vacancies',    icon: 'pi-briefcase'   },
     { label: 'My Applications', to: '/user/applications', icon: 'pi-folder-open' },
-    { label: 'Job Vacancies',   to: '/vacancies',         icon: 'pi-briefcase'   },
+    { label: 'My Profile',      to: '/user/profile',      icon: 'pi-id-card'     },
 ]
 
 const avatarSrc = computed(() =>
     authStore.user?.avatarUrl
-    || `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'U')}&background=1d4ed8&color=fff&bold=true`
+    || `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'U')}&background=4A4D8F&color=fff&bold=true`
 )
 
 const closeMenu = () => { showMobileMenu.value = false }
@@ -87,7 +119,7 @@ const closeMenu = () => { showMobileMenu.value = false }
                 <!-- Logo -->
                 <router-link to="/" class="flex items-center gap-3 shrink-0 group" aria-label="RSP Portal home">
                     <div class="w-9 h-9 rounded-xl overflow-hidden shadow-md group-hover:shadow-blue-300 transition-shadow"
-                        :class="settingsStore.resolvedLogoUrl ? '' : 'bg-[var(--color-primary)] flex items-center justify-center shadow-blue-200'">
+                        :class="settingsStore.resolvedLogoUrl ? '' : 'bg-[var(--color-primary)] flex items-center justify-center'">
                         <img v-if="settingsStore.resolvedLogoUrl"
                             :src="settingsStore.resolvedLogoUrl"
                             alt="System Logo"
@@ -115,6 +147,9 @@ const closeMenu = () => { showMobileMenu.value = false }
 
                 <!-- Right: user + mobile toggle -->
                 <div class="flex items-center gap-2">
+
+                    <!-- Notifications -->
+                    <NotificationCenter />
 
                     <!-- Mobile menu button -->
                     <button @click="showMobileMenu = !showMobileMenu"
@@ -148,21 +183,38 @@ const closeMenu = () => { showMobileMenu.value = false }
                                     <p class="text-xs text-[var(--text-muted)] truncate mt-0.5">{{ authStore.user?.email }}</p>
                                 </div>
                                 <div class="p-1.5 flex flex-col gap-0.5" role="none">
-                                    <button @click="showSettings = true; settingsTab = 'photo'; showDropdown = false"
-                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-main)] hover:bg-[var(--surface-2)] transition-colors text-left"
+                                    <button @click="openSettings('profile')"
+                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors text-left"
                                         role="menuitem">
-                                        <i class="pi pi-user text-[var(--text-muted)] text-sm" aria-hidden="true"></i> Profile Settings
+                                        <i class="pi pi-user-edit text-[var(--text-muted)] text-sm" aria-hidden="true"></i>
+                                        <div class="leading-tight">
+                                            <p class="text-xs font-semibold">Account Settings</p>
+                                            <p class="text-[10px] text-[var(--text-muted)]">Username, bio, social links</p>
+                                        </div>
                                     </button>
-                                    <button @click="showSettings = true; settingsTab = 'password'; showDropdown = false"
-                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-main)] hover:bg-[var(--surface-2)] transition-colors text-left"
+                                    <button @click="openSettings('avatar')"
+                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors text-left"
                                         role="menuitem">
-                                        <i class="pi pi-lock text-[var(--text-muted)] text-sm" aria-hidden="true"></i> Change Password
+                                        <i class="pi pi-camera text-[var(--text-muted)] text-sm" aria-hidden="true"></i>
+                                        <div class="leading-tight">
+                                            <p class="text-xs font-semibold">Change Photo</p>
+                                            <p class="text-[10px] text-[var(--text-muted)]">Upload avatar or GIF</p>
+                                        </div>
+                                    </button>
+                                    <button @click="openSettings('password')"
+                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors text-left"
+                                        role="menuitem">
+                                        <i class="pi pi-lock text-[var(--text-muted)] text-sm" aria-hidden="true"></i>
+                                        <div class="leading-tight">
+                                            <p class="text-xs font-semibold">Change Password</p>
+                                            <p class="text-[10px] text-[var(--text-muted)]">Update login credentials</p>
+                                        </div>
                                     </button>
                                     <div class="h-px bg-[var(--border-main)] my-1" role="separator"></div>
                                     <button @click="authStore.logout()"
-                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-left"
+                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors text-left"
                                         role="menuitem">
-                                        <i class="pi pi-sign-out text-sm" aria-hidden="true"></i> Logout
+                                        <i class="pi pi-sign-out text-sm" aria-hidden="true"></i> Sign Out
                                     </button>
                                 </div>
                             </div>
@@ -225,60 +277,127 @@ const closeMenu = () => { showMobileMenu.value = false }
             role="dialog" aria-modal="true" aria-labelledby="user-settings-title"
             @click.self="showSettings = false">
 
-            <div class="w-full max-w-md bg-[var(--surface)] rounded-2xl shadow-2xl border border-[var(--border-main)] overflow-hidden animate-zoom-in">
+            <div class="w-full max-w-lg bg-[var(--surface)] rounded-2xl shadow-2xl border border-[var(--border-main)] overflow-hidden animate-zoom-in">
+
+                <!-- Modal Header -->
                 <div class="px-6 py-4 border-b border-[var(--border-main)] flex items-center justify-between">
-                    <h2 id="user-settings-title" class="text-base font-bold text-[var(--text-main)]">Account Settings</h2>
+                    <div class="flex items-center gap-3">
+                        <img :src="avatarSrc" :alt="authStore.user?.username" class="w-9 h-9 rounded-full object-cover border-2 border-[var(--color-primary-light)]" />
+                        <div>
+                            <h2 id="user-settings-title" class="text-sm font-black text-[var(--text-main)]">Account Settings</h2>
+                            <p class="text-[10px] text-[var(--text-muted)] capitalize">{{ authStore.user?.username }}</p>
+                        </div>
+                    </div>
                     <button @click="showSettings = false"
-                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] text-[var(--text-muted)]"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-app)] text-[var(--text-muted)] transition-colors"
                         aria-label="Close settings">
                         <i class="pi pi-times text-sm" aria-hidden="true"></i>
                     </button>
                 </div>
 
+                <!-- Tabs -->
                 <div class="flex border-b border-[var(--border-main)]" role="tablist">
-                    <button v-for="tab in [{id:'photo',icon:'pi-user',label:'Profile Photo'},{id:'password',icon:'pi-lock',label:'Password'}]"
-                        :key="tab.id" @click="settingsTab = tab.id"
+                    <button v-for="tab in [
+                        {id:'profile', icon:'pi-user-edit', label:'Profile'},
+                        {id:'avatar',  icon:'pi-camera',    label:'Photo'},
+                        {id:'password',icon:'pi-lock',      label:'Password'},
+                    ]" :key="tab.id" @click="settingsTab = tab.id"
                         :aria-selected="settingsTab === tab.id ? 'true' : 'false'" role="tab"
-                        :class="['flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors border-b-2',
+                        :class="['flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border-b-2',
                             settingsTab === tab.id
                                 ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary-light)]/30'
-                                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-2)]']">
+                                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)]']">
                         <i :class="['pi text-[11px]', tab.icon]" aria-hidden="true"></i>{{ tab.label }}
                     </button>
                 </div>
 
-                <div v-if="settingsTab === 'photo'" class="p-6 flex flex-col items-center gap-4" role="tabpanel">
+                <!-- TAB: Profile Info -->
+                <div v-if="settingsTab === 'profile'" class="p-6 flex flex-col gap-5" role="tabpanel">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Username</label>
+                        <input v-model="profileForm.username" class="input"
+                            placeholder="Your unique username" autocomplete="username" />
+                        <p class="text-[10px] text-[var(--text-faint)]">Lowercase, no spaces. Used for login and display.</p>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Bio <span class="normal-case font-normal text-[var(--text-faint)]">({{ profileForm.bio.length }}/240)</span></label>
+                        <textarea v-model="profileForm.bio" class="input resize-none" rows="3" maxlength="240"
+                            placeholder="A short bio about yourself — your role, school, advocacies..."></textarea>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Social Links</p>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                                    <i class="pi pi-facebook text-blue-600 text-sm"></i>
+                                </div>
+                                <input v-model="profileForm.links.facebook" class="input flex-1"
+                                    placeholder="facebook.com/yourprofile" />
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                                    <i class="pi pi-linkedin text-sky-700 text-sm"></i>
+                                </div>
+                                <input v-model="profileForm.links.linkedin" class="input flex-1"
+                                    placeholder="linkedin.com/in/yourprofile" />
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
+                                    <i class="pi pi-twitter text-slate-600 text-sm"></i>
+                                </div>
+                                <input v-model="profileForm.links.twitter" class="input flex-1"
+                                    placeholder="twitter.com/yourhandle" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Avatar -->
+                <div v-if="settingsTab === 'avatar'" class="p-6 flex flex-col items-center gap-5" role="tabpanel">
                     <div class="relative group cursor-pointer" @click="triggerFile"
                         role="button" tabindex="0" @keydown.enter="triggerFile" @keydown.space.prevent="triggerFile"
                         aria-label="Click to change profile photo">
                         <img :src="avatarSrc" :alt="authStore.user?.username"
-                            class="w-24 h-24 rounded-full object-cover border-4 border-[var(--color-primary-light)]" />
-                        <div class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true">
-                            <i :class="['pi text-white text-xl', uploading ? 'pi-spin pi-spinner' : 'pi-camera']"></i>
+                            class="w-28 h-28 rounded-2xl object-cover border-4 border-[var(--color-primary-light)] shadow-lg" />
+                        <div class="absolute inset-0 rounded-2xl bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true">
+                            <i :class="['pi text-white text-2xl mb-1', uploading ? 'pi-spin pi-spinner' : 'pi-camera']"></i>
+                            <span class="text-white text-[10px] font-bold uppercase tracking-widest">Change</span>
                         </div>
                     </div>
-                    <input ref="fileInput" type="file" class="sr-only" accept="image/*" @change="onFileSelect" aria-label="Upload profile photo" />
-                    <button @click="triggerFile" :disabled="uploading" class="btn-primary h-9 px-5 text-sm disabled:opacity-50 flex items-center gap-2">
-                        <i :class="['pi text-xs', uploading ? 'pi-spin pi-spinner' : 'pi-upload']" aria-hidden="true"></i>
-                        {{ uploading ? 'Uploading...' : 'Upload Photo' }}
-                    </button>
-                    <p class="text-xs text-[var(--text-muted)]">JPG, PNG, GIF &bull; Max 10 MB</p>
+                    <input ref="fileInput" type="file" class="sr-only"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        @change="onFileSelect" aria-label="Upload profile photo" />
+                    <div class="text-center">
+                        <button @click="triggerFile" :disabled="uploading" class="btn-primary h-10 px-6 text-sm disabled:opacity-50 flex items-center gap-2 mx-auto">
+                            <i :class="['pi text-xs', uploading ? 'pi-spin pi-spinner' : 'pi-upload']" aria-hidden="true"></i>
+                            {{ uploading ? 'Uploading...' : 'Upload New Photo' }}
+                        </button>
+                        <p class="text-[11px] text-[var(--text-muted)] mt-3">JPG, PNG, WebP &bull; Max 10 MB</p>
+                        <p class="text-[11px] text-[var(--text-muted)]">GIF files are accepted and will animate as-is.</p>
+                    </div>
+                    <div class="w-full p-3 bg-[var(--color-primary-light)]/40 rounded-xl border border-[var(--border-main)] text-center">
+                        <p class="text-[10px] text-[var(--color-primary)] font-bold">Your avatar is visible to admins on job applications.</p>
+                    </div>
                 </div>
 
+                <!-- TAB: Password -->
                 <div v-if="settingsTab === 'password'" class="p-6 flex flex-col gap-4" role="tabpanel">
                     <div v-if="authStore.user?.googleId"
-                        class="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700"
+                        class="flex items-start gap-3 p-4 rounded-xl bg-[var(--color-primary-light)] border border-[var(--border-main)] text-[var(--color-primary)]"
                         role="alert">
-                        <i class="pi pi-info-circle mt-0.5 shrink-0 text-sm" aria-hidden="true"></i>
-                        <p class="text-sm">Google account — manage password through Google settings.</p>
+                        <i class="pi pi-info-circle mt-0.5 shrink-0" aria-hidden="true"></i>
+                        <div>
+                            <p class="text-sm font-bold">Google Account</p>
+                            <p class="text-xs mt-0.5">Your account uses Google sign-in. Manage your password through Google account settings.</p>
+                        </div>
                     </div>
                     <template v-else>
                         <div v-for="field in [
                             { key:'current', show: showCurrPw,    toggle: () => showCurrPw = !showCurrPw,       label:'Current Password', ac:'current-password' },
-                            { key:'new',     show: showNewPw,     toggle: () => showNewPw = !showNewPw,         label:'New Password',     ac:'new-password', hint:'Min. 8 characters' },
-                            { key:'confirm', show: showConfirmPw, toggle: () => showConfirmPw = !showConfirmPw, label:'Confirm Password',  ac:'new-password' },
+                            { key:'new',     show: showNewPw,     toggle: () => showNewPw = !showNewPw,         label:'New Password',     ac:'new-password', hint:'Minimum 8 characters' },
+                            { key:'confirm', show: showConfirmPw, toggle: () => showConfirmPw = !showConfirmPw, label:'Confirm New Password', ac:'new-password' },
                         ]" :key="field.key" class="flex flex-col gap-1.5">
-                            <label :for="`upw-${field.key}`" class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ field.label }}</label>
+                            <label :for="`upw-${field.key}`" class="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">{{ field.label }}</label>
                             <div class="relative">
                                 <input :id="`upw-${field.key}`" v-model="pw[field.key]"
                                     :type="field.show ? 'text' : 'password'"
@@ -286,7 +405,7 @@ const closeMenu = () => { showMobileMenu.value = false }
                                     :autocomplete="field.ac"
                                     class="input pr-10" />
                                 <button type="button" @click="field.toggle"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
                                     :aria-label="field.show ? `Hide ${field.label}` : `Show ${field.label}`">
                                     <i :class="['pi text-sm', field.show ? 'pi-eye-slash' : 'pi-eye']" aria-hidden="true"></i>
                                 </button>
@@ -295,13 +414,20 @@ const closeMenu = () => { showMobileMenu.value = false }
                     </template>
                 </div>
 
-                <div class="px-6 py-4 border-t border-[var(--border-main)] bg-[var(--surface-2)] flex justify-end gap-3">
-                    <button @click="showSettings = false" class="btn-secondary h-9 px-4 text-sm">Cancel</button>
+                <!-- Footer Actions -->
+                <div class="px-6 py-4 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-end gap-3">
+                    <button @click="showSettings = false" class="btn-secondary h-10 px-5 text-sm">Cancel</button>
+                    <button v-if="settingsTab === 'profile'"
+                        @click="saveProfileInfo" :disabled="isSaving"
+                        class="btn-primary h-10 px-5 text-sm disabled:opacity-50 flex items-center gap-2">
+                        <i v-if="isSaving" class="pi pi-spin pi-spinner text-xs" aria-hidden="true"></i>
+                        {{ isSaving ? 'Saving...' : 'Save Profile' }}
+                    </button>
                     <button v-if="settingsTab === 'password' && !authStore.user?.googleId"
                         @click="handlePwUpdate" :disabled="isSaving"
-                        class="btn-primary h-9 px-5 text-sm disabled:opacity-50 flex items-center gap-2">
+                        class="btn-primary h-10 px-5 text-sm disabled:opacity-50 flex items-center gap-2">
                         <i v-if="isSaving" class="pi pi-spin pi-spinner text-xs" aria-hidden="true"></i>
-                        {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                        {{ isSaving ? 'Updating...' : 'Update Password' }}
                     </button>
                 </div>
             </div>

@@ -1,10 +1,3 @@
-<!--
-  AppDivider — Horizontal or vertical divider with optional label
-  Usage:
-    <AppDivider />
-    <AppDivider label="or continue with" />
-    <AppDivider orientation="vertical" class="h-6" />
--->
 <script setup>
 defineOptions({ name: 'AppDivider' })
 

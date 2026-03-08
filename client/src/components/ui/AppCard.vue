@@ -1,20 +1,3 @@
-<!--
-  AppCard — Premium surface card
-  ─────────────────────────────────────────────────────────────
-  Variants: default | flat | raised | bordered | ghost | gradient
-  Motion:   hoverable → lift -2px + shadow expand in 220ms ease-out
-            active    → lift -1px + shadow compress in 80ms
-
-  Usage:
-    <AppCard title="Application" subtitle="Submitted Jan 1" icon="pi-file">
-      content
-    </AppCard>
-
-    <AppCard variant="gradient" hoverable @click="open">
-      <template #actions><AppBadge variant="ranked">Ranked</AppBadge></template>
-      content
-    </AppCard>
--->
 <script setup>
 defineOptions({ name: 'AppCard' })
 

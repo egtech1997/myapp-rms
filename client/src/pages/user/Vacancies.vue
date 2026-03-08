@@ -1,81 +1,121 @@
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useJobs } from '@/composables/useJobs'
 import apiClient from '@/api/axios'
 import ApplicantCoverPagePdf from '@/components/ApplicantCoverPagePdf.vue'
+import { AppBadge } from '@/components/ui'
 
 const router    = useRouter()
 const authStore = useAuthStore()
+const toast     = inject('$toast')
 
 const { jobs, loading, error, fetchJobs } = useJobs()
 const searchQuery = ref('')
 const filterTrack = ref('')
-const filterType  = ref('')
 
-// ── Modal state ─────────────────────────────────────────────────────
-const selectedJob     = ref(null)
-const modalStep       = ref('detail')   // 'detail' | 'update_prompt' | 'review' | 'success'
-const showModal       = ref(false)
-const submittedApp    = ref(null)   // holds the API response after successful apply
-const showCoverPdf    = ref(false)
+// ── USER PROFILE & QS MATCHING ──────────────────────────────────────────────
+const userProfile = ref(null)
+const loadingUser = ref(false)
 
-// Review step
-const profile       = ref(null)
+const fetchUserProfile = async () => {
+  if (!authStore.isAuthenticated) return
+  loadingUser.value = true
+  try {
+    const { data } = await apiClient.get('/v1/profile/me')
+    userProfile.value = data.data
+  } catch {
+    // silent — QS matching is non-critical
+  } finally {
+    loadingUser.value = false
+  }
+}
+
+const userMetrics = computed(() => {
+  if (!userProfile.value) return null
+  const p = userProfile.value
+  const expMonths = (p.experience || []).reduce((acc, curr) => {
+    if (!curr.periodFrom) return acc
+    const start = new Date(curr.periodFrom)
+    const end   = curr.periodTo ? new Date(curr.periodTo) : new Date()
+    return acc + Math.max(0, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()))
+  }, 0)
+  const trainHours    = (p.training    || []).reduce((acc, c) => acc + (Number(c.hours) || 0), 0)
+  const eligibilities = (p.eligibility || []).map(e => e.name?.toLowerCase() || '')
+  return { expMonths, trainHours, eligibilities }
+})
+
+const getMatchStatus = (job) => {
+  if (!userMetrics.value) return null
+  const m = userMetrics.value
+  const q = job.qualifications || {}
+  const criteria = [
+    { label: 'Experience',  met: m.expMonths  >= (q.minExperienceMonths || 0), req: `${q.minExperienceMonths || 0} mo`,  act: `${m.expMonths} mo`   },
+    { label: 'Training',    met: m.trainHours >= (q.minTrainingHours    || 0), req: `${q.minTrainingHours    || 0} hrs`, act: `${m.trainHours} hrs` },
+    { label: 'Eligibility', met: !q.eligibility || m.eligibilities.some(e => e.includes(q.eligibility.toLowerCase()) || q.eligibility.toLowerCase().includes(e)), req: q.eligibility || 'None', act: m.eligibilities.length > 0 ? 'On File' : 'None' },
+  ]
+  return { isQualified: criteria.every(c => c.met), criteria }
+}
+
+// ── MODAL STATE ──────────────────────────────────────────────────────────────
+const selectedJob    = ref(null)
+const modalStep      = ref('detail')
+const showModal      = ref(false)
+const submittedApp   = ref(null)
+const showCoverPdf   = ref(false)
+
+const profile        = ref(null)
 const loadingProfile = ref(false)
-const applying      = ref(false)
-const applyError    = ref('')
+const applying       = ref(false)
+const applyError     = ref('')
 
-// Curated selections (indices the user keeps checked)
 const selEdu  = ref([])
 const selElig = ref([])
 const selTrn  = ref([])
 const selExp  = ref([])
 const perfRating = ref({ score: '', adjective: '', periodCovered: '' })
 
-onMounted(() => fetchJobs({ status: 'published' }))
-onActivated(() => fetchJobs({ status: 'published' }))
+const loadAll = async () => {
+  await Promise.all([fetchJobs({ status: 'published' }), fetchUserProfile()])
+}
+onMounted(loadAll)
+onActivated(loadAll)
+
 const handleSearch = () => fetchJobs({ status: 'published', search: searchQuery.value })
 
-// ── Open job detail ──────────────────────────────────────────────────
 const openJob = (job) => {
-  selectedJob.value  = job
-  modalStep.value    = 'detail'
-  applyError.value   = ''
-  showModal.value    = true
+  selectedJob.value = job
+  modalStep.value   = 'detail'
+  applyError.value  = ''
+  showModal.value   = true
 }
 
 const closeModal = () => {
-  showModal.value   = false
-  applyError.value  = ''
-  profile.value     = null
+  showModal.value  = false
+  applyError.value = ''
+  profile.value    = null
 }
 
-// ── Start apply — show update profile prompt ─────────────────────────
 const startApply = () => {
   if (!authStore.isAuthenticated) {
-    router.push({ path: '/auth/login', query: { redirect: '/vacancies' } })
+    router.push({ path: '/auth/login', query: { redirect: '/user/vacancies' } })
     return
   }
-  applyError.value = ''
-  modalStep.value  = 'update_prompt'
+  modalStep.value = 'update_prompt'
 }
 
-// ── Continue apply — load profile then switch to review ──────────────
 const continueApply = async () => {
   loadingProfile.value = true
   applyError.value     = ''
   try {
     const { data } = await apiClient.get('/v1/profile/me')
     profile.value = data.data || null
-
-    // Pre-select all items by default
     const p = profile.value
-    selEdu.value  = p?.education?.map((_, i) => i)   || []
-    selElig.value = p?.eligibility?.map((_, i) => i)  || []
-    selTrn.value  = p?.training?.map((_, i) => i)     || []
-    selExp.value  = p?.experience?.map((_, i) => i)   || []
+    selEdu.value  = p?.education  ?.map((_, i) => i) || []
+    selElig.value = p?.eligibility?.map((_, i) => i) || []
+    selTrn.value  = p?.training   ?.map((_, i) => i) || []
+    selExp.value  = p?.experience ?.map((_, i) => i) || []
     perfRating.value = {
       score:         p?.performanceRating?.score         ?? '',
       adjective:     p?.performanceRating?.adjective     ?? '',
@@ -83,466 +123,588 @@ const continueApply = async () => {
     }
     modalStep.value = 'review'
   } catch {
-    applyError.value = 'Failed to load your profile. Please complete your profile first.'
+    applyError.value = 'Failed to load profile. Please try again.'
   } finally {
     loadingProfile.value = false
   }
 }
 
-// ── Toggle helper ───────────────────────────────────────────────────
 const toggle = (arr, idx) => {
   const i = arr.indexOf(idx)
   if (i === -1) arr.push(idx)
   else arr.splice(i, 1)
 }
 
-// ── Submit application ──────────────────────────────────────────────
 const submitApplication = async () => {
   applying.value   = true
   applyError.value = ''
-
   const p = profile.value
-  const personalInfo = p ? {
-    firstName: p.name?.firstName, middleName: p.name?.middleName,
-    lastName:  p.name?.lastName,  suffix:     p.name?.suffix,
-    sex: p.sex, birthDate: p.birthDate, civilStatus: p.civilStatus,
-    contact: p.contact, address: p.address,
-  } : {}
-
   const applicantData = {
-    personalInfo,
-    education:         p?.education?.filter((_, i) => selEdu.value.includes(i))   || [],
-    eligibility:       p?.eligibility?.filter((_, i) => selElig.value.includes(i)) || [],
-    training:          p?.training?.filter((_, i) => selTrn.value.includes(i))     || [],
-    experience:        p?.experience?.filter((_, i) => selExp.value.includes(i))   || [],
+    personalInfo: {
+      firstName: p.name?.firstName, lastName: p.name?.lastName,
+      sex: p.sex, birthDate: p.birthDate, civilStatus: p.civilStatus,
+      contact: p.contact, address: p.address,
+    },
+    education:   p?.education  ?.filter((_, i) => selEdu.value .includes(i)) || [],
+    eligibility: p?.eligibility?.filter((_, i) => selElig.value.includes(i)) || [],
+    training:    p?.training   ?.filter((_, i) => selTrn.value .includes(i)) || [],
+    experience:  p?.experience ?.filter((_, i) => selExp.value .includes(i)) || [],
     performanceRating: {
-      score:         perfRating.value.score         ? Number(perfRating.value.score) : null,
+      score:         perfRating.value.score ? Number(perfRating.value.score) : null,
       adjective:     perfRating.value.adjective     || '',
       periodCovered: perfRating.value.periodCovered || '',
     },
   }
-
   try {
     const { data } = await apiClient.post('/v1/applications/apply', {
-      jobId: selectedJob.value._id,
+      jobId:    selectedJob.value._id,
       category: selectedJob.value.hiringTrack,
       applicantData,
     })
-    // Merge job info into response so print utility can access it
     submittedApp.value = { ...data.data, job: selectedJob.value }
     modalStep.value = 'success'
   } catch (err) {
-    applyError.value = err.response?.data?.message || 'Failed to submit application.'
+    applyError.value = err.response?.data?.message || 'Application failed. Please try again.'
   } finally {
     applying.value = false
   }
 }
 
-// ── Computed ────────────────────────────────────────────────────────
+// ── COMPUTED ─────────────────────────────────────────────────────────────────
 const filteredJobs = computed(() => {
   let list = [...jobs.value]
   if (filterTrack.value) list = list.filter(j => j.hiringTrack === filterTrack.value)
-  if (filterType.value)  list = list.filter(j => j.employmentType === filterType.value)
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) list = list.filter(j =>
+    j.positionTitle?.toLowerCase().includes(q) ||
+    j.placeOfAssignment?.toLowerCase().includes(q)
+  )
   return list
 })
 
+const trackCounts = computed(() => ({
+  teaching:         jobs.value.filter(j => j.hiringTrack === 'teaching').length,
+  teaching_related: jobs.value.filter(j => j.hiringTrack === 'teaching_related').length,
+  non_teaching:     jobs.value.filter(j => j.hiringTrack === 'non_teaching').length,
+}))
 
-const trackLabel = { teaching: 'Teaching', teaching_related: 'Teaching-Related', non_teaching: 'Non-Teaching' }
-const trackClass  = {
-  teaching:         'bg-blue-100 text-blue-700 border-blue-200',
-  teaching_related: 'bg-purple-100 text-purple-700 border-purple-200',
-  non_teaching:     'bg-orange-100 text-orange-700 border-orange-200',
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const trackLabel     = { teaching: 'Teaching', teaching_related: 'Teaching-Related', non_teaching: 'Non-Teaching' }
+const trackPillClass = {
+  teaching:         'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/20',
+  teaching_related: 'bg-purple-50 text-purple-700 border-purple-200',
+  non_teaching:     'bg-amber-50 text-amber-700 border-amber-200',
 }
+const trackBorderClass = {
+  teaching:         'border-l-[var(--color-primary)]',
+  teaching_related: 'border-l-purple-500',
+  non_teaching:     'border-l-amber-500',
+}
+
+// Build clean QS display rows — skip zeroes and empty arrays
+const qualificationRows = (job) => {
+  const q = job?.qualifications || {}
+  const rows = []
+  if (q.education)   rows.push({ label: 'Education',   value: q.education })
+  if (q.experience)  rows.push({
+    label: 'Experience',
+    value: q.experience + (q.minExperienceMonths > 0 ? ` — minimum ${q.minExperienceMonths} month${q.minExperienceMonths > 1 ? 's' : ''}` : ''),
+  })
+  if (q.trainings)   rows.push({
+    label: 'Training',
+    value: q.trainings + (q.minTrainingHours > 0 ? ` — minimum ${q.minTrainingHours} hour${q.minTrainingHours > 1 ? 's' : ''}` : ''),
+  })
+  if (q.eligibility) rows.push({ label: 'Eligibility', value: q.eligibility })
+  return rows
+}
+
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : null
 const isExpired  = (d) => d && new Date(d) < new Date()
-const fmtShort   = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+const daysLeft   = (d) => {
+  if (!d) return null
+  return Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24))
+}
+const deadlineLabel = (d) => {
+  if (!d) return 'Open'
+  const days = daysLeft(d)
+  if (days < 0)  return 'Expired'
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days <= 7)  return `${days} days left`
+  return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+}
+const deadlineClass = (d) => {
+  if (!d) return 'text-[var(--text-muted)]'
+  const days = daysLeft(d)
+  if (days < 0)  return 'text-red-400'
+  if (days <= 7) return 'text-amber-500 font-black'
+  return 'text-[var(--text-sub)]'
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-[var(--bg-app)] text-[var(--text-main)] font-sans px-4 py-10">
-    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+  <div class="w-full bg-[var(--bg-app)] text-[var(--text-main)]">
+    <div class="max-w-5xl mx-auto px-4 py-8 flex flex-col gap-6">
 
-      <!-- Header -->
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-[var(--text-main)] tracking-tight">Job Vacancies</h1>
-        <p class="text-[var(--text-muted)] mt-2">Browse available positions at DepEd GNC.</p>
+      <!-- ── PAGE HEADER ──────────────────────────────────────────────────── -->
+      <div>
+        <h1 class="text-2xl font-black text-[var(--text-main)] tracking-tight">Career Opportunities</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">Schools Division of Guihulngan City &mdash; Open positions for qualified applicants</p>
       </div>
 
-      <!-- Search & Filters -->
-      <div class="flex flex-col sm:flex-row gap-3">
+      <!-- ── STATS ROW ────────────────────────────────────────────────────── -->
+      <div v-if="!loading" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+          <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">Total Open</span>
+          <span class="text-2xl font-black text-[var(--text-main)] tabular-nums">{{ jobs.length }}</span>
+        </div>
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+          <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">Teaching</span>
+          <span class="text-2xl font-black text-[var(--color-primary)] tabular-nums">{{ trackCounts.teaching }}</span>
+        </div>
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+          <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">T-Related</span>
+          <span class="text-2xl font-black text-purple-600 tabular-nums">{{ trackCounts.teaching_related }}</span>
+        </div>
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+          <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">Non-Teaching</span>
+          <span class="text-2xl font-black text-amber-600 tabular-nums">{{ trackCounts.non_teaching }}</span>
+        </div>
+      </div>
+
+      <!-- Stats skeleton -->
+      <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div v-for="i in 4" :key="i" class="h-[72px] bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl animate-pulse"></div>
+      </div>
+
+      <!-- ── SEARCH & FILTER PILLS ────────────────────────────────────────── -->
+      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
         <div class="relative flex-1">
           <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm pointer-events-none"></i>
-          <input v-model="searchQuery" @input="handleSearch" type="text" placeholder="Search positions..."
-            class="w-full h-10 pl-9 pr-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm placeholder:text-[var(--text-muted)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow" />
+          <input v-model="searchQuery" @input="handleSearch" type="text" placeholder="Search positions or assignment..."
+            class="w-full h-11 pl-10 pr-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
         </div>
-        <select v-model="filterTrack" class="h-10 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:outline-none appearance-none cursor-pointer">
-          <option value="">All Tracks</option>
-          <option value="teaching">Teaching</option>
-          <option value="teaching_related">Teaching-Related</option>
-          <option value="non_teaching">Non-Teaching</option>
-        </select>
-        <select v-model="filterType" class="h-10 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:outline-none appearance-none cursor-pointer">
-          <option value="">All Types</option>
-          <option value="permanent">Permanent</option>
-          <option value="contractual">Contractual</option>
-          <option value="job order">Job Order</option>
-          <option value="casual">Casual</option>
-        </select>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button @click="filterTrack = ''"
+            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === '' ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+            All
+          </button>
+          <button @click="filterTrack = 'teaching'"
+            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'teaching' ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+            Teaching
+          </button>
+          <button @click="filterTrack = 'teaching_related'"
+            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'teaching_related' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-purple-300']">
+            T-Related
+          </button>
+          <button @click="filterTrack = 'non_teaching'"
+            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'non_teaching' ? 'bg-amber-500 text-white border-amber-500' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-amber-300']">
+            Non-Teaching
+          </button>
+        </div>
       </div>
 
-      <!-- Loading / Error / Empty -->
-      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div v-for="i in 4" :key="i" class="h-40 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
-      </div>
-      <div v-else-if="error" class="text-center py-16 text-[var(--text-muted)]">
-        <i class="pi pi-exclamation-circle text-4xl text-slate-300 mb-3 block"></i>
-        <p class="text-sm">{{ error }}</p>
-      </div>
-      <div v-else-if="filteredJobs.length === 0" class="text-center py-16 text-[var(--text-muted)]">
-        <i class="pi pi-briefcase text-4xl text-slate-300 mb-3 block"></i>
-        <p class="text-sm font-medium">No vacancies found</p>
-        <p class="text-xs mt-1">Check back later for new openings.</p>
+      <!-- ── AUTH NUDGE ────────────────────────────────────────────────────── -->
+      <div v-if="!authStore.isAuthenticated"
+        class="flex items-center gap-3 bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 rounded-2xl px-5 py-4">
+        <i class="pi pi-info-circle text-[var(--color-primary)] text-lg flex-shrink-0"></i>
+        <p class="text-sm text-[var(--color-primary)] font-medium">
+          <router-link to="/auth/login" class="font-black underline underline-offset-2">Sign in</router-link>
+          to see your Qualification Standards match score for each position.
+        </p>
       </div>
 
-      <!-- Job Cards -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button v-for="job in filteredJobs" :key="job._id" @click="openJob(job)"
-          class="text-left bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all group">
-          <div class="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <p class="font-bold text-[var(--text-main)] leading-tight group-hover:text-[var(--color-primary)] transition-colors">{{ job.positionTitle }}</p>
-              <p class="text-xs text-[var(--text-muted)] mt-1">{{ job.positionCode }} · {{ job.placeOfAssignment }}</p>
-            </div>
-            <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0', trackClass[job.hiringTrack] || 'bg-gray-100 text-gray-600 border-gray-200']">
-              {{ trackLabel[job.hiringTrack] || job.hiringTrack }}
+      <!-- ── JOB CARDS SKELETON ────────────────────────────────────────────── -->
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div v-for="i in 6" :key="i" class="h-56 rounded-2xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
+      </div>
+
+      <!-- ── JOB CARDS ─────────────────────────────────────────────────────── -->
+      <div v-else-if="filteredJobs.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div v-for="job in filteredJobs" :key="job._id"
+          :class="['relative bg-[var(--surface)] border border-l-4 border-[var(--border-main)] rounded-2xl p-5 hover:shadow-lg hover:border-[var(--color-primary-ring)] transition-all group cursor-pointer flex flex-col gap-4', trackBorderClass[job.hiringTrack]]"
+          @click="openJob(job)">
+
+          <!-- Row 1: Track pill + QS badge -->
+          <div class="flex items-center justify-between gap-2">
+            <span :class="['text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-wider', trackPillClass[job.hiringTrack]]">
+              {{ trackLabel[job.hiringTrack] }}
             </span>
+            <!-- QS Match -->
+            <div v-if="authStore.isAuthenticated && getMatchStatus(job)" class="relative group/qs">
+              <div v-if="getMatchStatus(job).isQualified"
+                class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black uppercase tracking-widest">
+                <i class="pi pi-check-circle text-[10px]"></i> Qualified
+              </div>
+              <div v-else
+                class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-app)] text-[var(--text-muted)] border border-[var(--border-main)] text-[9px] font-bold uppercase tracking-widest cursor-help">
+                <i class="pi pi-info-circle text-[10px]"></i> QS Check
+              </div>
+              <!-- Tooltip -->
+              <div class="invisible group-hover/qs:visible absolute right-0 top-full mt-2 w-60 bg-[var(--color-navy)] text-white rounded-xl p-4 shadow-2xl z-50 text-[10px]">
+                <p class="font-black mb-3 uppercase tracking-widest text-white/50">Match Breakdown</p>
+                <div class="space-y-2">
+                  <div v-for="c in getMatchStatus(job).criteria" :key="c.label" class="flex justify-between items-center gap-4">
+                    <span class="text-white/70">{{ c.label }}</span>
+                    <span :class="c.met ? 'text-emerald-400' : 'text-red-400 font-black'">{{ c.act }} / {{ c.req }}</span>
+                  </div>
+                </div>
+                <p class="mt-3 pt-3 border-t border-white/10 text-white/40 italic leading-relaxed">Update your profile to meet all requirements.</p>
+              </div>
+            </div>
           </div>
-          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
-            <span class="flex items-center gap-1"><i class="pi pi-chart-bar text-[10px]"></i> SG-{{ job.salaryGrade }}</span>
-            <span class="flex items-center gap-1"><i class="pi pi-money-bill text-[10px]"></i> ₱{{ Number(job.salary).toLocaleString() }}/mo</span>
-            <span class="flex items-center gap-1 capitalize"><i class="pi pi-briefcase text-[10px]"></i> {{ job.employmentType }}</span>
-            <span class="flex items-center gap-1"><i class="pi pi-users text-[10px]"></i> {{ job.noOfVacancy }} slot{{ job.noOfVacancy !== 1 ? 's' : '' }}</span>
-          </div>
-          <div v-if="job.deadline" class="mt-3 pt-3 border-t border-[var(--border-main)]">
-            <p :class="['text-xs flex items-center gap-1', isExpired(job.deadline) ? 'text-red-500 font-medium' : 'text-[var(--text-muted)]']">
-              <i class="pi pi-calendar text-[10px]"></i>
-              {{ isExpired(job.deadline) ? 'Deadline passed: ' : 'Apply by: ' }}{{ formatDate(job.deadline) }}
+
+          <!-- Row 2: Title + assignment -->
+          <div class="flex-1">
+            <h2 class="text-sm font-black text-[var(--text-main)] leading-tight mb-1 group-hover:text-[var(--color-primary)] transition-colors line-clamp-2">{{ job.positionTitle }}</h2>
+            <p class="text-xs text-[var(--text-faint)] font-medium flex items-center gap-1">
+              <i class="pi pi-map-marker text-[10px]"></i>
+              {{ job.placeOfAssignment || 'TBA' }}
             </p>
           </div>
+
+          <!-- Row 3: Meta grid -->
+          <div class="grid grid-cols-3 gap-2">
+            <div class="flex flex-col">
+              <span class="text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Salary Grade</span>
+              <span class="text-xs font-black text-[var(--text-sub)] tabular-nums">SG {{ job.salaryGrade || '—' }}</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Slots</span>
+              <span class="text-xs font-black text-[var(--text-sub)] tabular-nums">{{ job.noOfVacancy || 0 }}</span>
+            </div>
+            <div class="flex flex-col text-right">
+              <span class="text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Deadline</span>
+              <span :class="['text-xs font-bold', deadlineClass(job.deadline)]">{{ deadlineLabel(job.deadline) }}</span>
+            </div>
+          </div>
+
+          <!-- Row 4: Salary + CTA arrow -->
+          <div class="flex items-center justify-between pt-3 border-t border-[var(--border-main)]">
+            <div>
+              <span class="text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Monthly Salary</span>
+              <p class="text-sm font-black text-[var(--text-main)] tabular-nums">&#8369;{{ Number(job.salary || 0).toLocaleString() }}</p>
+            </div>
+            <div class="flex items-center gap-1.5 text-[var(--color-primary)] group-hover:gap-3 transition-all">
+              <span class="text-xs font-black">View Details</span>
+              <i class="pi pi-arrow-right text-[10px]"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── EMPTY STATE ───────────────────────────────────────────────────── -->
+      <div v-else class="flex flex-col items-center justify-center gap-4 py-20 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl">
+        <div class="w-16 h-16 rounded-full bg-[var(--bg-app)] flex items-center justify-center">
+          <i class="pi pi-inbox text-2xl text-[var(--text-faint)]"></i>
+        </div>
+        <div class="text-center">
+          <p class="text-sm font-black text-[var(--text-sub)]">No vacancies found</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">Try adjusting your search or filters.</p>
+        </div>
+        <button @click="filterTrack = ''; searchQuery = ''; handleSearch()" class="text-xs font-black text-[var(--color-primary)] hover:underline underline-offset-2">
+          Clear filters
         </button>
       </div>
 
-      <p v-if="!loading && filteredJobs.length > 0" class="text-center text-xs text-[var(--text-muted)]">
-        Showing {{ filteredJobs.length }} open position{{ filteredJobs.length !== 1 ? 's' : '' }}
-      </p>
     </div>
 
-    <!-- ── Modal ──────────────────────────────────────────────────────── -->
+    <!-- ── MODAL ─────────────────────────────────────────────────────────────── -->
     <Teleport to="body">
     <div v-if="showModal && selectedJob"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-navy)]/50 backdrop-blur-sm p-4 animate-fade-in"
       @click.self="closeModal">
+      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden animate-zoom-in max-h-[92vh]">
 
-      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden animate-zoom-in max-h-[92vh]">
-
-        <!-- ══ STEP 1: Job Detail ══════════════════════════════════════ -->
+        <!-- ── STEP: detail ────────────────────────────────────────────────── -->
         <template v-if="modalStep === 'detail'">
-          <div class="px-6 py-5 border-b border-[var(--border-main)] flex items-start justify-between gap-4 flex-shrink-0">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full border', trackClass[selectedJob.hiringTrack] || 'bg-gray-100 text-gray-600 border-gray-200']">
-                  {{ trackLabel[selectedJob.hiringTrack] }}
-                </span>
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-green-100 text-green-700 border-green-200 capitalize">{{ selectedJob.employmentType }}</span>
-              </div>
-              <h2 class="text-lg font-bold text-[var(--text-main)]">{{ selectedJob.positionTitle }}</h2>
-              <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ selectedJob.positionCode }} · {{ selectedJob.placeOfAssignment }}</p>
+          <div class="px-8 py-6 border-b border-[var(--border-main)] flex justify-between items-start flex-shrink-0">
+            <div class="flex-1 min-w-0 mr-4">
+              <span :class="['text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest mb-2 inline-block', trackPillClass[selectedJob.hiringTrack]]">
+                {{ trackLabel[selectedJob.hiringTrack] }}
+              </span>
+              <h2 class="text-xl font-black text-[var(--text-main)] tracking-tight leading-tight mt-1">{{ selectedJob.positionTitle }}</h2>
+              <p class="text-xs text-[var(--text-faint)] font-medium mt-1">
+                {{ selectedJob.positionCode ? selectedJob.positionCode + ' &middot; ' : '' }}{{ selectedJob.placeOfAssignment }}
+              </p>
             </div>
-            <button @click="closeModal" class="text-[var(--text-muted)] hover:text-[var(--text-main)] flex-shrink-0 mt-1">
-              <i class="pi pi-times text-lg"></i>
+            <button @click="closeModal" class="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+              <i class="pi pi-times text-sm"></i>
             </button>
           </div>
 
-          <div class="overflow-y-auto custom-scrollbar flex-1 p-6 flex flex-col gap-6">
-            <div class="grid grid-cols-3 gap-3">
-              <div class="bg-[var(--bg-app)] rounded-xl p-3 border border-[var(--border-main)] text-center">
-                <p class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Salary Grade</p>
-                <p class="text-lg font-bold text-[var(--text-main)]">SG-{{ selectedJob.salaryGrade }}</p>
+          <div class="overflow-y-auto custom-scrollbar flex-1 p-8 space-y-8">
+            <!-- Key info grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+                <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Salary Grade</p>
+                <p class="text-sm font-black text-[var(--text-sub)]">SG-{{ selectedJob.salaryGrade || '—' }}</p>
               </div>
-              <div class="bg-[var(--bg-app)] rounded-xl p-3 border border-[var(--border-main)] text-center">
-                <p class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Monthly</p>
-                <p class="text-lg font-bold text-[var(--text-main)]">₱{{ Number(selectedJob.salary).toLocaleString() }}</p>
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+                <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Monthly Pay</p>
+                <p class="text-sm font-black text-[var(--text-sub)]">&#8369;{{ Number(selectedJob.salary || 0).toLocaleString() }}</p>
               </div>
-              <div class="bg-[var(--bg-app)] rounded-xl p-3 border border-[var(--border-main)] text-center">
-                <p class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Slots</p>
-                <p class="text-lg font-bold text-[var(--text-main)]">{{ selectedJob.noOfVacancy }}</p>
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+                <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Vacancies</p>
+                <p class="text-sm font-black text-emerald-600">{{ selectedJob.noOfVacancy || selectedJob.itemNumbers?.length || 1 }} slot{{ (selectedJob.noOfVacancy || 1) !== 1 ? 's' : '' }}</p>
+              </div>
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+                <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Employment</p>
+                <p class="text-sm font-black text-[var(--text-sub)] capitalize">{{ selectedJob.employmentType || '—' }}</p>
               </div>
             </div>
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Description</p>
-              <p class="text-sm text-[var(--text-main)] leading-relaxed">{{ selectedJob.description }}</p>
+
+            <!-- Urgency banner -->
+            <div v-if="selectedJob.deadline && daysLeft(selectedJob.deadline) !== null && daysLeft(selectedJob.deadline) >= 0 && daysLeft(selectedJob.deadline) <= 7"
+              class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <i class="pi pi-exclamation-triangle text-amber-500"></i>
+              <p class="text-sm text-amber-700 font-bold">
+                Deadline {{ daysLeft(selectedJob.deadline) === 0 ? 'is today' : 'in ' + daysLeft(selectedJob.deadline) + ' days' }}
+                &mdash; {{ formatDate(selectedJob.deadline) }}
+              </p>
             </div>
+
+            <!-- Description -->
+            <div v-if="selectedJob.description">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Duties &amp; Description</h3>
+              <p class="text-sm text-[var(--text-sub)] leading-relaxed">{{ selectedJob.description }}</p>
+            </div>
+
+            <!-- Qualification Standards -->
             <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">Qualification Standards</p>
-              <div class="flex flex-col divide-y divide-[var(--border-main)] border border-[var(--border-main)] rounded-xl overflow-hidden">
-                <div v-for="(val, key) in selectedJob.qualifications" :key="key" class="flex gap-4 px-4 py-3 bg-[var(--bg-app)]">
-                  <span class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] w-24 flex-shrink-0 pt-0.5 capitalize">{{ key }}</span>
-                  <span class="text-sm text-[var(--text-main)]">{{ val }}</span>
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Qualification Standards</h3>
+              <div class="space-y-0 rounded-xl border border-[var(--border-main)] overflow-hidden">
+                <div v-for="row in qualificationRows(selectedJob)" :key="row.label"
+                  class="flex gap-4 px-4 py-3.5 border-b border-[var(--border-main)] last:border-0 hover:bg-[var(--bg-app)] transition-colors">
+                  <div class="w-24 flex-shrink-0 text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest pt-0.5">{{ row.label }}</div>
+                  <div class="text-sm text-[var(--text-sub)] font-medium leading-relaxed">{{ row.value }}</div>
+                </div>
+                <div v-if="qualificationRows(selectedJob).length === 0" class="px-4 py-6 text-center text-xs text-[var(--text-muted)]">
+                  No qualification standards specified.
                 </div>
               </div>
             </div>
-            <div v-if="selectedJob.deadline"
-              :class="['flex items-center gap-3 p-4 rounded-xl border', isExpired(selectedJob.deadline) ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700']">
-              <i class="pi pi-calendar text-lg flex-shrink-0"></i>
-              <div>
-                <p class="text-xs font-semibold">{{ isExpired(selectedJob.deadline) ? 'Application Period Closed' : 'Application Deadline' }}</p>
-                <p class="text-sm font-bold">{{ formatDate(selectedJob.deadline) }}</p>
+
+            <!-- Competency Requirements -->
+            <div v-if="selectedJob.qualifications?.competencyRequirements?.length">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Competency Requirements</h3>
+              <ul class="space-y-2">
+                <li v-for="comp in selectedJob.qualifications.competencyRequirements" :key="comp"
+                  class="flex items-start gap-2.5 text-sm text-[var(--text-sub)]">
+                  <i class="pi pi-check-circle text-[var(--color-primary)] text-xs mt-0.5 flex-shrink-0"></i>
+                  {{ comp }}
+                </li>
+              </ul>
+            </div>
+
+            <!-- Item Numbers / Slots -->
+            <div v-if="selectedJob.itemNumbers?.length">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Plantilla Item Numbers</h3>
+              <div class="flex flex-wrap gap-2">
+                <span v-for="item in selectedJob.itemNumbers" :key="item"
+                  class="font-mono text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-muted)]">
+                  {{ item }}
+                </span>
+              </div>
+              <p class="text-[9px] text-[var(--text-faint)] mt-2 font-medium">
+                {{ selectedJob.itemNumbers.length }} slot{{ selectedJob.itemNumbers.length !== 1 ? 's' : '' }} available
+              </p>
+            </div>
+
+            <!-- QS Match breakdown (if authenticated) -->
+            <div v-if="authStore.isAuthenticated && getMatchStatus(selectedJob)"
+              class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-5">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Your QS Match</h3>
+              <div class="space-y-3">
+                <div v-for="c in getMatchStatus(selectedJob).criteria" :key="c.label" class="flex items-center gap-3">
+                  <div :class="['w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0', c.met ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500']">
+                    <i :class="['text-[10px]', c.met ? 'pi pi-check' : 'pi pi-times']"></i>
+                  </div>
+                  <div class="flex-1 flex justify-between items-center">
+                    <span class="text-xs font-bold text-[var(--text-sub)]">{{ c.label }}</span>
+                    <span :class="['text-xs tabular-nums', c.met ? 'text-emerald-600 font-bold' : 'text-red-500 font-black']">
+                      {{ c.act }} <span class="text-[var(--text-faint)] font-normal">/ {{ c.req }}</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div v-if="applyError" class="mx-6 mb-2 flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-            <i class="pi pi-exclamation-circle flex-shrink-0"></i>{{ applyError }}
-          </div>
-
-          <div class="px-6 py-4 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-between items-center flex-shrink-0">
-            <button @click="closeModal" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">Close</button>
-            <button @click="startApply" :disabled="loadingProfile"
-              class="bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-60 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
-              <i :class="['pi text-xs', loadingProfile ? 'pi-spin pi-spinner' : 'pi-arrow-right']"></i>
-              {{ loadingProfile ? 'Loading...' : 'Apply Now' }}
+          <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-end gap-3 flex-shrink-0">
+            <button @click="closeModal" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors px-4">Cancel</button>
+            <button @click="startApply" :disabled="isExpired(selectedJob.deadline)"
+              class="btn-primary h-11 px-8 rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ isExpired(selectedJob.deadline) ? 'Deadline Passed' : 'Apply for this Position' }}
+              <i v-if="!isExpired(selectedJob.deadline)" class="pi pi-arrow-right text-xs"></i>
             </button>
           </div>
         </template>
 
-        <!-- ══ STEP 1.5: Update Profile Prompt ═══════════════════════ -->
+        <!-- ── STEP: update_prompt ─────────────────────────────────────────── -->
         <template v-else-if="modalStep === 'update_prompt'">
-          <div class="px-6 py-5 border-b border-[var(--border-main)] flex items-start justify-between gap-4 flex-shrink-0">
-            <h2 class="text-base font-bold text-[var(--text-main)]">Before You Apply</h2>
-            <button @click="closeModal" class="text-[var(--text-muted)] hover:text-[var(--text-main)] flex-shrink-0">
-              <i class="pi pi-times text-lg"></i>
+          <div class="flex justify-end px-6 pt-5 flex-shrink-0">
+            <button @click="closeModal" class="w-8 h-8 rounded-full bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+              <i class="pi pi-times text-sm"></i>
             </button>
           </div>
-
-          <div class="p-8 flex flex-col items-center gap-6 text-center flex-1">
-            <div class="w-16 h-16 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center">
-              <i class="pi pi-id-card text-[var(--color-primary)] text-2xl"></i>
+          <div class="px-12 pb-12 flex flex-col items-center text-center gap-6">
+            <div class="w-20 h-20 rounded-3xl bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
+              <i class="pi pi-id-card text-3xl"></i>
             </div>
             <div>
-              <p class="text-sm font-bold text-[var(--text-main)]">Would you like to update your application profile?</p>
-              <p class="text-xs text-[var(--text-muted)] mt-2 max-w-sm mx-auto">
-                Make sure your education, eligibility, training, and experience are up to date before submitting. A complete profile strengthens your application.
-              </p>
+              <h2 class="text-xl font-black text-[var(--text-main)]">Strengthen Your Application</h2>
+              <p class="text-sm text-[var(--text-muted)] mt-2 max-w-sm mx-auto leading-relaxed">Ensure your PDS profile is up to date before submitting. You can update your records or proceed with your current data.</p>
             </div>
             <div class="flex gap-3 w-full max-w-xs">
-              <router-link to="/user/profile"
-                class="flex-1 h-10 rounded-lg border border-[var(--border-main)] bg-[var(--bg-app)] text-[var(--text-main)] text-sm font-semibold hover:bg-[var(--surface)] transition-colors flex items-center justify-center gap-2">
-                <i class="pi pi-user-edit text-xs"></i> Update Profile
-              </router-link>
-              <button @click="continueApply" :disabled="loadingProfile"
-                class="flex-1 h-10 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-60 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                <i :class="['pi text-xs', loadingProfile ? 'pi-spin pi-spinner' : 'pi-arrow-right']"></i>
+              <button @click="closeModal(); router.push('/user/profile')" class="flex-1 h-12 rounded-xl border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest hover:border-[var(--color-primary-ring)] transition-all">
+                Update Profile
+              </button>
+              <button @click="continueApply" :disabled="loadingProfile" class="flex-1 h-12 rounded-xl btn-primary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60">
+                <i v-if="loadingProfile" class="pi pi-spin pi-spinner text-xs"></i>
                 {{ loadingProfile ? 'Loading...' : 'Continue' }}
               </button>
             </div>
-            <p class="text-xs text-[var(--text-muted)]">
-              Clicking "Continue" will proceed directly to applying without updating.
-            </p>
+            <p v-if="applyError" class="text-xs text-red-500 font-bold">{{ applyError }}</p>
           </div>
         </template>
 
-        <!-- ══ STEP 2: Review & Select Data ═══════════════════════════ -->
+        <!-- ── STEP: review ────────────────────────────────────────────────── -->
         <template v-else-if="modalStep === 'review'">
-          <div class="px-6 py-4 border-b border-[var(--border-main)] flex items-center justify-between flex-shrink-0">
+          <div class="px-8 py-6 border-b border-[var(--border-main)] flex justify-between items-center flex-shrink-0">
             <div>
-              <h2 class="text-base font-bold text-[var(--text-main)]">Review Your Application Data</h2>
-              <p class="text-xs text-[var(--text-muted)] mt-0.5">Select which items to include. All are pre-selected by default.</p>
+              <h2 class="text-lg font-black text-[var(--text-main)]">Review Your Application</h2>
+              <p class="text-xs text-[var(--text-muted)] mt-0.5">Select the PDS records to include with your submission.</p>
             </div>
-            <button @click="closeModal" class="text-[var(--text-muted)] hover:text-[var(--text-main)]">
-              <i class="pi pi-times text-lg"></i>
+            <button @click="closeModal" class="w-8 h-8 rounded-full bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+              <i class="pi pi-times text-sm"></i>
             </button>
           </div>
 
-          <div class="overflow-y-auto custom-scrollbar flex-1 p-6 flex flex-col gap-6">
+          <div class="overflow-y-auto custom-scrollbar flex-1 p-8 space-y-7">
 
-            <!-- No profile warning -->
-            <div v-if="!profile" class="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
-              <i class="pi pi-exclamation-triangle mt-0.5 shrink-0"></i>
-              <div>
-                <p class="font-semibold">Profile not complete</p>
-                <p class="text-xs mt-0.5">Your personal information will not be included. Please complete your profile after submitting.</p>
-              </div>
-            </div>
-
-            <!-- ── Education ── -->
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                <i class="pi pi-graduation-cap"></i> Education
-                <span class="font-normal normal-case">({{ selEdu.length }}/{{ profile?.education?.length || 0 }} selected)</span>
-              </p>
-              <div v-if="!profile?.education?.length" class="text-xs text-[var(--text-faint)] italic">No education entries in your profile.</div>
-              <div v-else class="flex flex-col gap-2">
+            <!-- Education -->
+            <div v-if="profile?.education?.length">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Education</h3>
+              <div class="space-y-2">
                 <label v-for="(edu, i) in profile.education" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                    selEdu.includes(i) ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30' : 'border-[var(--border-main)] hover:bg-[var(--bg-app)]']">
-                  <input type="checkbox" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)"
-                    class="mt-0.5 w-4 h-4 rounded accent-[var(--color-primary)]" />
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ edu.degree || edu.level || 'No degree specified' }}</p>
-                    <p class="text-xs text-[var(--text-muted)] truncate">{{ edu.school }} {{ edu.yearGraduated ? `· ${edu.yearGraduated}` : '' }}</p>
+                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selEdu.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  <input type="checkbox" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <p class="text-xs font-black text-[var(--text-main)]">{{ edu.school }}</p>
+                    <p class="text-[10px] text-[var(--text-muted)]">{{ edu.level }} &mdash; {{ edu.degree }}</p>
                   </div>
                 </label>
               </div>
             </div>
 
-            <!-- ── Eligibility ── -->
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                <i class="pi pi-verified"></i> Eligibility
-                <span class="font-normal normal-case">({{ selElig.length }}/{{ profile?.eligibility?.length || 0 }} selected)</span>
-              </p>
-              <div v-if="!profile?.eligibility?.length" class="text-xs text-[var(--text-faint)] italic">No eligibility entries in your profile.</div>
-              <div v-else class="flex flex-col gap-2">
+            <!-- Eligibility -->
+            <div v-if="profile?.eligibility?.length">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Civil Service Eligibility</h3>
+              <div class="space-y-2">
                 <label v-for="(el, i) in profile.eligibility" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                    selElig.includes(i) ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30' : 'border-[var(--border-main)] hover:bg-[var(--bg-app)]']">
-                  <input type="checkbox" :checked="selElig.includes(i)" @change="toggle(selElig, i)"
-                    class="mt-0.5 w-4 h-4 rounded accent-[var(--color-primary)]" />
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ el.name || 'Unnamed eligibility' }}</p>
-                    <p class="text-xs text-[var(--text-muted)]">{{ el.placeOfExam }} {{ el.dateOfExam ? `· ${fmtShort(el.dateOfExam)}` : '' }} {{ el.rating ? `· Rating: ${el.rating}` : '' }}</p>
+                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selElig.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  <input type="checkbox" :checked="selElig.includes(i)" @change="toggle(selElig, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <p class="text-xs font-black text-[var(--text-main)]">{{ el.name }}</p>
+                    <p class="text-[10px] text-[var(--text-muted)]">{{ el.rating ? 'Rating: ' + el.rating : '' }}{{ el.dateOfExam ? ' &mdash; ' + formatDate(el.dateOfExam) : '' }}</p>
                   </div>
                 </label>
               </div>
             </div>
 
-            <!-- ── Training ── -->
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                <i class="pi pi-star"></i> Training & Seminars
-                <span class="font-normal normal-case">({{ selTrn.length }}/{{ profile?.training?.length || 0 }} selected)</span>
-              </p>
-              <div v-if="!profile?.training?.length" class="text-xs text-[var(--text-faint)] italic">No training entries in your profile.</div>
-              <div v-else class="flex flex-col gap-2">
+            <!-- Training -->
+            <div v-if="profile?.training?.length">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Training &amp; L&amp;D</h3>
+              <div class="space-y-2">
                 <label v-for="(tr, i) in profile.training" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                    selTrn.includes(i) ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30' : 'border-[var(--border-main)] hover:bg-[var(--bg-app)]']">
-                  <input type="checkbox" :checked="selTrn.includes(i)" @change="toggle(selTrn, i)"
-                    class="mt-0.5 w-4 h-4 rounded accent-[var(--color-primary)]" />
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ tr.title || 'Untitled training' }}</p>
-                    <p class="text-xs text-[var(--text-muted)]">{{ tr.provider }} {{ tr.hours ? `· ${tr.hours} hrs` : '' }} {{ tr.dateIssued ? `· ${fmtShort(tr.dateIssued)}` : '' }}</p>
+                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selTrn.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  <input type="checkbox" :checked="selTrn.includes(i)" @change="toggle(selTrn, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <p class="text-xs font-black text-[var(--text-main)]">{{ tr.title }}</p>
+                    <p class="text-[10px] text-[var(--text-muted)]">{{ tr.hours }}hrs &mdash; {{ tr.typeOfLD || 'General' }}</p>
                   </div>
                 </label>
               </div>
             </div>
 
-            <!-- ── Experience ── -->
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                <i class="pi pi-briefcase"></i> Work Experience
-                <span class="font-normal normal-case">({{ selExp.length }}/{{ profile?.experience?.length || 0 }} selected)</span>
-              </p>
-              <div v-if="!profile?.experience?.length" class="text-xs text-[var(--text-faint)] italic">No experience entries in your profile.</div>
-              <div v-else class="flex flex-col gap-2">
-                <label v-for="(exp, i) in profile.experience" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                    selExp.includes(i) ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30' : 'border-[var(--border-main)] hover:bg-[var(--bg-app)]']">
-                  <input type="checkbox" :checked="selExp.includes(i)" @change="toggle(selExp, i)"
-                    class="mt-0.5 w-4 h-4 rounded accent-[var(--color-primary)]" />
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ exp.position || 'Unnamed position' }}</p>
-                    <p class="text-xs text-[var(--text-muted)]">{{ exp.company }} {{ exp.months ? `· ${exp.months} mo.` : '' }} {{ exp.isGovernment ? '· Government' : '' }}</p>
+            <!-- Experience -->
+            <div v-if="profile?.experience?.length">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Work Experience</h3>
+              <div class="space-y-2">
+                <label v-for="(ex, i) in profile.experience" :key="i"
+                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selExp.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  <input type="checkbox" :checked="selExp.includes(i)" @change="toggle(selExp, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <p class="text-xs font-black text-[var(--text-main)]">{{ ex.position }}</p>
+                    <p class="text-[10px] text-[var(--text-muted)]">{{ ex.company }}</p>
                   </div>
                 </label>
               </div>
             </div>
 
-            <!-- ── Performance Rating ── -->
+            <!-- Performance Rating -->
             <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                <i class="pi pi-chart-bar"></i> Latest Performance Rating
-              </p>
-              <div class="border border-[var(--border-main)] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Numerical Score</label>
-                  <input v-model="perfRating.score" type="number" step="0.001" min="0" max="5" class="input" placeholder="e.g. 4.500" />
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Performance Rating</h3>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Score</label>
+                  <input v-model="perfRating.score" type="number" placeholder="e.g. 4.5" class="input h-10 text-sm" />
                 </div>
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Adjectival Rating</label>
-                  <input v-model="perfRating.adjective" class="input" placeholder="e.g. Outstanding" />
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Adjectival</label>
+                  <input v-model="perfRating.adjective" type="text" placeholder="Outstanding" class="input h-10 text-sm" />
                 </div>
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Period Covered</label>
-                  <input v-model="perfRating.periodCovered" class="input" placeholder="e.g. Jan–Dec 2024" />
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Period</label>
+                  <input v-model="perfRating.periodCovered" type="text" placeholder="2024-Q4" class="input h-10 text-sm" />
                 </div>
               </div>
-              <p class="text-[11px] text-[var(--text-faint)] mt-1.5">Leave blank if not applicable.</p>
             </div>
 
+            <p v-if="applyError" class="text-xs text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ applyError }}</p>
           </div>
 
-          <div v-if="applyError" class="mx-6 mb-2 flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-            <i class="pi pi-exclamation-circle flex-shrink-0"></i>{{ applyError }}
-          </div>
-
-          <div class="px-6 py-4 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-between items-center flex-shrink-0">
-            <button @click="modalStep = 'detail'" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5">
-              <i class="pi pi-arrow-left text-xs"></i> Back
+          <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-between items-center gap-3 flex-shrink-0">
+            <button @click="modalStep = 'update_prompt'" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center gap-1.5 transition-colors">
+              <i class="pi pi-arrow-left text-[10px]"></i> Back
             </button>
-            <button @click="submitApplication" :disabled="applying"
-              class="bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-60 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
-              <i :class="['pi text-xs', applying ? 'pi-spin pi-spinner' : 'pi-send']"></i>
+            <button @click="submitApplication" :disabled="applying" class="btn-primary h-11 px-8 rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-60">
+              <i v-if="applying" class="pi pi-spin pi-spinner text-xs"></i>
               {{ applying ? 'Submitting...' : 'Submit Application' }}
+              <i v-if="!applying" class="pi pi-send text-xs"></i>
             </button>
           </div>
         </template>
 
-        <!-- ══ STEP 3: Success ════════════════════════════════════════ -->
+        <!-- ── STEP: success ───────────────────────────────────────────────── -->
         <template v-else-if="modalStep === 'success'">
-          <div class="p-10 flex flex-col items-center gap-6 text-center">
-            <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
-              <i class="pi pi-check-circle text-3xl text-emerald-500"></i>
+          <div class="p-12 flex flex-col items-center text-center gap-5">
+            <div class="w-24 h-24 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 animate-bounce-subtle">
+              <i class="pi pi-check-circle text-5xl"></i>
             </div>
             <div>
-              <h2 class="text-lg font-bold text-[var(--text-main)]">Application Submitted!</h2>
-              <p class="text-sm text-[var(--text-muted)] mt-1 max-w-sm">
-                Your application for <strong>{{ selectedJob.positionTitle }}</strong> has been received.
+              <h2 class="text-2xl font-black text-[var(--text-main)]">Application Submitted!</h2>
+              <p class="text-sm text-[var(--text-muted)] mt-2 leading-relaxed max-w-sm mx-auto">
+                You have applied for <span class="font-bold text-[var(--text-sub)]">{{ selectedJob.positionTitle }}</span>. Track your status in My Applications.
               </p>
-              <div v-if="submittedApp?.applicationCode"
-                class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[var(--color-primary)] text-sm font-mono font-bold">
-                <i class="pi pi-qrcode text-xs"></i>
-                {{ submittedApp.applicationCode }}
-              </div>
             </div>
-
-            <!-- Cover prompt -->
-            <div class="w-full max-w-sm bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-4 text-left flex flex-col gap-3">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
-                  <i class="pi pi-file-pdf text-[var(--color-primary)] text-sm"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-semibold text-[var(--text-main)]">Application Cover Sheet</p>
-                  <p class="text-xs text-[var(--text-muted)] mt-0.5">
-                    Preview, download, or print the A4 cover sheet to attach to your physical folder when submitting to the Division.
-                  </p>
-                </div>
-              </div>
+            <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl px-6 py-4 text-center w-full max-w-xs">
+              <p class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Application Code</p>
+              <p class="font-mono font-black text-[var(--color-primary)] text-lg tracking-widest">{{ submittedApp?.applicationCode }}</p>
+            </div>
+            <div class="flex flex-col gap-3 w-full max-w-xs mt-2">
               <button @click="showCoverPdf = true"
-                class="w-full h-10 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                <i class="pi pi-eye text-xs"></i> Preview &amp; Download Cover
+                class="h-12 w-full rounded-xl bg-[var(--color-navy)] text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[var(--color-primary)] transition-colors">
+                <i class="pi pi-file-pdf"></i> Download Application Cover
               </button>
-            </div>
-
-            <div class="flex gap-3">
-              <button @click="closeModal"
-                class="h-10 px-5 rounded-lg border border-[var(--border-main)] text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors">
-                Later
-              </button>
-              <router-link to="/user/applications" class="btn-primary h-10 px-5 text-sm flex items-center gap-2">
-                <i class="pi pi-folder-open text-xs"></i> My Applications
+              <router-link to="/user/applications" @click="closeModal"
+                class="h-12 w-full rounded-xl border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:border-[var(--color-primary-ring)] transition-colors">
+                <i class="pi pi-list"></i> View My Applications
               </router-link>
+              <button @click="closeModal" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                Return to Vacancies
+              </button>
             </div>
           </div>
         </template>
@@ -551,11 +713,12 @@ const fmtShort   = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'n
     </div>
     </Teleport>
 
-    <!-- Cover PDF preview/download -->
-    <ApplicantCoverPagePdf
-      v-if="showCoverPdf && submittedApp"
-      :app="submittedApp"
-      @close="showCoverPdf = false"
-    />
+    <!-- PDF Component -->
+    <ApplicantCoverPagePdf v-if="showCoverPdf && submittedApp" :app="submittedApp" @close="showCoverPdf = false" />
   </div>
 </template>
+
+<style scoped>
+.animate-bounce-subtle { animation: bounce-subtle 3s infinite; }
+@keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+</style>

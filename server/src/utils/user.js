@@ -29,5 +29,7 @@ export const formatUserResponse = (user) => {
     avatarUrl: user.avatarUrl,
     googleId: user.googleId,
     lastLogin: user.lastLogin,
+    bio: user.bio || '',
+    links: user.links || {},
   };
 };

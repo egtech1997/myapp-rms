@@ -1,16 +1,3 @@
-<!--
-  AppRadio — Radio button group
-  Usage:
-    <AppRadio
-      v-model="category"
-      :options="[
-        { value: 'teaching',         label: 'Teaching',         hint: 'Classroom-based positions' },
-        { value: 'teaching_related', label: 'Teaching-Related', hint: 'School admin and support' },
-        { value: 'non_teaching',     label: 'Non-Teaching',     hint: 'Admin and technical staff' },
-      ]"
-      name="category"
-    />
--->
 <script setup>
 defineOptions({ name: 'AppRadio' })
 

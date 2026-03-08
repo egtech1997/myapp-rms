@@ -22,6 +22,8 @@ const profileSchema = new mongoose.Schema(
       enum: ["male", "female", "prefer_not_to_say"],
     },
     birthDate: Date,
+    ethnicGroup: String,
+    religion: String,
     civilStatus: {
       type: String,
       enum: ["Single", "Married", "Widowed", "Separated", "Other"],
@@ -29,8 +31,8 @@ const profileSchema = new mongoose.Schema(
 
     // --- Contact & Address ---
     contact: {
-      phone: String,
-      email: String,
+      phones: [{ type: String, trim: true }],
+      emails: [{ type: String, trim: true, lowercase: true }],
     },
     address: {
       sitio: String,
@@ -42,48 +44,94 @@ const profileSchema = new mongoose.Schema(
       country: { type: String, default: "Philippines" },
     },
 
+    // --- Family Background ---
+    family: {
+      spouse: {
+        firstName: String, middleName: String, lastName: String, suffix: String,
+        occupation: String, employer: String, businessAddress: String, phone: String,
+      },
+      father: { firstName: String, middleName: String, lastName: String, suffix: String },
+      mother: { firstName: String, middleName: String, lastName: String, suffix: String },
+      children: [{
+        firstName: String, middleName: String, lastName: String, suffix: String,
+        birthDate: Date,
+      }],
+    },
+
     // --- Eligibility ---
     eligibility: [
       {
-        name:        { type: String, trim: true },
+        name: { type: String, trim: true },
+        rating: { type: String, trim: true },
+        dateOfExam: Date,
         placeOfExam: { type: String, trim: true },
-        dateOfExam:  Date,
-        rating:      { type: String, trim: true },
+        licenseNumber: String,
+        licenseValidity: Date,
       },
     ],
 
-    // --- HR Evidence (Snapshot Sources) ---
+    // --- Education ---
     education: [
       {
         level: {
           type: String,
-          enum: ["Vocational", "Bachelor", "Masteral", "Doctorate"],
+          enum: ["Elementary", "Secondary", "Vocational", "Bachelor", "Masteral", "Doctorate"],
+          required: true,
         },
-        degree: String,
-        units: Number,
-        school: String,
+        school: { type: String, required: true },
+        degree: { type: String, required: true },
+        periodFrom: String,
+        periodTo: String,
+        notGraduated: { type: Boolean, default: false },
+        unitsEarned: Number,
         yearGraduated: Number,
+        honorsReceived: String,
       },
     ],
 
+    // --- Training (Learning & Development) ---
     training: [
       {
-        title: String,
-        hours: Number,
-        dateIssued: Date,
+        title: { type: String, required: true },
+        periodFrom: Date,
+        periodTo: Date,
+        hours: { type: Number, required: true },
+        typeOfLD: { type: String, enum: ["Technical", "Managerial", "Supervisory", "Academic", "Foundation", "Other"] },
         provider: String,
       },
     ],
 
+    // --- Work Experience ---
     experience: [
       {
-        position: String,
-        company: String,
-        months: Number,
-        isGovernment: { type: Boolean, default: false },
+        periodFrom: { type: Date, required: true },
+        periodTo: Date, // Null if "Present"
+        position: { type: String, required: true },
+        company: { type: String, required: true },
         monthlySalary: Number,
+        salaryGrade: String, // e.g., "11-1"
+        statusOfAppointment: { type: String, enum: ["Permanent", "Temporary", "Coterminous", "Contractual", "Casual", "Job Order"] },
+        isGovernment: { type: Boolean, default: false },
+        keyResponsibilities: [{ type: String }],
       },
     ],
+
+    // --- Voluntary Work ---
+    voluntaryWork: [
+      {
+        organization: String,
+        periodFrom: Date,
+        periodTo: Date,
+        hours: Number,
+        position: String,
+      },
+    ],
+
+    // --- Competencies & Skills ---
+    competencies: [{ type: String }],
+    specialSkills: [{ type: String }],
+    nonAcademicDistinctions: [{ type: String }],
+    memberships: [{ type: String }],
 
     performanceRating: {
       score: Number,
@@ -91,12 +139,6 @@ const profileSchema = new mongoose.Schema(
       periodCovered: String,
     },
 
-    // --- Social & UI ---
-    bio: { type: String, maxlength: 240 },
-    links: {
-      facebook: String,
-      linkedin: String,
-    },
     visibility: {
       phone: { type: Boolean, default: false },
       email: { type: Boolean, default: false },

@@ -1,201 +1,150 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 
-const openFaqIndex = ref(null);
-
-// This logic ensures only ONE FAQ can be open at a time.
-const toggleFaq = (index) => {
-    openFaqIndex.value = openFaqIndex.value === index ? null : index;
-};
-
-const faqs = ref([
-    { question: "How do I apply for a position?", answer: "Create an account, complete your profile, and click the 'Apply Now' button on any job vacancy that matches your qualifications." },
-    { question: "What are the basic requirements?", answer: "Basic requirements include a valid CSC Eligibility or LET License, Personal Data Sheet (PDS), and relevant Transcript of Records." },
-    { question: "How long does the selection process take?", answer: "The duration typically follows the standard PRIME-HRM timeline of 1 to 3 months." }
+const faqGroups = ref([
+    {
+        title: 'Application Process',
+        icon: 'pi-file-edit',
+        items: [
+            {
+                q: 'How do I start my application?',
+                a: 'First, create an account using your email or Google account. Then, complete your Personal Data Sheet (PDS) in the Profile section. Once your profile is ready, you can browse vacancies and click "Apply".'
+            },
+            {
+                q: 'What are the required documents?',
+                a: 'Under DO 007, s. 2023, you need to provide your PDS, Transcript of Records (TOR), PRC License/Eligibility, Service Records, and Performance Ratings. All data is entered directly into the system—no file uploads are required.'
+            },
+            {
+                q: 'Can I apply for multiple positions?',
+                a: 'Yes, you can apply for multiple vacancies as long as you meet the minimum Qualification Standards (QS) for each position.'
+            }
+        ]
+    },
+    {
+        title: 'Ranking & Selection',
+        icon: 'pi-chart-bar',
+        items: [
+            {
+                q: 'How is the ranking calculated?',
+                a: 'We use the standardized DepEd Point System. Your total score is a combination of your Credentials (Education, Training, Experience) and your Potential (BEI, Written Exam, Work Sample).'
+            },
+            {
+                q: 'What is the RQA?',
+                a: 'The Registry of Qualified Applicants (RQA) is the official ranked list of candidates who passed the evaluation. The SDS selects appointees from the Top 5 candidates in this list.'
+            }
+        ]
+    },
+    {
+        title: 'Technical Support',
+        icon: 'pi-desktop',
+        items: [
+            {
+                q: 'I forgot my password, what should I do?',
+                a: 'Use the "Forgot Password" link on the login page to receive an OTP (One-Time Password) via your registered email to reset your credentials.'
+            },
+            {
+                q: 'Is my data secure?',
+                a: 'Yes, all PDS records are encrypted and access is strictly restricted to authorized HR personnel and the Selection Board through our Role-Based Access Control (RBAC) system.'
+            }
+        ]
+    }
 ]);
 
-let mapInstance = null;
+const activeGroup = ref(0);
+const expandedItems = ref([]);
 
-const initLeafletMap = () => {
-    if (typeof window === 'undefined') return;
-
-    const container = document.getElementById('leaflet-map');
-    if (!container) {
-        setTimeout(initLeafletMap, 200);
-        return;
-    }
-
-    if (window.L) {
-        const lat = 10.118538;
-        const lng = 123.268849;
-        
-        if (mapInstance !== null) {
-            mapInstance.remove();
-        }
-
-        mapInstance = window.L.map('leaflet-map', {
-            center: [lat, lng],
-            zoom: 17,
-            zoomControl: true,
-            scrollWheelZoom: true 
-        });
-        
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(mapInstance);
-
-        const customIcon = window.L.icon({
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        window.L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance)
-            .bindPopup('<div style="font-family: Avenir, sans-serif; text-align: left;"><b style="color: #0f172a; font-size: 13px; display:block; margin-bottom:2px;">DepEd Region 7</b><span style="color: #64748b; font-size: 12px;">Guihulngan City Division Office</span></div>')
-            .openPopup();
-
-        setTimeout(() => {
-            mapInstance.invalidateSize();
-        }, 500);
-
-        const resizeObserver = new ResizeObserver(() => {
-            if (mapInstance) mapInstance.invalidateSize();
-        });
-        resizeObserver.observe(container);
-
-    } else {
-        setTimeout(initLeafletMap, 200);
-    }
+const toggleItem = (groupIndex, itemIndex) => {
+    const key = `${groupIndex}-${itemIndex}`;
+    const idx = expandedItems.value.indexOf(key);
+    if (idx === -1) expandedItems.value.push(key);
+    else expandedItems.value.splice(idx, 1);
 };
 
-onMounted(() => {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('emerge-visible');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
-
-    setTimeout(() => {
-        document.querySelectorAll('#faq .emerge-hidden').forEach((el) => {
-            observer.observe(el);
-        });
-    }, 100);
-
-    if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link');
-        link.id = 'leaflet-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-    }
-    
-    if (!document.getElementById('leaflet-js')) {
-        const script = document.createElement('script');
-        script.id = 'leaflet-js';
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.onload = () => setTimeout(initLeafletMap, 100);
-        document.head.appendChild(script);
-    } else {
-        setTimeout(initLeafletMap, 300); 
-    }
-});
+const isExpanded = (groupIndex, itemIndex) => {
+    return expandedItems.value.includes(`${groupIndex}-${itemIndex}`);
+};
 </script>
 
 <template>
-    <section id="faq" class="py-24 px-8 bg-slate-50 border-t border-slate-200">
-        <div class="max-w-[95rem] mx-auto">
-            <div class="border-l-4 border-slate-900 pl-6 mb-16 emerge-hidden">
-                <span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 block">Support & Location</span>
-                <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Help Center & Contact</h2>
+    <section id="faq" class="w-full py-24 bg-slate-50 border-t border-slate-200">
+        <div class="max-w-7xl mx-auto px-8">
+            
+            <!-- Section Header -->
+            <div class="flex flex-col items-center text-center mb-16 emerge-hidden">
+                <span class="text-blue-600 text-[10px] font-black uppercase tracking-[0.2em] mb-3">Support</span>
+                <h2 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">Help Center & FAQ</h2>
+                <p class="text-slate-500 mt-4 max-w-xl text-lg font-medium">Everything you need to know about the RSP recruitment process.</p>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch emerge-hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
                 
-                <div class="lg:col-span-5 flex flex-col gap-8 h-full">
-                    <div class="w-full bg-white border border-slate-200 rounded p-6 flex flex-col">
-                        <h3 class="text-sm font-bold text-slate-900 mb-6 tracking-widest uppercase border-b border-slate-100 pb-4 shrink-0">FAQs</h3>
-                        
-                        <div class="flex flex-col flex-grow">
-                            <div v-for="(faq, index) in faqs" :key="index" class="border-b border-slate-100 last:border-none">
-                                <button @click="toggleFaq(index)" class="w-full text-left font-bold text-slate-800 py-4 text-sm hover:text-slate-500 transition-colors bg-transparent flex justify-between items-center outline-none">
-                                    {{ faq.question }}
-                                    <i class="pi pi-chevron-down text-xs text-slate-400 transition-transform duration-300" :class="{ 'rotate-180': openFaqIndex === index }"></i>
-                                </button>
-                                
-                                <div class="grid transition-all duration-300 ease-in-out" :class="openFaqIndex === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                                    <div class="overflow-hidden">
-                                        <div class="text-slate-500 text-sm leading-relaxed pb-4 pt-1 bg-transparent font-medium">
-                                            {{ faq.answer }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- FAQ Categories -->
+                <div class="flex flex-col gap-3 emerge-hidden" style="transition-delay: 100ms;">
+                    <button v-for="(group, idx) in faqGroups" :key="idx"
+                        @click="activeGroup = idx"
+                        :class="['flex items-center gap-4 p-5 rounded-2xl border transition-all text-left group',
+                            activeGroup === idx 
+                                ? 'bg-white border-blue-200 shadow-xl shadow-blue-500/5' 
+                                : 'bg-transparent border-transparent hover:bg-white hover:border-slate-200']">
+                        <div :class="['w-12 h-12 rounded-xl flex items-center justify-center transition-all',
+                            activeGroup === idx ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400 group-hover:text-blue-600']">
+                            <i :class="['pi text-lg', group.icon]"></i>
                         </div>
-                    </div>
-                </div>
+                        <div>
+                            <p :class="['text-sm font-black uppercase tracking-wider', activeGroup === idx ? 'text-slate-900' : 'text-slate-500']">{{ group.title }}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">{{ group.items.length }} Articles</p>
+                        </div>
+                    </button>
 
-                <div class="lg:col-span-4 relative h-full">
-                    <div class="bg-white p-8 border border-slate-200 rounded relative z-10 h-full flex flex-col">
-                        <h3 class="text-sm font-bold text-slate-900 mb-2 tracking-widest uppercase">Direct Inquiry</h3>
-                        <p class="text-slate-500 text-xs mb-8 font-medium border-b border-slate-100 pb-6">Submit your questions directly to our support unit.</p>
-                        
-                        <div class="space-y-5 flex-grow flex flex-col">
-                            <div>
-                                <label class="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-2 block">Full Name</label>
-                                <input type="text" class="w-full p-3 text-sm rounded-sm border border-slate-300 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-none outline-none" />
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-2 block">Email Address</label>
-                                <input type="email" class="w-full p-3 text-sm rounded-sm border border-slate-300 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-none outline-none" />
-                            </div>
-                            <div class="flex-grow flex flex-col">
-                                <label class="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-2 block">Message</label>
-                                <textarea class="w-full p-3 text-sm rounded-sm border border-slate-300 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-none resize-none flex-grow outline-none"></textarea>
-                            </div>
-                            <button class="w-full bg-slate-900 border border-slate-900 py-3 mt-4 rounded-sm font-bold text-white text-sm uppercase tracking-widest hover:bg-slate-800 transition-all duration-200 outline-none">
-                                Submit
+                    <div class="mt-8 p-8 rounded-3xl bg-slate-900 text-white space-y-6 relative overflow-hidden shadow-2xl">
+                        <div class="relative z-10">
+                            <h4 class="text-lg font-black leading-tight">Still have questions?</h4>
+                            <p class="text-xs text-slate-400 mt-2 font-medium leading-relaxed">Our HR team is available during office hours to assist with your concerns.</p>
+                            <button class="mt-6 w-full py-3 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all">
+                                Contact HR Office
                             </button>
                         </div>
+                        <!-- Decorative glow -->
+                        <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full"></div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-3 flex flex-col gap-8">
-                    <div class="w-full flex flex-col bg-white border border-slate-200 rounded p-4 h-[250px] shrink-0">
-                        <div class="relative w-full h-full bg-slate-50 border border-slate-100 rounded overflow-hidden">
-                            <div id="leaflet-map" class="absolute inset-0 w-full h-full z-0"></div>
+                <!-- Questions List -->
+                <div class="lg:col-span-2 space-y-4 emerge-hidden" style="transition-delay: 300ms;">
+                    <div v-for="(item, idx) in faqGroups[activeGroup].items" :key="idx"
+                        class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden transition-all duration-300">
+                        <button @click="toggleItem(activeGroup, idx)"
+                            class="w-full p-6 flex items-center justify-between text-left group">
+                            <span class="text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{{ item.q }}</span>
+                            <div :class="['w-8 h-8 rounded-lg flex items-center justify-center border border-slate-100 text-slate-400 transition-all',
+                                isExpanded(activeGroup, idx) ? 'bg-slate-900 text-white border-slate-900 rotate-180' : 'bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600']">
+                                <i class="pi pi-chevron-down text-[10px]"></i>
+                            </div>
+                        </button>
+                        
+                        <div v-show="isExpanded(activeGroup, idx)" 
+                            class="px-6 pb-6 animate-fade-in">
+                            <div class="pt-2 border-t border-slate-50">
+                                <p class="text-sm text-slate-600 leading-relaxed font-medium">{{ item.a }}</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex flex-col pl-2">
-                        <h3 class="text-xs font-bold uppercase tracking-widest mb-8 text-slate-400">Headquarters</h3>
-                        
-                        <div class="space-y-8">
-                            <div class="flex items-start gap-4 group">
-                                <i class="pi pi-building text-slate-900 text-lg mt-0.5"></i>
-                                <p class="text-slate-700 font-medium text-sm leading-relaxed">DepEd Region 7 - Guihulngan City Division Office<br/>E Villegas St, City of Guihulngan<br/>Negros Oriental</p>
+                    <!-- Help center search secondary -->
+                    <div class="mt-12 p-8 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                <i class="pi pi-search text-lg"></i>
                             </div>
-                            
-                            <div class="flex items-center gap-4 group">
-                                <i class="pi pi-globe text-slate-900 text-lg"></i>
-                                <a href="http://depedguihulngan.ph" target="_blank" class="text-slate-700 hover:text-slate-900 transition-colors font-medium text-sm border-b border-transparent hover:border-slate-900 pb-0.5">depedguihulngan.ph</a>
+                            <div>
+                                <p class="text-sm font-black text-slate-800 uppercase tracking-widest">Search Documentation</p>
+                                <p class="text-xs text-slate-500 font-medium">Find specific rules and regulations.</p>
                             </div>
-                            
-                            <div class="flex items-center gap-4 group">
-                                <i class="pi pi-envelope text-slate-900 text-lg"></i>
-                                <a href="mailto:guihulngan.rsp@deped.gov.ph" class="text-slate-700 hover:text-slate-900 transition-colors font-medium text-sm border-b border-transparent hover:border-slate-900 pb-0.5">guihulngan.rsp@deped.gov.ph</a>
-                            </div>
-
-                            <div class="flex items-center gap-4 group">
-                                <i class="pi pi-phone text-slate-900 text-lg"></i>
-                                <p class="text-slate-700 font-medium text-sm">(035) 410-4066</p>
-                            </div>
+                        </div>
+                        <div class="relative w-full sm:w-64">
+                            <input type="text" placeholder="Search topics..."
+                                class="w-full h-11 pl-4 pr-10 rounded-xl bg-slate-100 border-none text-xs focus:ring-2 focus:ring-blue-500/20" />
+                            <i class="pi pi-arrow-right absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
                         </div>
                     </div>
                 </div>
@@ -205,26 +154,11 @@ onMounted(() => {
     </section>
 </template>
 
-<style scoped>
-@reference "@/assets/main.css";
-
-.emerge-hidden {
-    opacity: 0;
-    transform: translateY(50px);
-    transition: opacity 1.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.emerge-visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-:deep(.leaflet-popup-content-wrapper) {
-    @apply rounded shadow-md border border-slate-200;
-}
-:deep(.leaflet-popup-content) {
-    @apply text-sm text-slate-700 m-4;
-}
-:deep(.leaflet-container) {
-    @apply font-sans z-0;
+<style>
+/* No @apply here, using Tailwind classes directly. 
+   Keeping z-index and basic structure for animations if needed. */
+#faq {
+    position: relative;
+    z-index: 0;
 }
 </style>

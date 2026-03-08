@@ -1,16 +1,3 @@
-<!--
-  AppInput — Premium text input with animated states
-  ─────────────────────────────────────────────────────────────
-  Motion contract:
-    Idle   → 1px border var(--border-main), no shadow
-    Focus  → border var(--color-primary) + double focus ring in 150ms
-    Error  → border danger + danger focus ring
-    Fill   → background brightens slightly
-    Hover  → border-strong in 150ms
-
-  Features: prefix/suffix icons, clearable, password toggle,
-            loading indicator, error/hint messages.
--->
 <script setup>
 import { ref, computed } from 'vue'
 

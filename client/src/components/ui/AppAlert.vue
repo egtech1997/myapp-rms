@@ -1,13 +1,3 @@
-<!--
-  AppAlert — Inline contextual alert
-  ─────────────────────────────────────────────────────────────
-  Variants: info | success | warning | error
-  Usage:
-    <AppAlert variant="success" title="Saved!" dismissible>
-      Your changes have been saved successfully.
-    </AppAlert>
-    <AppAlert variant="error">{{ errorMessage }}</AppAlert>
--->
 <script setup>
 import { ref } from 'vue'
 

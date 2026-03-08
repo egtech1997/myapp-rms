@@ -14,10 +14,6 @@ export const useAuthStore = defineStore('auth', {
 
     isAdmin: (state) => {
       if (!state.user) return false
-
-      const isDepEd = state.user.email?.toLowerCase().endsWith('@deped.gov.ph')
-      if (isDepEd) return true
-
       return state.user.roles?.some((role) => {
         const roleName = (typeof role === 'object' ? role.name : role)?.toLowerCase()
         return roleName !== 'user' && roleName !== 'applicant'
@@ -31,8 +27,16 @@ export const useAuthStore = defineStore('auth', {
 
     can: (state) => (permission) => {
       if (!state.user) return false
-      if (state.isAdmin) return true
-      return state.user.permissions?.includes(permission) || false
+      // Super admin bypasses all checks
+      const isSuperAdmin = state.user.roles?.some((r) =>
+        (typeof r === 'object' ? r.name : r)?.toLowerCase().includes('super')
+      )
+      if (isSuperAdmin) return true
+      // Check flattened permissions from populated roles
+      const perms = state.user.roles?.flatMap((r) =>
+        typeof r === 'object' ? (r.permissions ?? []) : []
+      ) ?? []
+      return perms.includes(permission) || perms.includes('all')
     },
   },
 

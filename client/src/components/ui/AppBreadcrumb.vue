@@ -1,12 +1,3 @@
-<!--
-  AppBreadcrumb — Accessible navigation breadcrumb
-  Usage:
-    <AppBreadcrumb :items="[
-      { label: 'Dashboard', to: '/admin/dashboard' },
-      { label: 'Applicants', to: '/admin/applicants' },
-      { label: 'Juan dela Cruz' },
-    ]" />
--->
 <script setup>
 defineOptions({ name: 'AppBreadcrumb' })
 

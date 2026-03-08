@@ -48,7 +48,7 @@ const handleSubmit = async () => {
             <div class="p-8 sm:p-10">
                 <div class="mb-8 text-center">
                     <div
-                        class="mx-auto mb-5 w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shadow-md shadow-blue-900/20">
+                        class="mx-auto mb-5 w-10 h-10 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shadow-md">
                         <i class="pi pi-key text-white text-lg"></i>
                     </div>
                     <h2 class="text-xl font-bold text-[var(--text-main)] tracking-tight">

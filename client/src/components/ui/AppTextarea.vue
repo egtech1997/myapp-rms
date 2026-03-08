@@ -1,9 +1,3 @@
-<!--
-  AppTextarea — Auto-resizing textarea
-  Usage:
-    <AppTextarea v-model="notes" placeholder="Write something..." :rows="4"
-      :maxlength="500" show-count error="Field required" />
--->
 <script setup>
 import { ref, watch, nextTick, onMounted } from 'vue'
 

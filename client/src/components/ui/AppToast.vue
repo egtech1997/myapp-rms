@@ -1,13 +1,3 @@
-<!--
-  AppToast — Individual premium toast notification
-  ─────────────────────────────────────────────────────────────
-  Motion contract:
-    Enter → slide up + scale from bottom in 320ms spring
-    Exit  → slide right + fade in 200ms ease-in
-    Auto-dismiss → progress bar depletes over duration
-    Hover → pause timer, expand slightly
-  Internal to AppToaster — not used directly.
--->
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 
@@ -80,10 +70,10 @@ const config = computed(() => ({
   },
   info: {
     icon:    'pi-info-circle',
-    iconBg:  'bg-blue-100',
-    iconClr: 'text-blue-600',
-    bar:     'bg-blue-500',
-    ring:    'ring-blue-100',
+    iconBg:  'bg-[var(--color-primary-light)]',
+    iconClr: 'text-[var(--color-primary)]',
+    bar:     'bg-[var(--color-primary)]',
+    ring:    'ring-[var(--color-primary-light)]',
   },
   loading: {
     icon:    'pi-spin pi-spinner',

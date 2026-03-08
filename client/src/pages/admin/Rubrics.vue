@@ -1,6 +1,7 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, inject } from 'vue'
 import apiClient from '@/api/axios'
+import { AppPageHeader } from '@/components/ui'
 
 const loading  = ref(true)
 const saving   = ref(false)
@@ -115,114 +116,122 @@ onMounted(loadRubrics)
       </div>
     </Transition>
 
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-[var(--text-main)] tracking-tight">Scoring Rubrics</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-0.5">Configure DepEd MSP maximum point weights per hiring track.</p>
-      </div>
-      <button @click="loadRubrics" class="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-colors">
-        <i class="pi pi-refresh text-xs"></i> Reload
-      </button>
+    <div class="flex flex-col gap-6">
+        <AppPageHeader title="Scoring Rubrics" subtitle="Configure DepEd MSP maximum point weights per hiring track." icon="pi-sliders-h">
+          <template #actions>
+            <button @click="loadRubrics"
+              class="h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--bg-app)] transition-colors"
+              title="Reload">
+              <i class="pi pi-refresh text-sm"></i>
+            </button>
+          </template>
+        </AppPageHeader>
+
+        <div v-if="loading" class="flex flex-col gap-4">
+        <div v-for="n in 6" :key="n" class="h-14 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
+        </div>
+
+        <template v-else>
+        <div class="flex gap-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-1">
+            <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+            :class="['flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors',
+                activeTab === tab.id ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)]']">
+            <i :class="['pi text-xs', tab.icon]"></i>{{ tab.label }}
+            </button>
+        </div>
+
+        <Transition name="tab-slide" mode="out-in">
+        <div :key="activeTab" class="flex flex-col gap-4">
+
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-[var(--color-primary-light)] border border-blue-200 rounded-xl px-5 py-4 flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)]">Criteria Total</p>
+            <p class="text-2xl font-bold text-[var(--color-primary)]">{{ subtotal }}</p>
+            <p class="text-[10px] text-[var(--color-primary)]">pts (excl. potential)</p>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Potential Total</p>
+            <p class="text-2xl font-bold text-amber-700">{{ potentialSubtotal }}</p>
+            <p class="text-[10px] text-amber-400">pts (assessment phase)</p>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-4 flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Grand Total</p>
+            <p class="text-2xl font-bold text-emerald-700">{{ grandTotal }}</p>
+            <p class="text-[10px] text-emerald-400">max possible points</p>
+            </div>
+        </div>
+
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl px-5 py-3.5 flex items-center justify-between">
+            <div>
+            <p class="text-sm font-semibold text-[var(--text-main)]">Rubric Active</p>
+            <p class="text-xs text-[var(--text-muted)] mt-0.5">Inactive rubrics won't be used for scoring.</p>
+            </div>
+            <button @click="activeRubric[activeTab] = !activeRubric[activeTab]"
+            :class="['relative w-11 h-6 rounded-full transition-colors flex-shrink-0', activeRubric[activeTab] ? 'bg-[var(--color-primary)]' : 'bg-[var(--border-main)]']"
+            role="switch" :aria-checked="activeRubric[activeTab]">
+            <span :class="['absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform', activeRubric[activeTab] ? 'translate-x-5' : 'translate-x-0']"></span>
+            </button>
+        </div>
+
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl overflow-hidden">
+            <div class="px-5 py-3 border-b border-[var(--border-main)] bg-[var(--bg-app)]">
+            <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Criteria Maximum Points</p>
+            </div>
+            <div class="divide-y divide-[var(--border-main)]">
+            <div v-for="field in criteriaFields" :key="field.key" class="flex items-center gap-4 px-5 py-4">
+                <div class="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center flex-shrink-0">
+                <i :class="['pi text-sm text-[var(--color-primary)]', field.icon]"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-[var(--text-main)]">{{ field.label }}</p>
+                <p class="text-xs text-[var(--text-muted)]">{{ field.desc }}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                <input v-model.number="currentWeights[field.key]" type="number" min="0" max="100" step="0.5"
+                    class="w-24 h-9 px-3 text-center rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-primary)] transition-shadow" />
+                <span class="text-xs text-[var(--text-muted)] w-6">pts</span>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl overflow-hidden">
+            <div class="px-5 py-3 border-b border-[var(--border-main)] bg-amber-50">
+            <div class="flex items-center gap-2">
+                <i class="pi pi-bolt text-amber-600 text-xs"></i>
+                <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Potential Points (Assessment Phase)</p>
+            </div>
+            </div>
+            <div class="divide-y divide-[var(--border-main)]">
+            <div v-for="field in potentialFields" :key="field.key" class="flex items-center gap-4 px-5 py-4">
+                <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                <i class="pi pi-star-fill text-sm text-amber-500"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-[var(--text-main)]">{{ field.label }}</p>
+                <p class="text-xs text-[var(--text-muted)]">{{ field.desc }}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                <input v-model.number="currentWeights.potential[field.key]" type="number" min="0" max="100" step="0.5"
+                    class="w-24 h-9 px-3 text-center rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-primary)] transition-shadow" />
+                <span class="text-xs text-[var(--text-muted)] w-6">pts</span>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button @click="save" :disabled="saving"
+            class="btn-primary h-10 px-6 text-sm disabled:opacity-50 flex items-center gap-2">
+            <i v-if="saving" class="pi pi-spin pi-spinner text-xs"></i>
+            <i v-else class="pi pi-save text-xs"></i>
+            {{ saving ? 'Saving...' : `Save ${tabs.find(t => t.id === activeTab)?.label} Rubric` }}
+            </button>
+        </div>
+
+        </div>
+        </Transition>
+        </template>
     </div>
-
-    <div v-if="loading" class="flex flex-col gap-4">
-      <div v-for="n in 6" :key="n" class="h-14 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
-    </div>
-
-    <template v-else>
-      <div class="flex gap-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-1">
-        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-          :class="['flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors',
-            activeTab === tab.id ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)]']">
-          <i :class="['pi text-xs', tab.icon]"></i>{{ tab.label }}
-        </button>
-      </div>
-
-      <div class="grid grid-cols-3 gap-4">
-        <div class="bg-[var(--color-primary-light)] border border-blue-200 rounded-xl px-5 py-4 flex flex-col gap-1">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)]">Criteria Total</p>
-          <p class="text-2xl font-bold text-[var(--color-primary)]">{{ subtotal }}</p>
-          <p class="text-[10px] text-blue-400">pts (excl. potential)</p>
-        </div>
-        <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex flex-col gap-1">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Potential Total</p>
-          <p class="text-2xl font-bold text-amber-700">{{ potentialSubtotal }}</p>
-          <p class="text-[10px] text-amber-400">pts (assessment phase)</p>
-        </div>
-        <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-4 flex flex-col gap-1">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Grand Total</p>
-          <p class="text-2xl font-bold text-emerald-700">{{ grandTotal }}</p>
-          <p class="text-[10px] text-emerald-400">max possible points</p>
-        </div>
-      </div>
-
-      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl px-5 py-3.5 flex items-center justify-between">
-        <div>
-          <p class="text-sm font-semibold text-[var(--text-main)]">Rubric Active</p>
-          <p class="text-xs text-[var(--text-muted)] mt-0.5">Inactive rubrics won't be used for scoring.</p>
-        </div>
-        <button @click="activeRubric[activeTab] = !activeRubric[activeTab]"
-          :class="['relative w-11 h-6 rounded-full transition-colors flex-shrink-0', activeRubric[activeTab] ? 'bg-[var(--color-primary)]' : 'bg-[var(--border-main)]']"
-          role="switch" :aria-checked="activeRubric[activeTab]">
-          <span :class="['absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform', activeRubric[activeTab] ? 'translate-x-5' : 'translate-x-0']"></span>
-        </button>
-      </div>
-
-      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl overflow-hidden">
-        <div class="px-5 py-3 border-b border-[var(--border-main)] bg-[var(--bg-app)]">
-          <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Criteria Maximum Points</p>
-        </div>
-        <div class="divide-y divide-[var(--border-main)]">
-          <div v-for="field in criteriaFields" :key="field.key" class="flex items-center gap-4 px-5 py-4">
-            <div class="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center flex-shrink-0">
-              <i :class="['pi text-sm text-[var(--color-primary)]', field.icon]"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-[var(--text-main)]">{{ field.label }}</p>
-              <p class="text-xs text-[var(--text-muted)]">{{ field.desc }}</p>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <input v-model.number="currentWeights[field.key]" type="number" min="0" max="100" step="0.5"
-                class="w-24 h-9 px-3 text-center rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-primary)] transition-shadow" />
-              <span class="text-xs text-[var(--text-muted)] w-6">pts</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl overflow-hidden">
-        <div class="px-5 py-3 border-b border-[var(--border-main)] bg-amber-50">
-          <div class="flex items-center gap-2">
-            <i class="pi pi-bolt text-amber-600 text-xs"></i>
-            <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Potential Points (Assessment Phase)</p>
-          </div>
-        </div>
-        <div class="divide-y divide-[var(--border-main)]">
-          <div v-for="field in potentialFields" :key="field.key" class="flex items-center gap-4 px-5 py-4">
-            <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
-              <i class="pi pi-star-fill text-sm text-amber-500"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-[var(--text-main)]">{{ field.label }}</p>
-              <p class="text-xs text-[var(--text-muted)]">{{ field.desc }}</p>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <input v-model.number="currentWeights.potential[field.key]" type="number" min="0" max="100" step="0.5"
-                class="w-24 h-9 px-3 text-center rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-primary)] transition-shadow" />
-              <span class="text-xs text-[var(--text-muted)] w-6">pts</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-end">
-        <button @click="save" :disabled="saving"
-          class="btn-primary h-10 px-6 text-sm disabled:opacity-50 flex items-center gap-2">
-          <i v-if="saving" class="pi pi-spin pi-spinner text-xs"></i>
-          <i v-else class="pi pi-save text-xs"></i>
-          {{ saving ? 'Saving...' : `Save ${tabs.find(t => t.id === activeTab)?.label} Rubric` }}
-        </button>
-      </div>
-    </template>
   </div>
 </template>

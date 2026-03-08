@@ -4,10 +4,16 @@ export const jobSchema = Joi.object({
   positionTitle: Joi.string().required().min(3),
   positionCode: Joi.string().required(),
   description: Joi.string().required(),
+  
+  // Qualification Standards (QS)
   education: Joi.string().required(),
   experience: Joi.string().required(),
+  minExperienceMonths: Joi.number().min(0).default(0),
   trainings: Joi.string().required(),
+  minTrainingHours: Joi.number().min(0).default(0),
   eligibility: Joi.string().required(),
+  competencyRequirements: Joi.array().items(Joi.string()).default([]),
+
   itemNumbers: Joi.array().items(Joi.string()).min(1).required(),
   salary: Joi.number().positive().required(),
   salaryGrade: Joi.number().integer().min(1).max(33).required(),
@@ -22,10 +28,16 @@ export const jobUpdateSchema = Joi.object({
   positionTitle: Joi.string().min(3),
   positionCode: Joi.string(),
   description: Joi.string(),
+  
+  // Qualification Standards (QS)
   education: Joi.string(),
   experience: Joi.string(),
+  minExperienceMonths: Joi.number().min(0),
   trainings: Joi.string(),
+  minTrainingHours: Joi.number().min(0),
   eligibility: Joi.string(),
+  competencyRequirements: Joi.array().items(Joi.string()),
+
   itemNumbers: Joi.array().items(Joi.string()).min(1),
   salary: Joi.number().positive(),
   salaryGrade: Joi.number().integer().min(1).max(33),

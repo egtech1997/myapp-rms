@@ -11,12 +11,15 @@ const jobSchema = new mongoose.Schema(
     },
     description: { type: String, required: true },
 
-    // Qualification Standards (QS)
+    // 🔹 DepEd Qualification Standards (QS) - DO 007, s. 2023
     qualifications: {
       education: { type: String, required: true },
       experience: { type: String, required: true },
+      minExperienceMonths: { type: Number, default: 0 },
       trainings: { type: String, required: true },
+      minTrainingHours: { type: Number, default: 0 },
       eligibility: { type: String, required: true },
+      competencyRequirements: [{ type: String }],
     },
 
     // Plantilla / Item details

@@ -71,7 +71,7 @@ const routes = [
         component: () => import('@/pages/user/Profile.vue'),
       },
       {
-        path: '/vacancies',
+        path: 'vacancies',
         name: 'Job Vacancies',
         component: () => import('@/pages/user/Vacancies.vue'),
       },
@@ -96,10 +96,15 @@ const routes = [
         component: () => import('@/pages/admin/Dashboard.vue'),
       },
       {
+        path: 'analytics',
+        name: 'Job Analytics',
+        component: () => import('@/pages/admin/JobAnalytics.vue'),
+      },
+      {
         path: 'roles-permissions',
         name: 'Roles & Permissions',
         component: () => import('@/pages/admin/RolesPermissions.vue'),
-        meta: { permission: 'role_view' },
+        meta: { permission: 'role_manage' },
       },
       {
         path: 'user-list',
@@ -141,6 +146,11 @@ const routes = [
         path: 'rqa',
         name: 'Registry of Qualified Applicants',
         component: () => import('@/pages/admin/RQA.vue'),
+      },
+      {
+        path: 'appointments',
+        name: 'Final Appointments',
+        component: () => import('@/pages/admin/Appointments.vue'),
       },
       {
         path: 'announcements',

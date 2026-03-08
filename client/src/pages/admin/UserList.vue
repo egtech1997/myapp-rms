@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRoleStore } from '@/stores/roles'
 import apiClient from '@/api/axios'
+import { AppModal, AppTableReport, AppPageHeader } from '@/components/ui'
 
 const toast = inject('$toast')
 const swal = inject('$swal')
@@ -19,6 +20,19 @@ const filterRole = ref('')
 const filterStatus = ref('')
 const sortBy = ref('createdAt')
 const sortDir = ref('desc')
+
+// ─── Export ────────────────────────────────────────────────────────────────
+const showReport = ref(false)
+const reportCols = [
+  { label: 'Username',   key: 'username' },
+  { label: 'Email',      key: 'email' },
+  { label: 'Roles',      value: (u) => u.roles?.map(r => r.name).join(', ') || '—' },
+  { label: 'Status',     value: (u) => u.isActive ? 'Active' : 'Inactive' },
+  { label: 'Verified',   value: (u) => u.isVerified ? 'Yes' : 'No' },
+  { label: 'Auth',       value: (u) => u.googleId ? 'Google' : 'Email/Password' },
+  { label: 'Last Login', value: (u) => formatDate(u.lastLogin) },
+  { label: 'Joined',     value: (u) => formatDate(u.createdAt) },
+]
 
 // ─── Modal ─────────────────────────────────────────────────────────────────
 const showModal = ref(false)
@@ -124,7 +138,7 @@ const openModal = (user) => {
 
 const closeModal = () => {
     showModal.value = false
-    selectedUser.value = null
+    setTimeout(() => { selectedUser.value = null }, 350)
 }
 
 const toggleRoleSelection = (roleId) => {
@@ -209,6 +223,26 @@ const handleDelete = async () => {
     }
 }
 
+// ─── Pagination ────────────────────────────────────────────────────────────
+const currentPage = ref(1)
+const pageSize    = ref(15)
+
+watch([searchQuery, filterRole, filterStatus], () => { currentPage.value = 1 })
+
+const pagedUsers = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value
+    return filteredUsers.value.slice(start, start + pageSize.value)
+})
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value)))
+
+const pageNumbers = computed(() => {
+    const p = totalPages.value
+    if (p <= 7) return Array.from({ length: p }, (_, i) => i + 1)
+    if (currentPage.value <= 4) return [1, 2, 3, 4, 5, '…', p]
+    if (currentPage.value >= p - 3) return [1, '…', p - 4, p - 3, p - 2, p - 1, p]
+    return [1, '…', currentPage.value - 1, currentPage.value, currentPage.value + 1, '…', p]
+})
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const formatDate = (date) => {
     if (!date) return '—'
@@ -218,11 +252,11 @@ const formatDate = (date) => {
 const roleBadgeClass = (name) => {
     const map = {
         super_admin: 'bg-purple-50 text-purple-700 border-purple-200',
-        admin: 'bg-blue-50 text-blue-700 border-blue-200',
-        user: 'bg-slate-100 text-slate-500 border-slate-200',
-        applicant: 'bg-green-50 text-green-700 border-green-200',
+        admin:       'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary-ring)]',
+        user:        'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)]',
+        applicant:   'bg-green-50 text-green-700 border-green-200',
     }
-    return map[name?.toLowerCase()] || 'bg-gray-100 text-gray-600 border-gray-200'
+    return map[name?.toLowerCase()] || 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)]'
 }
 
 const isSuperAdmin = (user) => user?.username === 'super_admin'
@@ -231,24 +265,19 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
 <template>
     <div class="flex flex-col gap-6">
 
-        <!-- ── Header ──────────────────────────────────────────────── -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-                <h1 class="text-2xl font-bold text-[var(--text-main)] tracking-tight">User Management</h1>
-                <p class="text-sm text-[var(--text-muted)] mt-0.5">Manage accounts, roles, and system access.</p>
+        <AppPageHeader title="User Management" subtitle="Manage accounts, roles, and system access." icon="pi-users">
+          <template #actions>
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-xs font-medium text-[var(--text-muted)]">
+              <i class="pi pi-users text-[11px]"></i>
+              <span>{{ filteredUsers.length }} user{{ filteredUsers.length !== 1 ? 's' : '' }}</span>
             </div>
-            <div class="flex items-center gap-2">
-                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-xs font-medium text-[var(--text-muted)]">
-                    <i class="pi pi-users text-[11px]"></i>
-                    <span>{{ filteredUsers.length }} user{{ filteredUsers.length !== 1 ? 's' : '' }}</span>
-                </div>
-                <button @click="fetchUsers"
-                    class="h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors"
-                    title="Refresh">
-                    <i :class="['pi pi-refresh text-sm', { 'animate-spin': loading }]"></i>
-                </button>
-            </div>
-        </div>
+            <button @click="fetchUsers"
+              class="h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors"
+              title="Refresh">
+              <i :class="['pi pi-refresh text-sm', { 'animate-spin': loading }]"></i>
+            </button>
+          </template>
+        </AppPageHeader>
 
         <!-- ── Toolbar ─────────────────────────────────────────────── -->
         <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-4 flex flex-col sm:flex-row gap-3">
@@ -291,6 +320,16 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                     <i class="pi pi-times text-[10px]"></i> Clear
                 </button>
             </div>
+        </div>
+
+        <!-- ── Export Bar ─────────────────────────────────────────── -->
+        <div class="flex items-center justify-end px-1">
+            <button @click="showReport = true"
+                class="h-8 px-3 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
+                       hover:bg-[var(--bg-app)] text-xs font-semibold text-[var(--text-muted)]
+                       hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5">
+                <i class="pi pi-download text-[10px]"></i> Export
+            </button>
         </div>
 
         <!-- ── Table ───────────────────────────────────────────────── -->
@@ -357,7 +396,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[var(--border-main)]">
-                        <tr v-for="user in filteredUsers" :key="user._id"
+                        <tr v-for="user in pagedUsers" :key="user._id"
                             @click="openModal(user)"
                             class="hover:bg-[var(--bg-app)] transition-colors cursor-pointer group">
 
@@ -365,7 +404,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             <td class="px-5 py-3.5">
                                 <div class="flex items-center gap-3">
                                     <div class="relative flex-shrink-0">
-                                        <img :src="user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=1d4ed8&color=fff&bold=true&size=64`"
+                                        <img :src="user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=4A4D8F&color=fff&bold=true&size=64`"
                                             :alt="user.username"
                                             class="w-8 h-8 rounded-full object-cover border border-[var(--border-main)]" />
                                         <span v-if="isSuperAdmin(user)"
@@ -418,10 +457,10 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             <!-- Joined -->
                             <td class="px-5 py-3.5 text-xs text-[var(--text-muted)]">{{ formatDate(user.createdAt) }}</td>
 
-                            <!-- Actions -->
+                            <!-- Actions — always visible -->
                             <td class="px-5 py-3.5 text-right" @click.stop>
                                 <button @click="openModal(user)"
-                                    class="text-xs font-semibold text-[var(--color-primary)] border border-[var(--color-primary-ring)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-primary-light)] transition-colors opacity-0 group-hover:opacity-100">
+                                    class="text-xs font-semibold text-[var(--color-primary)] border border-[var(--color-primary-ring)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-primary-light)] transition-colors">
                                     Manage
                                 </button>
                             </td>
@@ -429,62 +468,102 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                     </tbody>
                 </table>
             </div>
+        <!-- ── Pagination ─────────────────────────────────────────── -->
+        <div v-if="!loading && filteredUsers.length > pageSize"
+            class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-[var(--border-main)] bg-[var(--surface)]">
+            <p class="text-xs text-[var(--text-muted)] font-medium">
+                Showing
+                <span class="font-bold text-[var(--text-main)]">{{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredUsers.length) }}</span>
+                of
+                <span class="font-bold text-[var(--text-main)]">{{ filteredUsers.length }}</span>
+                users
+            </p>
+            <nav class="flex items-center gap-1">
+                <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <i class="pi pi-chevron-left text-[10px]"></i>
+                </button>
+                <template v-for="(p, i) in pageNumbers" :key="i">
+                    <span v-if="p === '…'" class="w-7 h-7 flex items-center justify-center text-xs text-[var(--text-faint)]">…</span>
+                    <button v-else @click="currentPage = p"
+                        :class="['w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold transition-all',
+                            currentPage === p
+                                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                                : 'border border-[var(--border-main)] text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)]']">
+                        {{ p }}
+                    </button>
+                </template>
+                <button @click="currentPage = Math.min(totalPages, currentPage + 1)" :disabled="currentPage === totalPages"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <i class="pi pi-chevron-right text-[10px]"></i>
+                </button>
+            </nav>
+        </div>
         </div>
 
 
+        <!-- ── Export Report ──────────────────────────────────────── -->
+        <AppTableReport
+            v-model="showReport"
+            title="User Registry"
+            subtitle="System Accounts"
+            :columns="reportCols"
+            :rows="filteredUsers"
+            filename="UserRegistry" />
+
         <!-- ── User Management Modal ────────────────────────────────── -->
-        <Teleport to="body">
-        <Transition name="fade">
-        <div v-if="showModal && selectedUser"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-            @click.self="closeModal">
+        <AppModal v-model="showModal" hide-header size="md" @close="closeModal">
 
-            <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-zoom-in max-h-[90vh]">
-
-                <!-- Modal Header -->
-                <div class="px-6 py-4 border-b border-[var(--border-main)] flex items-center gap-4 flex-shrink-0">
-                    <img :src="selectedUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.username)}&background=1d4ed8&color=fff&bold=true&size=96`"
-                        :alt="selectedUser.username"
+            <!-- Custom Header: Avatar + Tabs -->
+            <template #header>
+                <!-- Blue accent strip is provided by AppModal -->
+                <!-- Avatar row -->
+                <div class="flex items-center gap-4 px-6 py-4 border-b border-[var(--border-main)] shrink-0">
+                    <img v-if="selectedUser"
+                        :src="selectedUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.username)}&background=4A4D8F&color=fff&bold=true&size=96`"
+                        :alt="selectedUser?.username"
                         class="w-11 h-11 rounded-full object-cover border-2 border-[var(--border-main)] flex-shrink-0" />
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h3 class="text-sm font-bold text-[var(--text-main)] truncate">{{ selectedUser.username }}</h3>
-                            <span v-if="isSuperAdmin(selectedUser)"
+                            <h3 class="text-sm font-bold text-[var(--text-main)] truncate">{{ selectedUser?.username }}</h3>
+                            <span v-if="selectedUser && isSuperAdmin(selectedUser)"
                                 class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex-shrink-0">
                                 PROTECTED
                             </span>
                         </div>
-                        <p class="text-xs text-[var(--text-muted)] truncate mt-0.5">{{ selectedUser.email }}</p>
+                        <p class="text-xs text-[var(--text-muted)] truncate mt-0.5">{{ selectedUser?.email }}</p>
                     </div>
                     <button @click="closeModal"
-                        class="w-8 h-8 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors flex-shrink-0">
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors flex-shrink-0">
                         <i class="pi pi-times text-sm"></i>
                     </button>
                 </div>
-
                 <!-- Tab Bar -->
-                <div class="flex border-b border-[var(--border-main)] bg-[var(--bg-app)] flex-shrink-0">
+                <div class="flex border-b border-[var(--border-main)] bg-[var(--bg-app)] shrink-0">
                     <button v-for="tab in [
-                        { id: 'info',     label: 'Account',  icon: 'pi-user'  },
+                        { id: 'info',     label: 'Account',  icon: 'pi-user'   },
                         { id: 'roles',    label: 'Roles',    icon: 'pi-shield' },
-                        { id: 'password', label: 'Password', icon: 'pi-key'   },
+                        { id: 'password', label: 'Password', icon: 'pi-key'    },
                     ]" :key="tab.id"
                         @click="modalTab = tab.id"
                         :class="[
-                            'flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-colors',
+                            'flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-colors border-b-2',
                             modalTab === tab.id
-                                ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--surface)]'
-                                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] border-b-2 border-transparent'
+                                ? 'text-[var(--color-primary)] border-[var(--color-primary)] bg-[var(--surface)]'
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] border-transparent'
                         ]">
                         <i :class="['pi text-[10px]', tab.icon]"></i>
                         {{ tab.label }}
                     </button>
                 </div>
+            </template>
 
-                <!-- Tab: Account Info ───────────────────────────────── -->
-                <div v-if="modalTab === 'info'" class="p-6 flex flex-col gap-5 overflow-y-auto custom-scrollbar flex-1">
+            <!-- Tab Content with smooth transition -->
+            <Transition name="tab-slide" mode="out-in">
 
-                    <div class="grid grid-cols-2 gap-3">
+                <!-- Tab: Account Info -->
+                <div v-if="modalTab === 'info'" key="info" class="flex flex-col gap-5">
+                    <div v-if="selectedUser" class="grid grid-cols-2 gap-3">
                         <div class="bg-[var(--bg-app)] rounded-xl p-4 border border-[var(--border-main)]">
                             <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">Status</p>
                             <span :class="['inline-flex items-center gap-1.5 text-sm font-semibold', selectedUser.isActive ? 'text-green-600' : 'text-red-500']">
@@ -521,8 +600,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                         </div>
                     </div>
 
-                    <!-- Actions -->
-                    <div v-if="canManage && !isSuperAdmin(selectedUser)" class="flex flex-col gap-2 pt-1 border-t border-[var(--border-main)]">
+                    <div v-if="selectedUser && canManage && !isSuperAdmin(selectedUser)" class="flex flex-col gap-2 pt-1 border-t border-[var(--border-main)]">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] pt-1">Account Actions</p>
                         <div class="flex gap-2">
                             <button @click="handleToggleStatus" :disabled="modalLoading"
@@ -543,37 +621,33 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             </button>
                         </div>
                     </div>
-
-                    <div v-if="isSuperAdmin(selectedUser)"
+                    <div v-if="selectedUser && isSuperAdmin(selectedUser)"
                         class="flex items-start gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-700">
                         <i class="pi pi-lock text-base flex-shrink-0 mt-0.5"></i>
                         <p class="text-sm">This is a protected system account. Administrative actions are restricted.</p>
                     </div>
                 </div>
 
-                <!-- Tab: Roles ─────────────────────────────────────── -->
-                <div v-if="modalTab === 'roles'" class="p-6 flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1">
-                    <p class="text-sm text-[var(--text-muted)]">
-                        Assign roles to control what this user can access. Changes apply after saving.
-                    </p>
+                <!-- Tab: Roles -->
+                <div v-else-if="modalTab === 'roles'" key="roles" class="flex flex-col gap-4">
+                    <p class="text-sm text-[var(--text-muted)]">Assign roles to control access. Changes apply after saving.</p>
 
                     <div v-if="roleStore.loading" class="flex flex-col gap-2">
                         <div v-for="i in 4" :key="i" class="h-14 rounded-xl bg-[var(--bg-app)] animate-pulse"></div>
                     </div>
-
                     <div v-else class="flex flex-col gap-2">
                         <label v-for="role in roleStore.roles" :key="role._id"
                             :class="[
                                 'flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all select-none',
                                 selectedRoles.includes(role._id)
                                     ? 'bg-[var(--color-primary-light)] border-[var(--color-primary-ring)]'
-                                    : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-slate-300',
-                                (!canManage || isSuperAdmin(selectedUser)) ? 'opacity-60 cursor-not-allowed' : ''
+                                    : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--border-strong)]',
+                                (!canManage || (selectedUser && isSuperAdmin(selectedUser))) ? 'opacity-60 cursor-not-allowed' : ''
                             ]">
                             <input type="checkbox"
                                 :checked="selectedRoles.includes(role._id)"
                                 @change="toggleRoleSelection(role._id)"
-                                :disabled="!canManage || isSuperAdmin(selectedUser)"
+                                :disabled="!canManage || (selectedUser && isSuperAdmin(selectedUser))"
                                 class="w-4 h-4 rounded text-[var(--color-primary)] border-[var(--border-main)] focus:ring-[var(--color-primary-ring)] cursor-pointer disabled:cursor-not-allowed" />
                             <div class="flex-1 min-w-0">
                                 <p :class="['text-sm font-semibold leading-tight', selectedRoles.includes(role._id) ? 'text-[var(--color-primary)]' : 'text-[var(--text-main)]']">
@@ -589,8 +663,7 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             </span>
                         </label>
                     </div>
-
-                    <div v-if="canManage && !isSuperAdmin(selectedUser)" class="pt-1 border-t border-[var(--border-main)]">
+                    <div v-if="canManage && selectedUser && !isSuperAdmin(selectedUser)" class="pt-1 border-t border-[var(--border-main)]">
                         <button @click="handleUpdateRoles" :disabled="modalLoading"
                             class="btn-primary w-full h-10 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                             <i v-if="modalLoading" class="pi pi-spin pi-spinner text-sm"></i>
@@ -600,36 +673,30 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                     </div>
                 </div>
 
-                <!-- Tab: Password ──────────────────────────────────── -->
-                <div v-if="modalTab === 'password'" class="p-6 flex flex-col gap-5 overflow-y-auto custom-scrollbar flex-1">
-
-                    <div v-if="isSuperAdmin(selectedUser)"
+                <!-- Tab: Password -->
+                <div v-else key="password" class="flex flex-col gap-5">
+                    <div v-if="selectedUser && isSuperAdmin(selectedUser)"
                         class="flex items-start gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-700">
                         <i class="pi pi-lock text-base flex-shrink-0 mt-0.5"></i>
                         <p class="text-sm">Super admin password cannot be reset from this panel.</p>
                     </div>
-
                     <template v-else-if="canManage">
                         <div class="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700">
                             <i class="pi pi-exclamation-triangle text-base flex-shrink-0 mt-0.5"></i>
-                            <p class="text-sm leading-relaxed">
-                                This will immediately overwrite the user's current password. They will need to use the new password on next login.
-                            </p>
+                            <p class="text-sm leading-relaxed">This will immediately overwrite the user's current password.</p>
                         </div>
-
                         <div class="flex flex-col gap-1.5">
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">New Password</label>
+                            <label class="field-label block mb-1">New Password</label>
                             <div class="relative">
                                 <input v-model="newPassword" :type="showNewPassword ? 'text' : 'password'"
                                     placeholder="Minimum 8 characters"
-                                    class="w-full h-10 pl-3.5 pr-10 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-shadow" />
+                                    class="input pr-10" />
                                 <button type="button" @click="showNewPassword = !showNewPassword"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                                     <i :class="['pi text-sm', showNewPassword ? 'pi-eye-slash' : 'pi-eye']"></i>
                                 </button>
                             </div>
                         </div>
-
                         <button @click="handleResetPassword" :disabled="modalLoading || newPassword.length < 8"
                             class="btn-primary w-full h-10 text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
                             <i v-if="modalLoading" class="pi pi-spin pi-spinner text-sm"></i>
@@ -637,16 +704,13 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             Reset Password
                         </button>
                     </template>
-
                     <div v-else class="text-center py-8 text-[var(--text-muted)]">
-                        <i class="pi pi-lock text-3xl mb-3 block text-slate-300"></i>
+                        <i class="pi pi-lock text-3xl mb-3 block opacity-30"></i>
                         <p class="text-sm">You don't have permission to reset passwords.</p>
                     </div>
                 </div>
 
-            </div>
-        </div>
-        </Transition>
-        </Teleport>
+            </Transition>
+        </AppModal>
     </div>
 </template>

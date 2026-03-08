@@ -30,7 +30,7 @@ onMounted(async () => {
   qrDataUrl.value = await QRCode.toDataURL(code.value, {
     width: 200,
     margin: 1,
-    color: { dark: '#0c1a3a', light: '#ffffff' },
+    color: { dark: '#001F3F', light: '#ffffff' },
     errorCorrectionLevel: 'M',
   })
 })
@@ -120,11 +120,11 @@ function printCover() {
 
         <!-- A4 Page — 794px = 210mm at 96dpi -->
         <div ref="coverRef"
-          style="width:794px; min-height:1123px; background:#fff; font-family:'Arial',sans-serif; color:#0c1a3a; position:relative; flex-shrink:0;"
+          style="width:794px; min-height:1123px; background:#fff; font-family:'Arial',sans-serif; color:#001F3F; position:relative; flex-shrink:0;"
           class="shadow-2xl">
 
           <!-- Header band -->
-          <div style="background:#0c1a3a; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:16px;">
+          <div style="background:#001F3F; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:16px;">
             <div style="width:48px; height:48px; border:2px solid rgba(255,255,255,0.35); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">
               &#127973;
             </div>
@@ -138,24 +138,24 @@ function printCover() {
             </div>
           </div>
           <!-- Gold stripe -->
-          <div style="background:#d97706; height:5px;"></div>
+          <div style="background:#EFBF04; height:5px;"></div>
 
           <!-- Content area -->
           <div style="padding:28px 36px 32px 40px; display:flex; flex-direction:column; gap:0; position:relative; min-height:1058px;">
 
             <!-- QR code — top right -->
             <div style="position:absolute; top:28px; right:36px; display:flex; flex-direction:column; align-items:center; gap:5px;">
-              <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR" style="width:110px; height:110px; border:2.5px solid #0c1a3a; padding:4px;" />
-              <div v-else style="width:110px; height:110px; border:2.5px solid #0c1a3a; display:flex; align-items:center; justify-content:center; font-size:8pt; color:#94a3b8;">Loading…</div>
+              <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR" style="width:110px; height:110px; border:2.5px solid #001F3F; padding:4px;" />
+              <div v-else style="width:110px; height:110px; border:2.5px solid #001F3F; display:flex; align-items:center; justify-content:center; font-size:8pt; color:#94a3b8;">Loading…</div>
               <span style="font-size:6.5pt; color:#64748b; letter-spacing:0.06em; text-transform:uppercase;">Scan to verify</span>
             </div>
 
             <!-- Title -->
             <div style="padding-right:130px;">
-              <div style="font-size:7.5pt; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:#d97706; margin-bottom:5px;">
+              <div style="font-size:7.5pt; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:#EFBF04; margin-bottom:5px;">
                 Merit Selection Plan — Recruitment, Selection &amp; Placement
               </div>
-              <div style="font-size:26pt; font-weight:900; color:#0c1a3a; letter-spacing:0.03em; line-height:1.05; text-transform:uppercase;">
+              <div style="font-size:26pt; font-weight:900; color:#001F3F; letter-spacing:0.03em; line-height:1.05; text-transform:uppercase;">
                 Application Cover
               </div>
               <div style="font-size:8.5pt; color:#475569; margin-top:6px;">
@@ -164,64 +164,64 @@ function printCover() {
             </div>
 
             <!-- Divider -->
-            <div style="border-top:3px solid #0c1a3a; margin:20px 0 0 0;"></div>
+            <div style="border-top:3px solid #001F3F; margin:20px 0 0 0;"></div>
 
             <!-- Info table -->
-            <div style="margin-top:24px; border:2.5px solid #0c1a3a; border-radius:4px; overflow:hidden;">
+            <div style="margin-top:24px; border:2.5px solid #001F3F; border-radius:4px; overflow:hidden;">
 
               <!-- Application Code row -->
               <div style="display:flex; align-items:stretch; background:#eff6ff; border-bottom:1px solid #cbd5e1;">
-                <div style="width:160px; flex-shrink:0; background:#0c1a3a; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
+                <div style="width:160px; flex-shrink:0; background:#001F3F; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
                   Application Code
                 </div>
-                <div style="flex:1; padding:12px 16px; font-family:'Courier New',monospace; font-size:16pt; font-weight:900; color:#1d4ed8; letter-spacing:0.08em; display:flex; align-items:center;">
+                <div style="flex:1; padding:12px 16px; font-family:'Courier New',monospace; font-size:16pt; font-weight:900; color:#4A4D8F; letter-spacing:0.08em; display:flex; align-items:center;">
                   {{ code }}
                 </div>
               </div>
 
               <!-- Applicant Name -->
               <div style="display:flex; align-items:stretch; border-bottom:1px solid #cbd5e1;">
-                <div style="width:160px; flex-shrink:0; background:#0c1a3a; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
+                <div style="width:160px; flex-shrink:0; background:#001F3F; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
                   Applicant Name
                 </div>
-                <div style="flex:1; padding:12px 16px; font-size:14pt; font-weight:800; color:#0c1a3a; display:flex; align-items:center;">
+                <div style="flex:1; padding:12px 16px; font-size:14pt; font-weight:800; color:#001F3F; display:flex; align-items:center;">
                   {{ fullName }}
                 </div>
               </div>
 
               <!-- Position -->
               <div style="display:flex; align-items:stretch; border-bottom:1px solid #cbd5e1;">
-                <div style="width:160px; flex-shrink:0; background:#0c1a3a; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
+                <div style="width:160px; flex-shrink:0; background:#001F3F; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
                   Position Applied For
                 </div>
-                <div style="flex:1; padding:12px 16px; font-size:13pt; font-weight:700; color:#0c1a3a; display:flex; align-items:center;">
+                <div style="flex:1; padding:12px 16px; font-size:13pt; font-weight:700; color:#001F3F; display:flex; align-items:center;">
                   {{ position }}
                 </div>
               </div>
 
               <!-- Place of Assignment -->
               <div v-if="station" style="display:flex; align-items:stretch; border-bottom:1px solid #cbd5e1;">
-                <div style="width:160px; flex-shrink:0; background:#0c1a3a; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
+                <div style="width:160px; flex-shrink:0; background:#001F3F; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
                   Place of Assignment
                 </div>
-                <div style="flex:1; padding:12px 16px; font-size:11pt; font-weight:600; color:#0c1a3a; display:flex; align-items:center;">
+                <div style="flex:1; padding:12px 16px; font-size:11pt; font-weight:600; color:#001F3F; display:flex; align-items:center;">
                   {{ station }}
                 </div>
               </div>
 
               <!-- Hiring Track -->
               <div v-if="track" style="display:flex; align-items:stretch; border-bottom:1px solid #cbd5e1;">
-                <div style="width:160px; flex-shrink:0; background:#0c1a3a; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
+                <div style="width:160px; flex-shrink:0; background:#001F3F; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
                   Hiring Track
                 </div>
-                <div style="flex:1; padding:12px 16px; font-size:11pt; font-weight:600; color:#0c1a3a; display:flex; align-items:center;">
+                <div style="flex:1; padding:12px 16px; font-size:11pt; font-weight:600; color:#001F3F; display:flex; align-items:center;">
                   {{ track }}
                 </div>
               </div>
 
               <!-- Date Printed -->
               <div style="display:flex; align-items:stretch;">
-                <div style="width:160px; flex-shrink:0; background:#0c1a3a; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
+                <div style="width:160px; flex-shrink:0; background:#001F3F; color:#fff; font-size:7pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:12px 14px; display:flex; align-items:center;">
                   Date Printed
                 </div>
                 <div style="flex:1; padding:12px 16px; font-size:10pt; font-weight:500; color:#334155; display:flex; align-items:center;">
@@ -232,7 +232,7 @@ function printCover() {
 
             <!-- Instructions -->
             <div style="margin-top:24px; border:1.5px solid #cbd5e1; border-radius:4px; padding:14px 18px; background:#f8fafc;">
-              <div style="font-size:7.5pt; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:#0c1a3a; margin-bottom:10px;">
+              <div style="font-size:7.5pt; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:#001F3F; margin-bottom:10px;">
                 Instructions for the Applicant
               </div>
               <ol style="padding-left:18px; display:flex; flex-direction:column; gap:5px; list-style:decimal;">
@@ -247,13 +247,13 @@ function printCover() {
             <div style="margin-top:36px; display:flex; gap:48px;">
               <div style="flex:1; display:flex; flex-direction:column; gap:42px;">
                 <div>
-                  <div style="border-top:1.5px solid #0c1a3a;"></div>
+                  <div style="border-top:1.5px solid #001F3F;"></div>
                   <div style="font-size:7.5pt; color:#475569; text-transform:uppercase; letter-spacing:0.06em; margin-top:4px;">Applicant's Signature over Printed Name</div>
                 </div>
               </div>
               <div style="flex:1; display:flex; flex-direction:column; gap:42px;">
                 <div>
-                  <div style="border-top:1.5px solid #0c1a3a;"></div>
+                  <div style="border-top:1.5px solid #001F3F;"></div>
                   <div style="font-size:7.5pt; color:#475569; text-transform:uppercase; letter-spacing:0.06em; margin-top:4px;">Date Received &amp; HRMO Initial</div>
                 </div>
               </div>
@@ -261,15 +261,15 @@ function printCover() {
 
             <!-- Footer -->
             <div style="margin-top:auto; padding-top:28px;">
-              <div style="border-top:2px solid #0c1a3a; padding-top:10px; display:flex; justify-content:space-between; align-items:flex-end;">
+              <div style="border-top:2px solid #001F3F; padding-top:10px; display:flex; justify-content:space-between; align-items:flex-end;">
                 <div style="font-size:7pt; color:#64748b; line-height:1.7;">
-                  <div style="font-weight:800; color:#0c1a3a; letter-spacing:0.06em; text-transform:uppercase;">DepEd — RSP Portal</div>
+                  <div style="font-weight:800; color:#001F3F; letter-spacing:0.06em; text-transform:uppercase;">DepEd — RSP Portal</div>
                   <div>Schools Division of Guihulngan City</div>
                   <div>Poblacion, Guihulngan City, Negros Oriental, NIR 6214</div>
                   <div style="margin-top:3px; color:#94a3b8;">This document is system-generated and does not require a wet signature to be valid.</div>
                 </div>
                 <div style="font-size:7pt; color:#64748b; text-align:right; line-height:1.7;">
-                  <div>Application Code: <strong style="font-family:'Courier New',monospace; color:#0c1a3a;">{{ code }}</strong></div>
+                  <div>Application Code: <strong style="font-family:'Courier New',monospace; color:#001F3F;">{{ code }}</strong></div>
                   <div>Generated: {{ printDate }}</div>
                 </div>
               </div>

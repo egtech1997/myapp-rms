@@ -2,247 +2,158 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { StatCard, EmptyState } from '@/components/ui'
+import { StatCard, AppButton, AppCard, AppBadge } from '@/components/ui'
 import apiClient from '@/api/axios'
 
 const router = useRouter()
-
 const authStore = useAuthStore()
-const loading = ref(false)
+const loading = ref(true)
 
-const stats = ref({ totalJobs: 0, publishedJobs: 0, totalUsers: 0, totalApplications: 0 })
-const recentJobs = ref([])
+const metrics = ref({ totalJobs: 0, totalApplications: 0, totalUsers: 0, finalizedRQA: 0 })
+const pipeline = ref([])
+const topVacancies = ref([])
 
 onMounted(async () => {
-    loading.value = true
     try {
-        const [jobsRes, usersRes] = await Promise.allSettled([
-            apiClient.get('/v1/jobs'),
-            apiClient.get('/v1/users'),
-        ])
-        if (jobsRes.status === 'fulfilled') {
-            const jobs = jobsRes.value.data.data || []
-            stats.value.totalJobs = jobs.length
-            stats.value.totalApplications = jobs.reduce((s, j) => s + (j.applications?.length || 0), 0)
-            stats.value.publishedJobs = jobs.filter(j => j.status === 'published').length
-            recentJobs.value = [...jobs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5)
-        }
-        if (usersRes.status === 'fulfilled') {
-            stats.value.totalUsers = (usersRes.value.data.data || []).length
-        }
+        const { data } = await apiClient.get('/v1/analytics/dashboard')
+        metrics.value = data.data.metrics
+        pipeline.value = data.data.pipeline
+        topVacancies.value = data.data.topVacancies
     } finally {
         loading.value = false
     }
 })
 
-const statusConfig = {
-    published: { label: 'Published', cls: 'bg-green-50 text-green-700 border-green-200' },
-    draft:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-500 border-slate-200' },
-    closed:    { label: 'Closed',    cls: 'bg-red-50 text-red-600 border-red-200' },
-    archived:  { label: 'Archived', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+const getStatusCount = (status) => {
+    return pipeline.value.find(p => p._id === status)?.count || 0
 }
 
-const trackConfig = {
-    teaching:         { label: 'Teaching',         cls: 'bg-blue-50 text-blue-700' },
-    teaching_related: { label: 'Teaching-Related', cls: 'bg-purple-50 text-purple-700' },
-    non_teaching:     { label: 'Non-Teaching',     cls: 'bg-orange-50 text-orange-700' },
-}
-
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
-
-const quickLinks = [
-    { label: 'Manage Vacancies', desc: 'Post and manage job openings', icon: 'pi-briefcase', to: '/admin/vacancies',  accent: 'text-[var(--color-primary)] bg-[var(--color-primary-light)] border-blue-200'   },
-    { label: 'User Accounts',    desc: 'Manage roles and access',      icon: 'pi-users',     to: '/admin/user-list',  accent: 'text-green-600 bg-green-50 border-green-200'  },
-    { label: 'Applicants',       desc: 'Review and process applicants',icon: 'pi-folder',    to: '/admin/applicants', accent: 'text-purple-600 bg-purple-50 border-purple-200' },
-    { label: 'Evaluations',      desc: 'Rate applicants for ranking',   icon: 'pi-chart-bar',to: '/admin/evaluations', accent: 'text-sky-600 bg-sky-50 border-sky-200' },
+const quickActions = [
+    { label: 'Create Vacancy', icon: 'pi-plus',        to: '/admin/vacancies',   color: 'blue'   },
+    { label: 'Verify Queue',   icon: 'pi-check-circle', to: '/admin/applicants',  color: 'purple' },
+    { label: 'Score Board',    icon: 'pi-chart-bar',    to: '/admin/evaluations', color: 'emerald'},
+    { label: 'Generate RQA',   icon: 'pi-verified',     to: '/admin/rqa',         color: 'amber'  },
 ]
-
-const greeting = () => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-}
 </script>
 
 <template>
-    <div class="flex flex-col gap-6 animate-fade-in-up">
+    <div class="flex flex-col gap-8 animate-fade-in-up">
 
-        <!-- ── Welcome Banner ──────────────────────────────────────── -->
-        <div class="relative overflow-hidden bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl px-6 py-5">
-            <!-- Subtle background accent -->
-            <div class="absolute inset-0 pointer-events-none"
-                style="background: radial-gradient(ellipse at top left, rgba(29,78,216,0.05) 0%, transparent 60%);"></div>
-
-            <div class="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                        style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); box-shadow: 0 4px 12px rgba(29,78,216,0.3);">
-                        <i class="pi pi-shield text-white text-base" aria-hidden="true"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                            Administration Panel
-                        </p>
-                        <h1 class="text-xl font-bold text-[var(--text-main)] tracking-tight mt-0.5">
-                            {{ greeting() }}, <span class="text-[var(--color-primary)] capitalize">{{ authStore.user?.username }}</span>
-                        </h1>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 text-xs text-[var(--text-muted)] bg-[var(--bg-app)] border border-[var(--border-main)] px-4 py-2.5 rounded-xl shrink-0 self-start sm:self-auto">
-                    <i class="pi pi-calendar text-[11px] text-[var(--color-primary)]" aria-hidden="true"></i>
-                    {{ new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }}
-                </div>
+        <!-- 1. Command Header -->
+        <section class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 pb-2 border-b border-[var(--border-main)]">
+            <div>
+                <h1 class="text-2xl font-black text-[var(--text-main)] tracking-tight leading-none">Command Center</h1>
+                <p class="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-3">Recruitment Lifecycle Overview</p>
             </div>
-        </div>
-
-        <!-- ── Stat Cards ──────────────────────────────────────────── -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-                title="Total Vacancies"
-                :value="stats.totalJobs"
-                icon="briefcase"
-                iconColor="blue"
-                description="All job postings"
-                :loading="loading"
-                to="/admin/vacancies" />
-            <StatCard
-                title="Published"
-                :value="stats.publishedJobs"
-                icon="send"
-                iconColor="green"
-                description="Live on portal"
-                :loading="loading"
-                to="/admin/vacancies" />
-            <StatCard
-                title="Applications"
-                :value="stats.totalApplications"
-                icon="folder-open"
-                iconColor="purple"
-                description="Total submitted"
-                :loading="loading"
-                to="/admin/applicants" />
-            <StatCard
-                title="Registered Users"
-                :value="stats.totalUsers"
-                icon="users"
-                iconColor="amber"
-                description="System accounts"
-                :loading="loading"
-                to="/admin/user-list" />
-        </div>
-
-        <!-- ── Main Grid ───────────────────────────────────────────── -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            <!-- Recent Vacancies ──────────────────────────────── -->
-            <div class="lg:col-span-2 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl overflow-hidden">
-
-                <!-- Card Header -->
-                <div class="px-5 py-4 border-b border-[var(--border-main)] flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] border border-blue-200 flex items-center justify-center">
-                            <i class="pi pi-clock text-[var(--color-primary)] text-[11px]" aria-hidden="true"></i>
-                        </div>
-                        <h2 class="text-sm font-bold text-[var(--text-main)]">Recent Vacancies</h2>
+            <div class="flex items-center gap-2">
+                <div class="flex -space-x-2 mr-4">
+                    <div v-for="i in 3" :key="i"
+                        class="w-7 h-7 rounded-lg border-2 border-[var(--surface)] bg-[var(--bg-app)] flex items-center justify-center text-[10px] font-black text-[var(--text-muted)]">
+                        {{ String.fromCharCode(64 + i) }}
                     </div>
-                    <router-link to="/admin/vacancies"
-                        class="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-colors group">
-                        View all
-                        <i class="pi pi-arrow-right text-[9px] group-hover:translate-x-0.5 transition-transform" aria-hidden="true"></i>
-                    </router-link>
+                    <div class="w-7 h-7 rounded-lg border-2 border-[var(--surface)] bg-[var(--color-primary)] flex items-center justify-center text-[10px] font-black text-white">+</div>
                 </div>
+                <AppButton variant="secondary" icon="pi-cog" size="sm" />
+                <AppButton variant="primary" icon="pi-external-link" size="sm">Open Public Portal</AppButton>
+            </div>
+        </section>
 
-                <!-- Loading skeleton -->
-                <div v-if="loading" class="p-5 flex flex-col gap-3" aria-busy="true">
-                    <div v-for="i in 4" :key="i"
-                        class="h-14 rounded-xl bg-[var(--bg-app)] animate-pulse"
-                        :style="{ animationDelay: `${i * 80}ms` }"></div>
-                </div>
+        <!-- 2. Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard title="Active Postings"   :value="metrics.totalJobs"         icon="briefcase" iconColor="blue"    :loading="loading" />
+            <StatCard title="Total Candidates"  :value="metrics.totalApplications"  icon="users"     iconColor="purple"  :loading="loading" trend="8" />
+            <StatCard title="Finalized RQA"     :value="metrics.finalizedRQA"       icon="verified"  iconColor="emerald" :loading="loading" />
+            <StatCard title="System Users"      :value="metrics.totalUsers"         icon="shield"    iconColor="gold"    :loading="loading" description="Registered accounts" />
+        </div>
 
-                <!-- Empty state -->
-                <EmptyState
-                    v-else-if="recentJobs.length === 0"
-                    icon="briefcase"
-                    title="No vacancies yet"
-                    description="Post your first job vacancy to get started."
-                    action-label="Create Vacancy"
-                    @action="router.push('/admin/vacancies')"
-                    compact />
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <!-- Job list -->
-                <div v-else class="divide-y divide-[var(--border-main)]">
-                    <router-link v-for="job in recentJobs" :key="job._id"
-                        to="/admin/vacancies"
-                        class="flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--bg-app)] transition-colors group">
+            <!-- 3. Pipeline (Span 8) -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <AppCard class="card-raised overflow-hidden">
+                    <template #header>
+                        <div class="px-6 py-4 flex justify-between items-center bg-[var(--bg-app)] border-b border-[var(--border-main)]">
+                            <h3 class="text-xs font-black text-[var(--text-main)] uppercase tracking-widest">Applicant Flow Funnel</h3>
+                            <AppBadge variant="neutral">LIVE</AppBadge>
+                        </div>
+                    </template>
 
-                        <!-- Track indicator dot -->
-                        <div :class="['w-2 h-2 rounded-full flex-shrink-0',
-                            job.hiringTrack === 'teaching' ? 'bg-blue-400' :
-                            job.hiringTrack === 'teaching_related' ? 'bg-purple-400' : 'bg-orange-400'
-                        ]"></div>
-
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold text-[var(--text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
-                                {{ job.positionTitle }}
-                            </p>
-                            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <span :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full', trackConfig[job.hiringTrack]?.cls || 'bg-slate-100 text-slate-600']">
-                                    {{ trackConfig[job.hiringTrack]?.label || job.hiringTrack }}
-                                </span>
-                                <span class="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
-                                    <i class="pi pi-map-marker text-[9px]"></i>{{ job.placeOfAssignment }}
-                                </span>
+                    <div class="p-8">
+                        <div class="flex items-center gap-2 mb-8">
+                            <div v-for="step in ['applied', 'comparative_assessment', 'ranked']" :key="step" class="flex-1 flex flex-col gap-3">
+                                <div class="flex justify-between items-end">
+                                    <span class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-tighter">{{ step.replace('_', ' ') }}</span>
+                                    <span class="text-lg font-black text-[var(--text-main)] tabular-nums">{{ getStatusCount(step) }}</span>
+                                </div>
+                                <div class="h-2 rounded-full bg-[var(--bg-app)] overflow-hidden">
+                                    <div class="h-full bg-[var(--color-primary)] transition-all duration-1000"
+                                         :style="{ width: `${(getStatusCount(step) / (metrics.totalApplications || 1)) * 100}%` }"></div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-3 flex-shrink-0">
-                            <span :class="['text-[10px] font-semibold px-2.5 py-[3px] rounded-full border capitalize',
-                                statusConfig[job.status]?.cls || 'bg-slate-100 text-slate-500 border-slate-200']">
-                                {{ statusConfig[job.status]?.label || job.status }}
-                            </span>
-                            <span class="text-[10px] text-[var(--text-muted)] hidden sm:block whitespace-nowrap">
-                                {{ formatDate(job.createdAt) }}
-                            </span>
+                        <div class="space-y-3 mt-10">
+                            <p class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4">High-Velocity Postings</p>
+                            <div v-for="job in topVacancies" :key="job._id"
+                                class="flex items-center justify-between p-3 rounded-xl border border-[var(--border-main)] hover:bg-[var(--bg-app)] transition-all group cursor-pointer">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-9 h-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[10px] font-black text-[var(--text-muted)] group-hover:text-[var(--color-primary)] group-hover:border-[var(--color-primary-ring)] transition-all">
+                                        {{ job.positionCode.slice(0, 2) }}
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-black text-[var(--text-main)] tracking-tight">{{ job.positionTitle }}</p>
+                                        <p class="text-[10px] text-[var(--text-muted)] font-medium">{{ job.positionCode }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-6">
+                                    <div class="text-right">
+                                        <p class="text-[10px] font-black text-[var(--color-primary)] tabular-nums">{{ job.applications?.length || 0 }}</p>
+                                        <p class="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Applications</p>
+                                    </div>
+                                    <i class="pi pi-chevron-right text-[10px] text-[var(--text-faint)] group-hover:translate-x-1 transition-transform"></i>
+                                </div>
+                            </div>
                         </div>
-                    </router-link>
-                </div>
+                    </div>
+                </AppCard>
             </div>
 
-            <!-- Quick Access ──────────────────────────────────── -->
-            <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl overflow-hidden">
+            <!-- 4. Quick Shortcuts (Span 4) -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
 
-                <div class="px-5 py-4 border-b border-[var(--border-main)] flex items-center gap-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center">
-                        <i class="pi pi-th-large text-amber-600 text-[11px]" aria-hidden="true"></i>
+                <!-- Quick Actions Grid -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button v-for="act in quickActions" :key="act.label" @click="router.push(act.to)"
+                        class="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-main)] shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[var(--color-primary-ring)] transition-all text-left group">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white mb-4 bg-[var(--color-primary)]">
+                            <i :class="['pi text-xs', act.icon]"></i>
+                        </div>
+                        <p class="text-xs font-black text-[var(--text-main)] leading-tight">{{ act.label }}</p>
+                        <p class="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-1">Jump to</p>
+                    </button>
+                </div>
+
+                <!-- Recent Activity Feed -->
+                <AppCard class="card-raised flex-1">
+                    <template #header>
+                        <div class="px-5 py-3 border-b border-[var(--border-main)] flex justify-between items-center bg-[var(--bg-app)]">
+                            <h3 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Audit Stream</h3>
+                            <button class="text-[9px] font-black text-[var(--color-primary)] uppercase hover:underline">View All</button>
+                        </div>
+                    </template>
+                    <div class="p-2 space-y-1">
+                        <div v-for="i in 5" :key="i" class="flex items-start gap-3 p-3 rounded-lg hover:bg-[var(--bg-app)] transition-colors cursor-default">
+                            <div class="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] mt-1.5 shrink-0"></div>
+                            <div>
+                                <p class="text-xs font-medium text-[var(--text-sub)] leading-tight">
+                                    <span class="font-black text-[var(--text-main)]">Juan D.</span> verified
+                                    <span class="font-black text-[var(--text-main)]">Teacher I</span> documents.
+                                </p>
+                                <p class="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-1">4m ago &bull; Verification Hub</p>
+                            </div>
+                        </div>
                     </div>
-                    <h2 class="text-sm font-bold text-[var(--text-main)]">Quick Access</h2>
-                </div>
-
-                <div class="p-3 flex flex-col gap-1.5">
-                    <router-link v-for="link in quickLinks" :key="link.to" :to="link.to"
-                        class="group flex items-center gap-3 p-3 rounded-xl border border-transparent hover:border-[var(--border-main)] hover:bg-[var(--bg-app)] transition-all">
-
-                        <div :class="['w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105', link.accent]">
-                            <i :class="['pi text-sm', link.icon]" aria-hidden="true"></i>
-                        </div>
-
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold text-[var(--text-main)] leading-tight">{{ link.label }}</p>
-                            <p class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{{ link.desc }}</p>
-                        </div>
-
-                        <i class="pi pi-angle-right text-sm text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity -translate-x-1 group-hover:translate-x-0 duration-150" aria-hidden="true"></i>
-                    </router-link>
-                </div>
-
-                <!-- System tip -->
-                <div class="mx-3 mb-3 p-3 rounded-xl bg-[var(--color-primary-light)] border border-blue-200">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] mb-1">Workflow Tip</p>
-                    <p class="text-xs text-[var(--color-primary)] leading-relaxed opacity-80">
-                        Applicants must be <strong>verified</strong> before they can proceed to comparative assessment.
-                    </p>
-                </div>
+                </AppCard>
             </div>
         </div>
     </div>

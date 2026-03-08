@@ -1,16 +1,3 @@
-<!--
-  AppTabs — Accessible ARIA tab group
-  ─────────────────────────────────────────────────────────────
-  Variants: underline | pills | boxed
-  Usage:
-    <AppTabs v-model="tab" :tabs="[
-      { key: 'info',    label: 'Information', icon: 'pi-info-circle' },
-      { key: 'history', label: 'History',     icon: 'pi-history', badge: 3 },
-    ]" variant="underline">
-      <template #info>   <InfoPanel /> </template>
-      <template #history><HistoryList /></template>
-    </AppTabs>
--->
 <script setup>
 import { computed } from 'vue'
 

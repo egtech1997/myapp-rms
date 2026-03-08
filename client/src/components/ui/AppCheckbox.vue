@@ -1,11 +1,3 @@
-<!--
-  AppCheckbox — Accessible custom checkbox
-  Usage:
-    <AppCheckbox v-model="agreed" label="I agree to the terms" />
-    <AppCheckbox v-model="selected" :value="item.id" label="Item name" />
-    <!-- indeterminate state -->
-    <AppCheckbox v-model="allSelected" :indeterminate="someSelected" label="Select all" />
--->
 <script setup>
 import { ref, watch } from 'vue'
 

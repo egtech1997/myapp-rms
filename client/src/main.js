@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, watchEffect } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
@@ -35,6 +35,11 @@ const Toast = Swal.mixin({
 app.provide('$toast', Toast)
 app.provide('$swal', Swal)
 
+// Global error handler — prevents silent white-screen crashes
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[App Error]', err, info)
+}
+
 app.directive('click-outside', {
   mounted(el, binding) {
     el._clickOutsideHandler = (e) => {
@@ -47,21 +52,36 @@ app.directive('click-outside', {
   },
 })
 
+// Reactive v-can — re-evaluates when user permissions change
 app.directive('can', {
   mounted(el, binding) {
     const authStore = useAuthStore()
-    if (!authStore.can(binding.value)) {
-      el.style.display = 'none'
-    }
+    el._canStop = watchEffect(() => {
+      el.style.display = authStore.can(binding.value) ? '' : 'none'
+    })
+  },
+  updated(el, binding) {
+    const authStore = useAuthStore()
+    el.style.display = authStore.can(binding.value) ? '' : 'none'
+  },
+  unmounted(el) {
+    el._canStop?.()
   },
 })
 
+// Reactive v-role
 app.directive('role', {
   mounted(el, binding) {
     const authStore = useAuthStore()
-    if (!authStore.hasRole(binding.value)) {
-      el.style.display = 'none'
-    }
+    el._roleStop = watchEffect(() => {
+      const names = authStore.user?.roles?.map((r) =>
+        typeof r === 'object' ? r.name : r
+      ) ?? []
+      el.style.display = names.includes(binding.value) ? '' : 'none'
+    })
+  },
+  unmounted(el) {
+    el._roleStop?.()
   },
 })
 

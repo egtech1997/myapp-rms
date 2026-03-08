@@ -1,11 +1,3 @@
-<!--
-  AppSelect — Styled native select
-  Usage:
-    <AppSelect v-model="status" :options="statusOptions"
-      placeholder="Select status" error="Required" />
-    Options format: [{ label: 'Active', value: 'active' }]
-    or simply an array of strings: ['Teaching', 'Non-teaching']
--->
 <script setup>
 import { computed, ref } from 'vue'
 

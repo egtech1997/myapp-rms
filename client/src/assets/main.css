@@ -2,9 +2,9 @@
 @import 'tailwindcss';
 
 /* ═══════════════════════════════════════════════════════════
-   DEPED RSP PORTAL — DESIGN SYSTEM v2
-   Philosophy: Stripe precision + Linear clarity + DepEd identity
-   Color identity: DepEd Blue #1d4ed8 · Gold #d97706 · Red #dc2626
+   RSP PORTAL — ENTERPRISE DESIGN SYSTEM v3
+   Philosophy: Corporate authority · Institutional clarity · DepEd identity
+   Palette: Navy #001F3F · Purple Navy #4A4D8F · Silver Blue #5B84BA · Gold #EFBF04
 ═══════════════════════════════════════════════════════════ */
 
 /* ── Tailwind v4 @theme — exposes tokens as Tailwind utilities ── */
@@ -13,30 +13,30 @@
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
 
-  /* ── Primary Blue scale (DepEd institutional blue) ─── */
-  --color-primary-50:  #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
-  --color-primary-950: #172554;
+  /* ── Primary — Purple Navy scale (#4A4D8F base) ───── */
+  --color-primary-50:  #EDEDF8;
+  --color-primary-100: #D5D6EE;
+  --color-primary-200: #B8BAE2;
+  --color-primary-300: #9598D4;
+  --color-primary-400: #7477C3;
+  --color-primary-500: #5D60B2;
+  --color-primary-600: #4A4D8F;
+  --color-primary-700: #3B3E75;
+  --color-primary-800: #2C2F5C;
+  --color-primary-900: #1D1F3D;
+  --color-primary-950: #0F1020;
 
-  /* ── Gold / Amber scale (DepEd accent + achievement) ── */
-  --color-gold-50:  #fffbeb;
-  --color-gold-100: #fef3c7;
-  --color-gold-200: #fde68a;
-  --color-gold-300: #fcd34d;
-  --color-gold-400: #fbbf24;
-  --color-gold-500: #f59e0b;
-  --color-gold-600: #d97706;
-  --color-gold-700: #b45309;
-  --color-gold-800: #92400e;
-  --color-gold-900: #78350f;
+  /* ── Soft Gold scale (#EFBF04 base) ──────────────── */
+  --color-gold-50:  #FFFDE7;
+  --color-gold-100: #FFF9C4;
+  --color-gold-200: #FFF176;
+  --color-gold-300: #FFEE58;
+  --color-gold-400: #FFCA28;
+  --color-gold-500: #EFBF04;
+  --color-gold-600: #C79A00;
+  --color-gold-700: #9E7800;
+  --color-gold-800: #765700;
+  --color-gold-900: #4D3900;
 
   /* ── Red scale (DepEd accent + danger) ──────────────── */
   --color-danger-50:  #fff1f2;
@@ -85,14 +85,14 @@
 
   /* ── Semantic aliases (Tailwind utilities: bg-surface, text-main...) ── */
   --color-surface:      #ffffff;
-  --color-surface-2:    #f8fafc;
-  --color-bg-app:       #f1f5f9;
-  --color-text-main:    #0f172a;
-  --color-text-sub:     #334155;
-  --color-text-muted:   #64748b;
-  --color-text-faint:   #94a3b8;
-  --color-border:       #e2e8f0;
-  --color-border-strong:#cbd5e1;
+  --color-surface-2:    #F7F8FC;
+  --color-bg-app:       #F0F2F7;
+  --color-text-main:    #001F3F;
+  --color-text-sub:     #36454F;
+  --color-text-muted:   #607080;
+  --color-text-faint:   #9DAABB;
+  --color-border:       #DDE1EC;
+  --color-border-strong:#C8CCDB;
 
   /* ── Z-index scale ────────────────────────────────────── */
   --z-below:    -1;
@@ -181,15 +181,26 @@
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* ── Brand shorthand aliases ──────────────────────────── */
-  --color-primary:       #1d4ed8;
-  --color-primary-dark:  #1e40af;
-  --color-primary-hover: #2563eb;
-  --color-primary-light: #eff6ff;
-  --color-primary-ring:  #93c5fd;
-  --color-gold:          #d97706;
-  --color-gold-light:    #fffbeb;
-  --color-gold-ring:     #fcd34d;
+  /* ── Brand palette — Enterprise v3 ───────────────────── */
+  --color-navy:          #001F3F;   /* Primary Navy — sidebar, brand headers    */
+  --color-navy-dark:     #001530;   /* Darker navy — deep hover states          */
+  --color-navy-light:    #E8EEF4;   /* Tinted light bg for navy context         */
+  --color-silver-blue:   #5B84BA;   /* Silver Blue — secondary, links, focus    */
+  --color-charcoal:      #36454F;   /* Charcoal — body text, secondary text     */
+
+  /* ── Primary (Purple Navy #4A4D8F) ───────────────────── */
+  --color-primary:       #4A4D8F;
+  --color-primary-dark:  #3B3E75;
+  --color-primary-hover: #5558A0;
+  --color-primary-light: #EDEDF8;
+  --color-primary-ring:  #5B84BA;   /* Silver Blue for focus rings              */
+
+  /* ── Gold (Soft Gold #EFBF04) ────────────────────────── */
+  --color-gold:          #EFBF04;
+  --color-gold-light:    #FFFDE7;
+  --color-gold-ring:     #FFCA28;
+
+  /* ── Semantic status colors ───────────────────────────── */
   --color-danger:        #dc2626;
   --color-danger-light:  #fff1f2;
   --color-success:       #16a34a;
@@ -198,24 +209,24 @@
   --color-warning-light: #fffbeb;
 
   /* ── Surfaces ─────────────────────────────────────────── */
-  --bg-app:         #f1f5f9;
-  --bg-subtle:      #f8fafc;
+  --bg-app:         #F0F2F7;   /* Cool blue-gray canvas                         */
+  --bg-subtle:      #F7F8FC;   /* Near-white for nested sections                */
   --surface:        #ffffff;
-  --surface-2:      #f8fafc;
+  --surface-2:      #F7F8FC;
   --surface-raised: #ffffff;
-  --surface-overlay:rgba(0, 0, 0, 0.45);
+  --surface-overlay:rgba(0, 20, 50, 0.55);
 
   /* ── Borders ──────────────────────────────────────────── */
-  --border-main:   #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --border-strong: #cbd5e1;
-  --border-focus:  #1d4ed8;
+  --border-main:   #DDE1EC;   /* Slightly blue-tinted border                    */
+  --border-subtle: #ECEEF5;
+  --border-strong: #C8CCDB;
+  --border-focus:  #4A4D8F;   /* Purple Navy focus                              */
 
   /* ── Text ─────────────────────────────────────────────── */
-  --text-main:    #0f172a;
-  --text-sub:     #334155;
-  --text-muted:   #64748b;
-  --text-faint:   #94a3b8;
+  --text-main:    #001F3F;    /* Primary Navy — headings, strong text            */
+  --text-sub:     #36454F;    /* Charcoal — body text                           */
+  --text-muted:   #607080;    /* Muted text                                     */
+  --text-faint:   #9DAABB;    /* Placeholder, disabled                          */
   --text-inverse: #ffffff;
 
   /* ── Shadows — Stripe-style multi-layer depth system ─── */
@@ -240,14 +251,15 @@
   --shadow-inner: inset 0 1px 3px rgb(0 0 0 / 0.08), inset 0 1px 0 rgb(0 0 0 / 0.04);
 
   /* ── Colored elevation shadows (interactive elements) ── */
-  --shadow-primary: 0 1px 2px rgb(29 78 216 / 0.16),
-                    0 4px 12px rgb(29 78 216 / 0.20);
-  --shadow-primary-hover: 0 2px 4px  rgb(29 78 216 / 0.20),
-                          0 6px 20px rgb(29 78 216 / 0.28);
-  --shadow-primary-active: 0 1px 2px rgb(29 78 216 / 0.12);
+  --shadow-primary: 0 1px 2px rgb(74 77 143 / 0.20),
+                    0 4px 12px rgb(74 77 143 / 0.24);
+  --shadow-primary-hover: 0 2px 4px  rgb(74 77 143 / 0.24),
+                          0 6px 20px rgb(74 77 143 / 0.32);
+  --shadow-primary-active: 0 1px 2px rgb(74 77 143 / 0.16);
   --shadow-danger:  0 1px 2px rgb(220 38 38 / 0.16), 0 4px 12px rgb(220 38 38 / 0.20);
   --shadow-success: 0 1px 2px rgb(22 163 74 / 0.16),  0 4px 12px rgb(22 163 74 / 0.20);
-  --shadow-gold:    0 1px 2px rgb(217 119 6 / 0.16),  0 4px 12px rgb(217 119 6 / 0.20);
+  --shadow-gold:    0 1px 2px rgb(239 191 4 / 0.20),  0 4px 12px rgb(239 191 4 / 0.24);
+  --shadow-navy:    0 2px 8px rgb(0 31 63 / 0.20),    0 8px 24px rgb(0 31 63 / 0.16);
 
   /* ── Focus rings — precise, accessible ──────────────── */
   --shadow-focus:        0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--color-primary) 40%, transparent);
@@ -293,35 +305,45 @@
   /* ── Legacy compat ────────────────────────────────────── */
   --color-solar:       var(--color-gold);
   --color-solar-hover: var(--color-primary-dark);
+
+  /* ── Semantic aliases ─────────────────────────────────── */
+  --color-brand:       var(--color-navy);
+  --color-accent:      var(--color-silver-blue);
+  --color-cta:         var(--color-primary);
 }
 
 /* ── Dark Mode ────────────────────────────────────────── */
 .dark {
-  --color-primary:       #60a5fa;
-  --color-primary-dark:  #3b82f6;
-  --color-primary-light: #172554;
-  --color-primary-ring:  #1d4ed8;
-  --color-gold:          #fbbf24;
-  --color-gold-light:    #292524;
+  --color-navy:          #0A2540;
+  --color-silver-blue:   #7BA7D4;
+  --color-charcoal:      #8DA0AE;
+
+  --color-primary:       #7477C3;
+  --color-primary-dark:  #5D60B2;
+  --color-primary-light: #1D1F3D;
+  --color-primary-ring:  #5B84BA;
+  --color-gold:          #FFCA28;
+  --color-gold-light:    #2A2000;
+
   --color-danger:        #fb7185;
   --color-danger-light:  #1c0a0d;
   --color-success:       #4ade80;
   --color-success-light: #052e16;
 
-  --bg-app:         #020617;
-  --bg-subtle:      #0a0f1e;
-  --surface:        #0f172a;
-  --surface-2:      #1e293b;
-  --surface-overlay:rgba(0, 0, 0, 0.65);
-  --border-main:    #1e293b;
-  --border-subtle:  #0f172a;
-  --border-strong:  #334155;
-  --border-focus:   #60a5fa;
+  --bg-app:          #060D1A;
+  --bg-subtle:       #0C1628;
+  --surface:         #0F1C30;
+  --surface-2:       #162440;
+  --surface-overlay: rgba(0, 0, 0, 0.70);
+  --border-main:     #1A2B45;
+  --border-subtle:   #0F1C30;
+  --border-strong:   #243654;
+  --border-focus:    #5B84BA;
 
-  --text-main:   #f1f5f9;
-  --text-sub:    #cbd5e1;
-  --text-muted:  #94a3b8;
-  --text-faint:  #475569;
+  --text-main:   #E8F0F8;
+  --text-sub:    #A8BECC;
+  --text-muted:  #7A98AE;
+  --text-faint:  #4A6070;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -469,10 +491,9 @@ html, body {
   gap: 0.5rem;
   padding: 0 1.25rem;
   height: 2.25rem;
-  /* Subtle top-to-bottom gradient — depth without flatness */
   background: linear-gradient(180deg,
-    color-mix(in srgb, #2563eb 100%, white 8%) 0%,
-    #1d4ed8 100%);
+    color-mix(in srgb, #5558A0 100%, white 6%) 0%,
+    #4A4D8F 100%);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
@@ -481,7 +502,6 @@ html, body {
   border: none;
   cursor: pointer;
   overflow: hidden;
-  /* Layered: inset border glow + colored drop shadow */
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16),
               inset 0 -1px 0 rgb(0 0 0 / 0.12),
               var(--shadow-primary);
@@ -505,7 +525,7 @@ html, body {
   transition: transform 0s;
 }
 .btn-primary:hover {
-  background: linear-gradient(180deg, #2563eb 0%, color-mix(in srgb, #1e40af 100%, black 4%) 100%);
+  background: linear-gradient(180deg, #5558A0 0%, color-mix(in srgb, #3B3E75 100%, black 4%) 100%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18),
               inset 0 -1px 0 rgb(0 0 0 / 0.16),
               var(--shadow-primary-hover);
@@ -679,6 +699,30 @@ textarea.field { height: auto; padding: 0.5rem 0.75rem; resize: none; }
 .btn-danger:active { transform: translateY(0) scale(0.98); transition-duration: var(--dur-instant); }
 .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 
+.btn-gold {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0 1.25rem; height: 2.25rem;
+  background: linear-gradient(180deg, #F5C824 0%, #EFBF04 100%);
+  color: #001F3F; font-size: 0.875rem; font-weight: 700; letter-spacing: -0.01em;
+  border-radius: 0.5rem; border: none; cursor: pointer; overflow: hidden;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.30),
+              inset 0 -1px 0 rgb(0 0 0 / 0.08),
+              var(--shadow-gold);
+  transition: background var(--dur-fast) var(--ease-smooth),
+              box-shadow  var(--dur-fast) var(--ease-smooth),
+              transform   var(--dur-instant) var(--ease-crisp);
+  will-change: transform, box-shadow;
+}
+.btn-gold:hover {
+  background: linear-gradient(180deg, #EFBF04 0%, #C79A00 100%);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.32),
+              0 2px 4px rgb(239 191 4 / 0.28), 0 8px 20px rgb(239 191 4 / 0.32);
+}
+.btn-gold:active { transform: translateY(0) scale(0.98); transition-duration: var(--dur-instant); }
+.btn-gold:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
 .btn-ghost {
   display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0 0.875rem; height: 2.25rem;
@@ -725,11 +769,11 @@ textarea.field { height: auto; padding: 0.5rem 0.75rem; resize: none; }
 .badge-dark    { background: var(--text-main);           color: #fff;                 border-color: transparent; }
 
 /* ─── Application status badges ─── */
-.badge-applied        { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-.badge-verifying      { background: #fffbeb; color: #d97706; border-color: #fde68a; }
-.badge-assessment     { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
-.badge-ranked         { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
-.badge-disqualified   { background: #fff1f2; color: #dc2626; border-color: #fecdd3; }
+.badge-applied        { background: #EDEDF8; color: #4A4D8F; border-color: #B8BAE2; }
+.badge-verifying      { background: #FFFDE7; color: #9E7800; border-color: #FFCA28; }
+.badge-assessment     { background: #EEF2FF; color: #3730A3; border-color: #C7D2FE; }
+.badge-ranked         { background: #F0FDF4; color: #15803D; border-color: #BBF7D0; }
+.badge-disqualified   { background: #FFF1F2; color: #DC2626; border-color: #FECDD3; }
 
 /* ═══════════════════════════════════════════════════════════
    FORM ELEMENTS (textarea + select variants)
@@ -820,11 +864,11 @@ select.input   { appearance: none; cursor: pointer; padding-right: 2.5rem; }
 .tooltip-enter-from   { opacity: 0; transform: scale(0.9) translateY(4px); }
 .tooltip-leave-to     { opacity: 0; transform: scale(0.95); }
 
-/* ── Tab underline transition ───────────────────────────── */
-.tab-slide-enter-active,
-.tab-slide-leave-active { transition: all 0.2s var(--ease-out); }
-.tab-slide-enter-from   { opacity: 0; transform: translateX(12px); }
-.tab-slide-leave-to     { opacity: 0; transform: translateX(-12px); }
+/* ── Tab content transition — smooth vertical fade ──────── */
+.tab-slide-enter-active { transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out); }
+.tab-slide-leave-active { transition: opacity 0.12s var(--ease-in),  transform 0.12s var(--ease-in); }
+.tab-slide-enter-from   { opacity: 0; transform: translateY(8px) scale(0.995); }
+.tab-slide-leave-to     { opacity: 0; transform: translateY(-4px); }
 
 /* ═══════════════════════════════════════════════════════════
    MOTION SYSTEM — Stagger, GPU, Orchestration

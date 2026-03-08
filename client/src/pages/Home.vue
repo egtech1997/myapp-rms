@@ -9,7 +9,6 @@ import HomeAboutUs from '@/components/Home/HomeAboutUs.vue';
 import HomeTeam from '@/components/Home/HomeTeam.vue';
 import HomeHelpCenter from '@/components/Home/HomeHelpCenter.vue';
 
-// 🪄 IMPORT YOUR NEW DISSECTED MODALS HERE
 import HomeJobModal from '@/components/Modals/HomeJobModal.vue';
 import HomeTeamModal from '@/components/Modals/HomeTeamModal.vue';
 import HomeBulletinModal from '@/components/Modals/HomeBulletinModal.vue';
@@ -41,7 +40,6 @@ const handleOpenBulletin = (item) => {
     isBulletinDialogOpen.value = true;
 };
 
-// --- NEW: Helper function to clean up template logic ---
 const getLinkLabel = (link) => {
     const labels = {
         home: 'Home',
@@ -78,7 +76,23 @@ const fetchWeather = async () => {
 
 // --- NATIVE HERO CAROUSEL LOGIC ---
 const activeHeroSlide = ref(0);
-const heroSlides = [1, 2, 3];
+const heroSlides = [
+    { 
+        tag: 'Division of Guihulngan City', 
+        title: 'RSP Management Portal.', 
+        desc: 'Streamlined online recruitment and selection framework designed for human resource efficiency.' 
+    },
+    { 
+        tag: 'Recruitment Excellence', 
+        title: 'Commitment to Merit.', 
+        desc: 'Ensuring equal opportunity through a standardized and transparent recruitment process.' 
+    },
+    { 
+        tag: 'Modernized Systems', 
+        title: 'Future-Ready Careers.', 
+        desc: 'Join our dedicated team of educators and administrative professionals in the DepEd community.' 
+    }
+];
 let heroInterval;
 
 const startHeroCarousel = () => {
@@ -107,7 +121,6 @@ onMounted(() => {
     setInterval(fetchWeather, 600000);
     startHeroCarousel();
 
-    // 🪄 SCROLL ANIMATION OBSERVER
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -130,7 +143,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col bg-white text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900"
+    <div class="min-h-screen flex flex-col bg-[var(--surface)] text-[var(--text-main)] font-sans selection:bg-[var(--color-primary-light)] selection:text-[var(--color-primary)]"
         style="font-family: 'Avenir', sans-serif;">
 
         <div v-if="loggedOutMessage"
@@ -138,127 +151,100 @@ onUnmounted(() => {
             Successfully logged out.
         </div>
 
-        <nav
-            class="flex items-center justify-between px-8 py-5 bg-white border-b border-slate-200 sticky top-0 z-[100]">
+        <nav class="flex items-center justify-between px-8 py-5 bg-[var(--surface)] border-b border-[var(--border-main)] sticky top-0 z-[100]">
             <div class="flex items-center gap-4 w-1/4 group cursor-pointer" @click="scrollTo('home')">
                 <img src="https://i.ibb.co/7dHhWCpp/images.png" alt="Logo" class="object-contain w-10 h-10" />
                 <div class="flex flex-col leading-none">
-                    <span class="text-lg font-bold text-slate-900 tracking-tight">RSP Portal</span>
-                    <span class="text-[10px] text-slate-500 uppercase font-semibold tracking-widest mt-1">DepEd
-                        GNC</span>
+                    <span class="text-lg font-bold text-[var(--text-main)] tracking-tight">RSP Portal</span>
+                    <span class="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-widest mt-1">DepEd GNC</span>
                 </div>
             </div>
 
-            <div class="flex items-center justify-center gap-6 flex-1">
+            <div class="hidden md:flex items-center justify-center gap-6 flex-1">
                 <button v-for="link in ['home', 'bullet', 'jobs', 'about', 'teams', 'faq']" :key="link"
-                    class="text-slate-500 font-semibold hover:text-slate-900 transition-colors duration-200 text-xs uppercase tracking-widest outline-none"
+                    class="text-[var(--text-muted)] font-semibold hover:text-[var(--text-main)] transition-colors duration-200 text-xs uppercase tracking-widest outline-none"
                     @click="scrollTo(link)">
                     {{ getLinkLabel(link) }}
                 </button>
             </div>
 
-            <div class="flex items-center justify-end gap-6 w-1/4">
-                <div class="hidden lg:flex flex-col items-end leading-none border-r border-slate-200 pr-6">
+            <div class="flex items-center justify-end gap-4 w-full md:w-1/4">
+                <div class="hidden lg:flex flex-col items-end leading-none border-r border-[var(--border-main)] pr-6 mr-2">
                     <div class="flex items-center gap-2 mb-1">
                         <span v-if="weatherStatus === 'sunny'" class="text-lg animate-pulse-slow">☀️</span>
                         <span v-else class="text-lg animate-bounce">💧</span>
-                        <span class="text-sm font-bold text-slate-900">{{ currentTime }}</span>
+                        <span class="text-sm font-bold text-[var(--text-main)]">{{ currentTime }}</span>
                     </div>
-                    <span class="text-[10px] text-slate-500 uppercase font-semibold tracking-widest">{{ currentDate
-                        }}</span>
+                    <span class="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-widest">{{ currentDate }}</span>
                 </div>
                 <template v-if="authStore.isAuthenticated">
                     <div @click="router.push(authStore.dashboardRoute)" title="Go to User Profile"
-                        class="cursor-pointer inline-flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-900 font-bold ring-1 ring-slate-200 hover:ring-slate-400 rounded-md transition-all duration-200 select-none">
+                        class="cursor-pointer inline-flex items-center justify-center w-8 h-8 bg-[var(--bg-app)] text-[var(--text-main)] font-bold ring-1 ring-[var(--border-main)] hover:ring-[var(--text-muted)] rounded-md transition-all duration-200 select-none">
                         {{ authStore.user?.username?.charAt(0).toUpperCase() || 'U' }}
                     </div>
                     <button title="Logout" @click="handleLogout"
-                        class="text-slate-500 hover:text-slate-900 transition-colors p-1 outline-none">
+                        class="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors p-1 outline-none">
                         <i class="pi pi-sign-out text-lg"></i>
                     </button>
                 </template>
-                <button v-else
-                    class="bg-slate-900 border border-slate-900 px-6 py-2.5 text-white font-bold text-xs uppercase tracking-widest rounded hover:bg-slate-800 transition-all duration-200 outline-none"
-                    @click="router.push('/auth/login')">
-                    Sign In
-                </button>
+                <div v-else class="flex items-center gap-3">
+                    <button class="text-[var(--text-sub)] font-bold text-[10px] uppercase tracking-widest hover:text-[var(--text-main)] transition-all"
+                        @click="router.push('/auth/login')">
+                        Sign In
+                    </button>
+                    <button class="bg-slate-900 px-5 py-2.5 text-white font-bold text-[10px] uppercase tracking-widest rounded hover:bg-slate-800 transition-all duration-200 shadow-lg shadow-slate-200"
+                        @click="router.push('/auth/register')">
+                        Register
+                    </button>
+                </div>
             </div>
         </nav>
 
-        <main id="home" class="w-full bg-slate-50 relative border-b border-slate-200 overflow-hidden">
+        <main id="home" class="w-full bg-[var(--bg-app)] relative border-b border-[var(--border-main)] overflow-hidden">
             <div class="flex transition-transform duration-[1200ms] ease-in-out w-full"
                 :style="{ transform: `translateX(-${activeHeroSlide * 100}%)` }">
-                <div class="w-full shrink-0">
-                    <div
-                        class="grid grid-cols-1 lg:grid-cols-2 max-w-7xl mx-auto w-full items-center px-8 py-32 gap-16 text-left">
-                        <div class="space-y-8 z-10 pr-12 emerge-hidden" style="transition-delay: 100ms;">
-                            <span
-                                class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] border-b border-slate-300 pb-1 block w-max">Division
-                                of Guihulngan City</span>
-                            <h1 class="text-5xl lg:text-6xl font-bold text-slate-900 leading-[1.1] tracking-tight">RSP
-                                Management Portal.</h1>
-                            <p class="text-slate-600 text-lg leading-relaxed font-medium max-w-lg">Streamlined online
-                                recruitment and selection framework designed for human resource efficiency.</p>
-                        </div>
-                        <div class="hidden lg:block relative w-full emerge-hidden"
-                            style="transition-delay: 300ms; height: 360px;">
-                            <div
-                                class="relative h-full w-full overflow-hidden bg-white border border-slate-200 rounded-md">
-                                <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200"
-                                    class="w-full h-full object-cover grayscale-[20%] contrast-125"
-                                    alt="Corporate Office" />
+                
+                <div v-for="(slide, index) in heroSlides" :key="index" class="w-full shrink-0">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 max-w-7xl mx-auto w-full items-center px-8 py-24 lg:py-36 gap-16 text-left">
+                        <div class="space-y-8 z-10 pr-12 emerge-hidden" :style="{ transitionDelay: `${index === activeHeroSlide ? 100 : 0}ms` }">
+                            <span class="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-[0.2em] border-b border-[var(--border-main)] pb-1 block w-max">
+                                {{ slide.tag }}
+                            </span>
+                            <h1 class="text-5xl lg:text-7xl font-black text-[var(--text-main)] leading-[1.1] tracking-tight">
+                                {{ slide.title }}
+                            </h1>
+                            <p class="text-[var(--text-sub)] text-lg lg:text-xl leading-relaxed font-medium max-w-lg">
+                                {{ slide.desc }}
+                            </p>
+                            
+                            <!-- HERO CTAs -->
+                            <div class="flex flex-col sm:flex-row items-center gap-4 pt-4">
+                                <button @click="router.push('/auth/register')" 
+                                    class="w-full sm:w-auto bg-slate-900 text-white px-8 py-4 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 flex items-center justify-center gap-3">
+                                    Start Your Application <i class="pi pi-arrow-right text-[10px]"></i>
+                                </button>
+                                <button @click="scrollTo('jobs')"
+                                    class="w-full sm:w-auto bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-sub)] px-8 py-4 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-[var(--bg-app)] transition-all flex items-center justify-center">
+                                    Browse Open Positions
+                                </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div class="w-full shrink-0">
-                    <div
-                        class="grid grid-cols-1 lg:grid-cols-2 max-w-7xl mx-auto w-full items-center px-8 py-32 gap-16 text-left">
-                        <div class="space-y-8 z-10 pr-12">
-                            <span
-                                class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] border-b border-slate-300 pb-1 block w-max">Division
-                                of Guihulngan City</span>
-                            <h1 class="text-5xl lg:text-6xl font-bold text-slate-900 leading-[1.1] tracking-tight">
-                                Commitment to Excellence.</h1>
-                            <p class="text-slate-600 text-lg leading-relaxed font-medium max-w-lg">Streamlined online
-                                recruitment and selection framework designed for human resource efficiency.</p>
-                        </div>
-                        <div class="hidden lg:block relative w-full" style="height: 360px;">
-                            <div
-                                class="relative h-full w-full overflow-hidden bg-white border border-slate-200 rounded-md">
+                        
+                        <div class="hidden lg:block relative w-full emerge-hidden" :style="{ transitionDelay: `${index === activeHeroSlide ? 300 : 0}ms`, height: '420px' }">
+                            <div class="relative h-full w-full overflow-hidden bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-2xl">
                                 <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200"
                                     class="w-full h-full object-cover grayscale-[20%] contrast-125"
                                     alt="Corporate Office" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="w-full shrink-0">
-                    <div
-                        class="grid grid-cols-1 lg:grid-cols-2 max-w-7xl mx-auto w-full items-center px-8 py-32 gap-16 text-left">
-                        <div class="space-y-8 z-10 pr-12">
-                            <span
-                                class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] border-b border-slate-300 pb-1 block w-max">Division
-                                of Guihulngan City</span>
-                            <h1 class="text-5xl lg:text-6xl font-bold text-slate-900 leading-[1.1] tracking-tight">
-                                Standardized Merit System.</h1>
-                            <p class="text-slate-600 text-lg leading-relaxed font-medium max-w-lg">Streamlined online
-                                recruitment and selection framework designed for human resource efficiency.</p>
-                        </div>
-                        <div class="hidden lg:block relative w-full" style="height: 360px;">
-                            <div
-                                class="relative h-full w-full overflow-hidden bg-white border border-slate-200 rounded-md">
-                                <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200"
-                                    class="w-full h-full object-cover grayscale-[20%] contrast-125"
-                                    alt="Corporate Office" />
+                                <div class="absolute inset-0 bg-gradient-to-tr from-slate-900/20 to-transparent"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
+            
+            <div class="absolute bottom-12 left-8 flex items-center gap-3 z-20">
                 <button v-for="(slide, index) in heroSlides" :key="index" @click="activeHeroSlide = index"
-                    :class="['h-2 rounded-sm transition-all duration-300 outline-none', activeHeroSlide === index ? 'bg-slate-900 w-6' : 'bg-slate-300 w-2 hover:bg-slate-400']">
+                    :class="['h-1 rounded-full transition-all duration-500 outline-none', activeHeroSlide === index ? 'bg-slate-900 w-12' : 'bg-slate-300 w-4 hover:bg-slate-400']">
                 </button>
             </div>
         </main>
@@ -289,4 +275,6 @@ onUnmounted(() => {
     opacity: 1;
     transform: translateY(0);
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
 </style>

@@ -2,68 +2,72 @@
 import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { statusConfig } from '@/utils/statusColors'
+import { useNotificationStore } from '@/stores/notifications'
 import apiClient from '@/api/axios'
 
 const router    = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
-// ── Profile summary ──────────────────────────────────────────────
-const profile        = ref(null)
+const applications  = ref([])
+const loadingApps   = ref(false)
+const profile       = ref(null)
 const loadingProfile = ref(false)
 
+const totalApps   = computed(() => applications.value.length)
+const pendingApps = computed(() => applications.value.filter(a => a.status === 'applied').length)
+const activeApps  = computed(() => applications.value.filter(a => ['verifying', 'comparative_assessment'].includes(a.status)).length)
+const recentApps  = computed(() => [...applications.value].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5))
+
 const profileComplete = computed(() => {
+    if (!profile.value) return 0
     const p = profile.value
-    if (!p) return 0
-    let filled = 0
-    if (p.name?.firstName && p.name?.lastName) filled++
-    if (p.contact?.phone || p.contact?.email) filled++
-    if (p.address?.barangay) filled++
-    if (p.education?.length) filled++
-    if (p.eligibility?.length) filled++
-    if (p.training?.length) filled++
-    if (p.experience?.length) filled++
-    return Math.round((filled / 7) * 100)
+    const checks = [
+        !!(p.name?.firstName && p.name?.lastName),
+        (p.education?.length || 0) > 0,
+        (p.eligibility?.length || 0) > 0,
+        (p.experience?.length || 0) > 0,
+        (p.training?.length || 0) > 0,
+    ]
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100)
 })
 
-async function loadProfile() {
-    loadingProfile.value = true
-    try {
-        const { data } = await apiClient.get('/v1/profile/me')
-        profile.value = data.data || null
-    } catch { /* no profile yet */ }
-    finally { loadingProfile.value = false }
-}
-
-const applications = ref([])
-const loadingApps = ref(false)
-
-async function loadApplications() {
+const loadApplications = async () => {
     loadingApps.value = true
     try {
         const { data } = await apiClient.get('/v1/applications/my-applications')
         applications.value = data.data || []
-    } catch {
-        // silently fail — user may have no applications yet
+    } catch (err) {
+        console.error('Failed to load applications', err)
     } finally {
         loadingApps.value = false
     }
 }
 
-onMounted(() => { loadApplications(); loadProfile() })
-onActivated(() => { loadApplications(); loadProfile() })
-
-const totalApps = computed(() => applications.value.length)
-const pendingApps = computed(() => applications.value.filter(a => a.status === 'applied').length)
-const activeApps = computed(() => applications.value.filter(a => ['verifying', 'comparative_assessment'].includes(a.status)).length)
-const recentApps = computed(() => [...applications.value].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3))
-
-const statusConfig = {
-    applied:                { label: 'Applied',            class: 'bg-amber-100 text-amber-700 border-amber-200' },
-    verifying:              { label: 'Verifying',          class: 'bg-blue-100 text-blue-700 border-blue-200' },
-    comparative_assessment: { label: 'For Assessment',     class: 'bg-purple-100 text-purple-700 border-purple-200' },
-    ranked:                 { label: 'Ranked',             class: 'bg-green-100 text-green-700 border-green-200' },
-    disqualified:           { label: 'Disqualified',       class: 'bg-red-100 text-red-600 border-red-200' },
+const loadProfile = async () => {
+    loadingProfile.value = true
+    try {
+        const { data } = await apiClient.get('/v1/profile/me')
+        profile.value = data.data || null
+    } catch (err) {
+        console.error('Failed to load profile', err)
+    } finally {
+        loadingProfile.value = false
+    }
 }
+
+onMounted(() => {
+    loadApplications()
+    loadProfile()
+    notificationStore.fetchNotifications()
+})
+onActivated(() => {
+    loadApplications()
+    loadProfile()
+    notificationStore.fetchNotifications()
+})
+
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 
@@ -78,8 +82,8 @@ const memberSince = computed(() => {
 
         <!-- ── Welcome Banner ─────────────────────────────────────────── -->
         <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 sm:p-8 relative overflow-hidden">
-            <div class="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-slate-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -top-12 -right-12 w-48 h-48 bg-[var(--color-primary)]/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-[var(--text-muted)]/5 rounded-full blur-3xl pointer-events-none"></div>
 
             <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                 <div class="flex items-center gap-5">
@@ -105,7 +109,7 @@ const memberSince = computed(() => {
                 </div>
 
                 <div class="flex gap-3">
-                    <router-link to="/vacancies"
+                    <router-link to="/user/vacancies"
                         class="h-10 px-5 rounded-lg bg-[var(--text-main)] text-[var(--surface)] text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2">
                         <i class="pi pi-briefcase text-xs"></i> Browse Jobs
                     </router-link>
@@ -140,7 +144,7 @@ const memberSince = computed(() => {
             </div>
 
             <div class="col-span-2 sm:col-span-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 flex flex-col gap-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-[var(--color-primary-light)] border border-[var(--border-main)] flex items-center justify-center">
                     <i class="pi pi-search text-[var(--color-primary)]"></i>
                 </div>
                 <div>
@@ -164,9 +168,9 @@ const memberSince = computed(() => {
             </div>
 
             <div v-else-if="recentApps.length === 0" class="py-14 flex flex-col items-center gap-3 text-[var(--text-muted)]">
-                <i class="pi pi-folder-open text-3xl text-slate-300"></i>
+                <i class="pi pi-folder-open text-3xl text-[var(--text-faint)]"></i>
                 <p class="text-sm font-medium">No applications yet</p>
-                <router-link to="/vacancies"
+                <router-link to="/user/vacancies"
                     class="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
                     Browse open vacancies <i class="pi pi-arrow-right text-[10px]"></i>
                 </router-link>
@@ -180,18 +184,80 @@ const memberSince = computed(() => {
                         </p>
                         <p class="text-xs text-[var(--text-muted)] mt-0.5">Applied {{ formatDate(app.createdAt) }}</p>
                     </div>
-                    <span :class="['text-[10px] font-bold px-2.5 py-1 rounded-full border flex-shrink-0', statusConfig[app.status]?.class || 'bg-slate-100 text-slate-600 border-slate-200']">
+                    <span :class="['text-[10px] font-bold px-2.5 py-1 rounded-full border flex-shrink-0', statusConfig[app.status]?.class || 'bg-[var(--bg-app)] text-[var(--text-sub)] border-[var(--border-main)]']">
                         {{ statusConfig[app.status]?.label || app.status }}
                     </span>
                 </div>
             </div>
         </div>
 
+        <!-- ── Notifications & Tasks ───────────────────────────────────── -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Notifications -->
+            <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-4 border-b border-[var(--border-main)] flex items-center justify-between bg-[var(--bg-app)]">
+                    <h2 class="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                        <i class="pi pi-bell text-[var(--color-primary)] text-xs"></i> Recent Notifications
+                    </h2>
+                    <router-link to="/user/notifications" class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] hover:text-[var(--color-primary)] transition-colors">
+                        View all
+                    </router-link>
+                </div>
+                <div class="flex-1 overflow-y-auto max-h-[320px] custom-scrollbar">
+                    <div v-if="notificationStore.loading && !notificationStore.notifications.length" class="p-8 text-center">
+                        <i class="pi pi-spin pi-spinner text-[var(--text-faint)]"></i>
+                    </div>
+                    <div v-else-if="!notificationStore.notifications.length" class="py-16 flex flex-col items-center gap-3 text-[var(--text-faint)]">
+                        <i class="pi pi-inbox text-3xl"></i>
+                        <p class="text-xs font-bold uppercase tracking-widest">No notifications</p>
+                    </div>
+                    <div v-else class="divide-y divide-[var(--border-main)]">
+                        <div v-for="n in notificationStore.notifications.slice(0, 5)" :key="n._id"
+                            class="px-6 py-4 flex items-start gap-4 hover:bg-[var(--bg-app)] transition-colors group cursor-pointer"
+                            @click="notificationStore.markAsRead(n._id)">
+                            <div :class="['w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border', n.status === 'unread' ? 'bg-[var(--color-primary-light)] border-[var(--border-main)] text-[var(--color-primary)]' : 'bg-[var(--surface-2)] border-[var(--border-subtle)] text-[var(--text-faint)]']">
+                                <i :class="['pi text-[10px]', n.type === 'status_update' ? 'pi-info-circle' : 'pi-bell']"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start mb-0.5">
+                                    <p :class="['text-xs truncate transition-all', n.status === 'unread' ? 'font-black text-[var(--text-main)]' : 'font-semibold text-[var(--text-muted)]']">{{ n.title }}</p>
+                                    <span class="text-[9px] font-bold text-[var(--text-faint)] uppercase whitespace-nowrap ml-2">{{ n.createdAt.split('T')[0] }}</span>
+                                </div>
+                                <p class="text-[11px] text-[var(--text-muted)] line-clamp-1 leading-relaxed">{{ n.message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Checklist -->
+            <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 flex flex-col gap-6">
+                <h2 class="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                    <i class="pi pi-list-check text-green-600 text-xs"></i> Profile Readiness
+                </h2>
+                <div class="space-y-3">
+                    <div v-for="step in [
+                        { label: 'Basic Information', done: profile?.name?.firstName },
+                        { label: 'Educational History', done: profile?.education?.length },
+                        { label: 'Eligibility / Licenses', done: profile?.eligibility?.length },
+                        { label: 'Service Records (Experience)', done: profile?.experience?.length },
+                        { label: 'Training Certificates', done: profile?.training?.length },
+                    ]" :key="step.label" class="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)]">
+                        <span class="text-xs font-semibold text-[var(--text-sub)]">{{ step.label }}</span>
+                        <i :class="['pi text-xs', step.done ? 'pi-check-circle text-green-500' : 'pi-circle text-[var(--border-main)]']"></i>
+                    </div>
+                </div>
+                <router-link to="/user/profile" class="mt-auto h-11 rounded-xl bg-[var(--text-main)] text-[var(--surface)] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg">
+                    <i class="pi pi-user-edit"></i> Complete Profile
+                </router-link>
+            </div>
+        </div>
+
         <!-- ── Quick Links ─────────────────────────────────────────────── -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <router-link to="/vacancies"
-                class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 flex items-center gap-4 hover:border-blue-300 hover:shadow-sm transition-all group">
-                <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+            <router-link to="/user/vacancies"
+                class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 flex items-center gap-4 hover:border-[var(--color-primary-ring)] hover:shadow-sm transition-all group">
+                <div class="w-10 h-10 rounded-xl bg-[var(--color-primary-light)] border border-[var(--border-main)] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                     <i class="pi pi-briefcase text-[var(--color-primary)]"></i>
                 </div>
                 <div>
@@ -253,7 +319,7 @@ const memberSince = computed(() => {
             <div v-else class="p-6 flex flex-col gap-5">
                 <!-- Name & contact -->
                 <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-full bg-[var(--color-primary-light)] border border-blue-200 flex items-center justify-center flex-shrink-0">
+                    <div class="w-12 h-12 rounded-full bg-[var(--color-primary-light)] border border-[var(--border-main)] flex items-center justify-center flex-shrink-0">
                         <i class="pi pi-user text-[var(--color-primary)]"></i>
                     </div>
                     <div class="min-w-0">
@@ -288,7 +354,7 @@ const memberSince = computed(() => {
                 <!-- Counts grid -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div v-for="item in [
-                        { label: 'Education',    count: profile.education?.length   || 0, icon: 'pi-graduation-cap', color: 'bg-blue-50 border-blue-200 text-[var(--color-primary)]' },
+                        { label: 'Education',    count: profile.education?.length   || 0, icon: 'pi-graduation-cap', color: 'bg-[var(--color-primary-light)] border-[var(--border-main)] text-[var(--color-primary)]' },
                         { label: 'Eligibility',  count: profile.eligibility?.length || 0, icon: 'pi-verified',       color: 'bg-purple-50 border-purple-200 text-purple-600' },
                         { label: 'Trainings',    count: profile.training?.length    || 0, icon: 'pi-book',           color: 'bg-amber-50 border-amber-200 text-amber-600' },
                         { label: 'Experience',   count: profile.experience?.length  || 0, icon: 'pi-briefcase',      color: 'bg-green-50 border-green-200 text-green-600' },

@@ -1,9 +1,3 @@
-<!--
-  AppPagination — Page navigation
-  Usage:
-    <AppPagination v-model="page" :total="500" :per-page="20" />
-    <AppPagination v-model="page" :total="120" :per-page="10" simple />
--->
 <script setup>
 import { computed } from 'vue'
 

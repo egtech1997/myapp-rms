@@ -34,6 +34,12 @@ const userSchema = new mongoose.Schema(
     passwordResetExpires: Date,
     lastLogin: Date,
     passwordChangedAt: Date,
+    bio: { type: String, maxlength: 240 },
+    links: {
+      facebook: { type: String, trim: true },
+      linkedin: { type: String, trim: true },
+      twitter:  { type: String, trim: true },
+    },
   },
   {
     timestamps: true,

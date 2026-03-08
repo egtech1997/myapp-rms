@@ -3,6 +3,8 @@ import Profile from "../models/Profile.js";
 import Job from "../models/Job.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/AppError.js";
+import { notifyStatusUpdate } from "../services/email.service.js";
+import { logAction } from "../services/audit.service.js";
 
 // ── 1. Submit Application (User) ────────────────────────────────────────────
 export const applyToJob = catchAsync(async (req, res, next) => {
@@ -41,6 +43,8 @@ export const applyToJob = catchAsync(async (req, res, next) => {
             suffix:      profile.name?.suffix,
             sex:         profile.sex,
             birthDate:   profile.birthDate,
+            ethnicGroup: profile.ethnicGroup,
+            religion:    profile.religion,
             civilStatus: profile.civilStatus,
             contact:     profile.contact,
             address:     profile.address,
@@ -186,8 +190,14 @@ export const updateApplicationStatus = catchAsync(async (req, res, next) => {
     verificationChecklist,
   } = req.body;
 
-  const application = await Application.findById(req.params.id);
+  const application = await Application.findById(req.params.id)
+    .populate("submittedBy", "username email name")
+    .populate("submittedTo", "positionTitle");
+
   if (!application) return next(new AppError("Application not found.", 404));
+
+  const oldData = application.toObject();
+  const oldStatus = application.status;
 
   if (status               !== undefined) application.status               = status;
   if (isQualified          !== undefined) application.isQualified          = isQualified;
@@ -205,6 +215,30 @@ export const updateApplicationStatus = catchAsync(async (req, res, next) => {
   }
 
   await application.save();
+
+  // 🛡️ AUDIT LOG
+  logAction({
+    req,
+    action: "APPLICATION_UPDATE",
+    entityModel: "Application",
+    entityId: application._id,
+    before: oldData,
+    after: application.toObject(),
+    severity: (status !== undefined || isQualified !== undefined) ? "medium" : "low",
+    description: `Updated application status/verification for ${application.submittedBy.username}`
+  });
+
+  // 🔔 TRIGGER NOTIFICATION if status changed
+  if (application.status !== oldStatus) {
+    notifyStatusUpdate({
+      user: application.submittedBy,
+      application: application,
+      oldStatus: oldStatus,
+      newStatus: application.status,
+      jobTitle: application.submittedTo.positionTitle,
+      reason: application.disqualificationReason
+    });
+  }
 
   res.status(200).json({ status: "success", data: application });
 });

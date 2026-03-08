@@ -1,12 +1,3 @@
-<!--
-  AppBadge — Semantic status badge with refined visual weight
-  ─────────────────────────────────────────────────────────────
-  Design: semi-transparent background + colored text + hairline border
-  Effect: feels airy without being washed out — Linear/Vercel style
-
-  Variants:  primary | success | danger | warning | gold | neutral | dark
-             applied | verifying | assessment | ranked | disqualified
--->
 <script setup>
 defineOptions({ name: 'AppBadge' })
 
@@ -17,7 +8,8 @@ const props = defineProps({
     validator: (v) => [
       'primary', 'secondary', 'success', 'danger', 'warning',
       'gold', 'neutral', 'dark', 'info',
-      'applied', 'verifying', 'assessment', 'ranked', 'disqualified',
+      'applied', 'verifying', 'assessment', 'comparative_assessment', 'ranked', 'disqualified',
+      'draft', 'published', 'closed', 'archived', 'appointed',
     ].includes(v),
   },
   size:       { type: String, default: 'md', validator: (v) => ['sm', 'md', 'lg'].includes(v) },
@@ -30,25 +22,32 @@ const props = defineProps({
 
 // Precise color triplets: bg | text | border
 const variants = {
-  primary:      'bg-blue-50   text-blue-700  border-blue-200',
-  secondary:    'bg-slate-100 text-slate-600 border-slate-200',
+  primary:      'bg-[var(--color-primary-light)] text-[var(--color-primary)]   border-[var(--color-primary-ring)]',
+  secondary:    'bg-[var(--bg-app)]              text-[var(--text-muted)]       border-[var(--border-main)]',
   success:      'bg-green-50  text-green-700 border-green-200',
   danger:       'bg-red-50    text-red-600   border-red-200',
   warning:      'bg-amber-50  text-amber-700 border-amber-200',
   gold:         'bg-amber-50  text-amber-700 border-amber-200',
-  neutral:      'bg-slate-100 text-slate-500 border-slate-200',
-  dark:         'bg-slate-800 text-white      border-slate-700',
-  info:         'bg-blue-50   text-blue-700  border-blue-200',
-  // Application-specific — distinct enough to distinguish at a glance
-  applied:      'bg-blue-50   text-blue-700  border-blue-200',
-  verifying:    'bg-amber-50  text-amber-700 border-amber-200',
-  assessment:   'bg-sky-50    text-sky-700   border-sky-200',
-  ranked:       'bg-green-50  text-green-700 border-green-200',
-  disqualified: 'bg-red-50    text-red-600   border-red-200',
+  neutral:      'bg-[var(--bg-app)]              text-[var(--text-muted)]       border-[var(--border-main)]',
+  dark:         'bg-[var(--text-main)]           text-white                     border-[var(--text-main)]',
+  info:         'bg-[var(--color-primary-light)] text-[var(--color-primary)]   border-[var(--color-primary-ring)]',
+  // Application statuses
+  applied:                'bg-[var(--color-primary-light)] text-[var(--color-primary)]   border-[var(--color-primary-ring)]',
+  verifying:              'bg-amber-50  text-amber-700 border-amber-200',
+  assessment:             'bg-sky-50    text-sky-700   border-sky-200',
+  comparative_assessment: 'bg-purple-50 text-purple-700 border-purple-200',
+  ranked:                 'bg-green-50  text-green-700 border-green-200',
+  disqualified:           'bg-red-50    text-red-600   border-red-200',
+  appointed:              'bg-[var(--color-primary)] text-white border-[var(--color-primary)]',
+  // Job vacancy statuses
+  draft:      'bg-[var(--bg-app)]  text-[var(--text-muted)] border-[var(--border-main)]',
+  published:  'bg-green-50  text-green-700 border-green-200',
+  closed:     'bg-red-50    text-red-600   border-red-200',
+  archived:   'bg-amber-50  text-amber-700 border-amber-200',
 }
 
 const dotColors = {
-  primary:      'bg-blue-500',
+  primary:      'bg-[var(--color-primary)]',
   success:      'bg-green-500',
   ranked:       'bg-green-500',
   danger:       'bg-red-500',
@@ -56,8 +55,14 @@ const dotColors = {
   warning:      'bg-amber-500',
   gold:         'bg-amber-500',
   verifying:    'bg-amber-500',
-  assessment:   'bg-sky-500',
-  applied:      'bg-blue-500',
+  assessment:             'bg-sky-500',
+  comparative_assessment: 'bg-purple-500',
+  appointed:              'bg-white',
+  applied:                'bg-[var(--color-primary)]',
+  draft:                  'bg-[var(--text-muted)]',
+  published:              'bg-green-500',
+  closed:                 'bg-red-500',
+  archived:               'bg-amber-500',
 }
 
 const sizes = {

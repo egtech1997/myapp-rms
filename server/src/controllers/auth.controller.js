@@ -84,10 +84,15 @@ export const getMe = catchAsync(async (req, res, next) => {
 });
 
 export const updateMe = catchAsync(async (req, res, next) => {
-  const { username } = req.body;
+  const { username, bio, links } = req.body;
+  const update = {};
+  if (username !== undefined) update.username = username;
+  if (bio      !== undefined) update.bio      = bio;
+  if (links    !== undefined) update.links    = links;
+
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,
-    { username },
+    { $set: update },
     { new: true, runValidators: true },
   ).populate("roles");
 

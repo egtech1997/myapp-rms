@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted, inject } from 'vue'
 import apiClient from '@/api/axios'
 import { useSettingsStore } from '@/stores/settings'
+import { AppPageHeader } from '@/components/ui'
 
 const toast         = inject('$toast')
 const settingsStore = useSettingsStore()
@@ -85,11 +86,7 @@ const save = async () => {
 <template>
   <div class="flex flex-col gap-6">
 
-    <!-- Page header -->
-    <div>
-      <h1 class="text-2xl font-bold text-[var(--text-main)] tracking-tight">Settings</h1>
-      <p class="text-sm text-[var(--text-muted)] mt-0.5">Configure system-wide branding and display options.</p>
-    </div>
+    <AppPageHeader title="Settings" subtitle="Configure system-wide branding and display options." icon="pi-cog" />
 
     <!-- Loading skeleton -->
     <div v-if="loading" class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-6 flex flex-col gap-4 animate-pulse">
