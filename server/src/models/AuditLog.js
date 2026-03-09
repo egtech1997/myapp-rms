@@ -39,11 +39,10 @@ const auditLogSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ensure logs are immutable at the application level
-auditLogSchema.pre("save", function(next) {
+auditLogSchema.pre("save", async function() {
   if (!this.isNew) {
-    return next(new Error("Audit logs are immutable and cannot be modified."));
+    throw new Error("Audit logs are immutable and cannot be modified.");
   }
-  next();
 });
 
 export default mongoose.model("AuditLog", auditLogSchema);
