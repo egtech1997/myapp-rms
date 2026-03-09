@@ -92,9 +92,24 @@ export const getDemographics = catchAsync(async (req, res) => {
     { $group: { _id: "$applicantData.education.level", count: { $sum: 1 } } }
   ]);
 
+  // Breakdown by Ethnic Group
+  const ethnicDist = await Application.aggregate([
+    { $group: { _id: "$applicantData.personalInfo.ethnicGroup", count: { $sum: 1 } } }
+  ]);
+
+  // Breakdown by Religion
+  const religionDist = await Application.aggregate([
+    { $group: { _id: "$applicantData.personalInfo.religion", count: { $sum: 1 } } }
+  ]);
+
+  // Breakdown by Disability
+  const disabilityDist = await Application.aggregate([
+    { $group: { _id: "$applicantData.personalInfo.disability", count: { $sum: 1 } } }
+  ]);
+
   res.status(200).json({
     status: "success",
-    data: { sexDist, eduDist }
+    data: { sexDist, eduDist, ethnicDist, religionDist, disabilityDist }
   });
 });
 

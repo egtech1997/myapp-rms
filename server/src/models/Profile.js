@@ -24,6 +24,7 @@ const profileSchema = new mongoose.Schema(
     birthDate: Date,
     ethnicGroup: String,
     religion: String,
+    disability: String,
     civilStatus: {
       type: String,
       enum: ["Single", "Married", "Widowed", "Separated", "Other"],

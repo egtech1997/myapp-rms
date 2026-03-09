@@ -23,6 +23,7 @@ export const generatePDS = (app) => {
   const eli = app.applicantData?.eligibility || [];
   const exp = app.applicantData?.experience || [];
   const trn = app.applicantData?.training || [];
+  const family = app.applicantData?.family || {};
 
   const docDefinition = {
     pageSize: "LEGAL",
@@ -37,31 +38,16 @@ export const generatePDS = (app) => {
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "I. PERSONAL INFORMATION", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "I. PERSONAL INFORMATION", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
       {
         table: {
           widths: [100, "*", 80, 100],
           body: [
-            [
-              { text: "Surname", style: "label" },
-              { text: p.lastName?.toUpperCase() || "N/A", style: "data", colSpan: 3 },
-              {}, {}
-            ],
-            [
-              { text: "First Name", style: "label" },
-              { text: p.firstName?.toUpperCase() || "N/A", style: "data", colSpan: 3 },
-              {}, {}
-            ],
-            [
-              { text: "Middle Name", style: "label" },
-              { text: p.middleName?.toUpperCase() || "N/A", style: "data", colSpan: 2 },
-              {},
-              { text: "Name Extension", style: "label" }
-            ],
+            [{ text: "Surname", style: "label" }, { text: p.lastName?.toUpperCase() || "N/A", style: "data", colSpan: 3 }, {}, {}],
+            [{ text: "First Name", style: "label" }, { text: p.firstName?.toUpperCase() || "N/A", style: "data", colSpan: 3 }, {}, {}],
+            [{ text: "Middle Name", style: "label" }, { text: p.middleName?.toUpperCase() || "N/A", style: "data", colSpan: 2 }, {}, { text: "Extension", style: "label" }],
             [
               { text: "Date of Birth", style: "label" },
               { text: p.birthDate ? new Date(p.birthDate).toLocaleDateString() : "N/A", style: "data" },
@@ -72,31 +58,49 @@ export const generatePDS = (app) => {
               { text: "Civil Status", style: "label" },
               { text: p.civilStatus?.toUpperCase() || "N/A", style: "data" },
               { text: "Citizenship", style: "label" },
-              { text: "FILIPINO", style: "data" } // Defaulting for MVP
+              { text: "FILIPINO", style: "data" }
+            ],
+            [
+              { text: "Ethnic Group", style: "label" },
+              { text: p.ethnicGroup?.toUpperCase() || "N/A", style: "data" },
+              { text: "Religion", style: "label" },
+              { text: p.religion?.toUpperCase() || "N/A", style: "data" }
+            ],
+            [
+              { text: "Disability (if any)", style: "label" },
+              { text: p.disability?.toUpperCase() || "N/A", style: "data", colSpan: 3 },
+              {}, {}
             ]
           ]
         },
         margin: [0, 0, 0, 10]
       },
 
-      // II. Family Background (Placeholder for MVP)
+      // II. Family Background
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "II. FAMILY BACKGROUND", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "II. FAMILY BACKGROUND", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
-      { text: "(Family background details not currently tracked in digital profile)", style: "placeholder", margin: [0, 5, 0, 10] },
+      {
+        table: {
+          widths: [100, "*", 100, "*"],
+          body: [
+            [{ text: "Spouse's Surname", style: "label" }, { text: family.spouse?.lastName?.toUpperCase() || "N/A", style: "data" }, { text: "Occupation", style: "label" }, { text: family.spouse?.occupation || "N/A", style: "data" }],
+            [{ text: "First Name", style: "label" }, { text: family.spouse?.firstName?.toUpperCase() || "N/A", style: "data" }, { text: "Employer", style: "label" }, { text: family.spouse?.employer || "N/A", style: "data" }],
+            [{ text: "Father's Surname", style: "label" }, { text: family.father?.lastName?.toUpperCase() || "N/A", style: "data" }, { text: "First Name", style: "label" }, { text: family.father?.firstName?.toUpperCase() || "N/A", style: "data" }],
+            [{ text: "Mother's Maiden", style: "label" }, { text: family.mother?.lastName?.toUpperCase() || "N/A", style: "data" }, { text: "First Name", style: "label" }, { text: family.mother?.firstName?.toUpperCase() || "N/A", style: "data" }]
+          ]
+        },
+        margin: [0, 0, 0, 10]
+      },
 
       // III. Educational Background
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "III. EDUCATIONAL BACKGROUND", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "III. EDUCATIONAL BACKGROUND", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
       {
@@ -136,9 +140,7 @@ export const generatePDS = (app) => {
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "IV. CIVIL SERVICE ELIGIBILITY", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "IV. CIVIL SERVICE ELIGIBILITY", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
       {
@@ -171,9 +173,7 @@ export const generatePDS = (app) => {
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "V. WORK EXPERIENCE", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "V. WORK EXPERIENCE", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
       {
@@ -213,9 +213,7 @@ export const generatePDS = (app) => {
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
       {
@@ -251,9 +249,7 @@ export const generatePDS = (app) => {
       {
         table: {
           widths: ["*"],
-          body: [
-            [{ text: "REFERENCES (Person not related by consanguinity or affinity to applicant)", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]
-          ]
+          body: [[{ text: "REFERENCES (Person not related by consanguinity or affinity to applicant)", style: "sectionHeader", fillColor: "#9ca3af", color: "white", bold: true }]]
         }
       },
       { text: "(References data not currently tracked)", style: "placeholder", margin: [0, 5, 0, 20] },

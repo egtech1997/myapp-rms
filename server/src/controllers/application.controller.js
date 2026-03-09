@@ -26,8 +26,38 @@ export const applyToJob = catchAsync(async (req, res, next) => {
 
   let applicantData = req.body.applicantData || null;
   if (!applicantData) {
-    const profile = await Profile.findOne({ user: req.user._id });
-    applicantData = profile ? profile.toObject() : {};
+    const profile = await Profile.findOne({ user: req.user._id }).lean();
+    if (profile) {
+      applicantData = {
+        personalInfo: {
+          firstName: profile.name?.firstName,
+          middleName: profile.name?.middleName,
+          lastName: profile.name?.lastName,
+          suffix: profile.name?.suffix,
+          sex: profile.sex,
+          birthDate: profile.birthDate,
+          ethnicGroup: profile.ethnicGroup,
+          religion: profile.religion,
+          disability: profile.disability,
+          civilStatus: profile.civilStatus,
+          phones: profile.contact?.phones || [],
+          emails: profile.contact?.emails || [],
+          address: profile.address,
+        },
+        education: profile.education || [],
+        eligibility: profile.eligibility || [],
+        experience: profile.experience || [],
+        training: profile.training || [],
+        voluntaryWork: profile.voluntaryWork || [],
+        competencies: profile.competencies || [],
+        specialSkills: profile.specialSkills || [],
+        nonAcademicDistinctions: profile.nonAcademicDistinctions || [],
+        memberships: profile.memberships || [],
+        performanceRating: profile.performanceRating || {},
+      };
+    } else {
+      applicantData = {};
+    }
   }
 
   const newApplication = await Application.create({

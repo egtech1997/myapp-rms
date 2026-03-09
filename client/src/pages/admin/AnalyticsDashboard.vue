@@ -31,7 +31,7 @@ ChartJS.register(
 const loading = ref(true)
 const overview = ref(null)
 const trends = ref({ appTrends: [], apptTrends: [] })
-const demographics = ref({ sexDist: [], eduDist: [] })
+const demographics = ref({ sexDist: [], eduDist: [], ethnicDist: [], religionDist: [], disabilityDist: [] })
 const efficiency = ref(null)
 
 const fetchData = async () => {
@@ -95,6 +95,38 @@ const eduChartData = computed(() => ({
       label: 'Applicants',
       backgroundColor: '#6366f1',
       data: demographics.value.eduDist.map(d => d.count)
+    }
+  ]
+}))
+
+const ethnicChartData = computed(() => ({
+  labels: demographics.value.ethnicDist.map(d => d._id || 'Not Specified'),
+  datasets: [
+    {
+      backgroundColor: ['#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'],
+      data: demographics.value.ethnicDist.map(d => d.count)
+    }
+  ]
+}))
+
+const religionChartData = computed(() => ({
+  labels: demographics.value.religionDist.map(d => d._id || 'Not Specified'),
+  datasets: [
+    {
+      label: 'Religion',
+      backgroundColor: '#4f46e5',
+      data: demographics.value.religionDist.map(d => d.count)
+    }
+  ]
+}))
+
+const disabilityChartData = computed(() => ({
+  labels: demographics.value.disabilityDist.map(d => d._id || 'None/Not Specified'),
+  datasets: [
+    {
+      label: 'Applicants',
+      backgroundColor: '#10b981',
+      data: demographics.value.disabilityDist.map(d => d.count)
     }
   ]
 }))
@@ -164,6 +196,33 @@ onMounted(fetchData)
             </div>
             <span class="text-xl font-black text-[var(--text-main)]">{{ stat.count }}</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 3: Ethnic & Religion -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="p-6 bg-[var(--surface)] border border-[var(--border-main)] rounded-3xl shadow-sm">
+        <h3 class="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-faint)] mb-6">Ethnic Group Distribution</h3>
+        <div class="h-80 flex items-center justify-center">
+          <Pie :data="ethnicChartData" :options="{ responsive: true, maintainAspectRatio: false }" />
+        </div>
+      </div>
+
+      <div class="p-6 bg-[var(--surface)] border border-[var(--border-main)] rounded-3xl shadow-sm">
+        <h3 class="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-faint)] mb-6">Religious Affiliation</h3>
+        <div class="h-80">
+          <Bar :data="religionChartData" :options="{ responsive: true, maintainAspectRatio: false }" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 4: Disability -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-3 p-6 bg-[var(--surface)] border border-[var(--border-main)] rounded-3xl shadow-sm">
+        <h3 class="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-faint)] mb-6">Disability Distribution</h3>
+        <div class="h-64">
+          <Bar :data="disabilityChartData" :options="{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }" />
         </div>
       </div>
     </div>

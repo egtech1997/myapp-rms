@@ -231,8 +231,14 @@ const saveEdit = async () => {
         </div>
 
         <!-- ── Loading ─────────────────────────────────────────────────── -->
-        <div v-else-if="loading" class="flex flex-col gap-3">
-            <div v-for="i in 4" :key="i" class="h-20 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
+        <div v-else-if="loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div v-for="i in 4" :key="i" class="h-32 rounded-2xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse flex items-center p-5 gap-5">
+                <div class="w-12 h-12 rounded-2xl bg-[var(--bg-app)]"></div>
+                <div class="flex-1 space-y-3">
+                    <div class="h-4 w-3/4 bg-[var(--bg-app)] rounded"></div>
+                    <div class="h-3 w-1/2 bg-[var(--bg-app)] rounded"></div>
+                </div>
+            </div>
         </div>
 
         <!-- ── Empty ───────────────────────────────────────────────────── -->
@@ -250,40 +256,51 @@ const saveEdit = async () => {
         </div>
 
         <!-- ── Application Cards ───────────────────────────────────────── -->
-        <div v-else class="flex flex-col gap-3">
+        <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div v-for="app in filtered" :key="app._id"
                 @click="openApp(app)"
-                class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-[var(--color-primary-ring)] hover:shadow-sm transition-all group">
+                class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-5 flex items-center gap-5 cursor-pointer hover:border-[var(--color-primary-ring)] hover:shadow-xl hover:-translate-y-1 transition-all group relative overflow-hidden">
+                
+                <!-- Background Accent -->
+                <div class="absolute -right-12 -top-12 w-32 h-32 bg-[var(--color-primary)]/5 rounded-full blur-3xl group-hover:bg-[var(--color-primary)]/10 transition-all duration-700"></div>
 
                 <!-- Status Icon -->
-                <div :class="['w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border', statusConfig[app.status]?.class || 'bg-[var(--bg-app)] text-[var(--text-sub)] border-[var(--border-main)]']">
-                    <i :class="['pi text-sm', statusConfig[app.status]?.icon || 'pi-file']"></i>
+                <div :class="['w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border shadow-sm transition-transform group-hover:scale-110', 
+                    statusConfig[app.status]?.class || 'bg-[var(--bg-app)] text-[var(--text-sub)] border-[var(--border-main)]']">
+                    <i :class="['pi text-base', statusConfig[app.status]?.icon || 'pi-file']"></i>
                 </div>
 
                 <!-- Info -->
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-[var(--text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
-                        {{ app.job?.positionTitle || 'Position' }}
+                <div class="flex-1 min-w-0 relative z-10">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-[10px] font-black text-[var(--text-faint)] leading-none">
+                            {{ app.applicationCode || 'Ref-pending' }}
+                        </span>
+                    </div>
+                    <p class="text-base font-black text-[var(--text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors tracking-tight">
+                        {{ app.job?.positionTitle || 'Untitled Position' }}
                     </p>
-                    <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-[var(--text-muted)]">
-                        <span v-if="app.job?.placeOfAssignment" class="flex items-center gap-1">
-                            <i class="pi pi-map-marker text-[9px]"></i>{{ app.job.placeOfAssignment }}
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[10px] font-bold text-[var(--text-muted)] tracking-wider">
+                        <span v-if="app.job?.placeOfAssignment" class="flex items-center gap-1.5">
+                            <i class="pi pi-map-marker text-[10px] text-[var(--color-primary)]"></i>{{ Array.isArray(app.job.placeOfAssignment) ? app.job.placeOfAssignment.join(', ') : app.job.placeOfAssignment }}
                         </span>
-                        <span v-if="app.job?.hiringTrack" class="flex items-center gap-1">
-                            <i class="pi pi-tag text-[9px]"></i>{{ trackLabel[app.job.hiringTrack] || app.job.hiringTrack }}
-                        </span>
-                        <span class="flex items-center gap-1">
-                            <i class="pi pi-calendar text-[9px]"></i>Applied {{ formatDate(app.createdAt) }}
+                        <span class="flex items-center gap-1.5">
+                            <i class="pi pi-calendar text-[10px]"></i>{{ formatDate(app.createdAt) }}
                         </span>
                     </div>
                 </div>
 
                 <!-- Status Badge -->
-                <div class="flex items-center gap-3 flex-shrink-0">
-                    <span :class="['text-[10px] font-bold px-2.5 py-1 rounded-full border', statusConfig[app.status]?.class || 'bg-[var(--bg-app)] text-[var(--text-sub)] border-[var(--border-main)]']">
+                <div class="flex flex-col items-end gap-2 flex-shrink-0 relative z-10">
+                    <span :class="['text-[10px] font-black px-3 py-1 rounded-lg border', 
+                        statusConfig[app.status]?.class || 'bg-[var(--bg-app)] text-[var(--text-sub)] border-[var(--border-main)]']">
                         {{ statusConfig[app.status]?.label || app.status }}
                     </span>
-                    <i class="pi pi-angle-right text-sm text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    <div class="flex -space-x-2">
+                        <div v-for="i in 3" :key="i" class="w-5 h-5 rounded-full border-2 border-white bg-[var(--bg-app)] flex items-center justify-center overflow-hidden">
+                           <i class="pi pi-user text-[8px] text-[var(--text-faint)]"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -303,14 +320,14 @@ const saveEdit = async () => {
                             {{ editMode ? 'Edit Application Data' : (selectedApp.job?.positionTitle || 'Application Details') }}
                         </h3>
                         <div class="flex items-center gap-2 mt-1">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">
-                                {{ editMode ? 'Selection Mode' : `Code: ${selectedApp.applicationCode}` }}
+                            <p class="text-[10px] font-black text-[var(--text-faint)]">
+                                {{ editMode ? 'Selection mode' : `Code: ${selectedApp.applicationCode}` }}
                             </p>
                             <span v-if="!editMode" class="w-1 h-1 rounded-full bg-[var(--border-main)]"></span>
                             <div v-if="!editMode" class="flex gap-1">
-                                <button @click="activeTab = 'details'" :class="[activeTab === 'details' ? 'text-[var(--color-primary)]' : 'text-[var(--text-faint)]']" class="text-[10px] font-black uppercase tracking-widest hover:text-[var(--text-main)] transition-colors">Details</button>
+                                <button @click="activeTab = 'details'" :class="[activeTab === 'details' ? 'text-[var(--color-primary)]' : 'text-[var(--text-faint)]']" class="text-[10px] font-black hover:text-[var(--text-main)] transition-colors">Details</button>
                                 <span class="text-[10px] text-[var(--text-faint)]">/</span>
-                                <button @click="activeTab = 'documents'" :class="[activeTab === 'documents' ? 'text-[var(--color-primary)]' : 'text-[var(--text-faint)]']" class="text-[10px] font-black uppercase tracking-widest hover:text-[var(--text-main)] transition-colors">Documents</button>
+                                <button @click="activeTab = 'documents'" :class="[activeTab === 'documents' ? 'text-[var(--color-primary)]' : 'text-[var(--text-faint)]']" class="text-[10px] font-black hover:text-[var(--text-main)] transition-colors">Documents</button>
                             </div>
                         </div>
                     </div>
@@ -321,23 +338,24 @@ const saveEdit = async () => {
 
                 <!-- ── VIEW MODE ────────────────────────────────────────── -->
                 <template v-if="!editMode">
-                <div class="overflow-y-auto flex-1 p-6 flex flex-col gap-6 custom-scrollbar">
-
+                <div class="overflow-y-auto flex-1 p-6 flex flex-col gap-6 custom-scrollbar relative">
+                    
+                    <Transition name="fade-slide" mode="out-in">
                     <!-- Tab: Details -->
-                    <template v-if="activeTab === 'details'">
+                    <div v-if="activeTab === 'details'" class="space-y-6">
                         <!-- Status Progress Tracker -->
-                        <div class="mb-2">
-                            <div class="flex items-center justify-between mb-4">
-                                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)]">Application Journey</p>
+                        <div class="mb-2 p-5 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl">
+                            <div class="flex items-center justify-between mb-6">
+                                <p class="text-[10px] font-black text-[var(--text-faint)]">Application Journey</p>
                                 <AppBadge :variant="selectedApp.status" size="xs">
                                     {{ statusConfig[selectedApp.status]?.label || selectedApp.status }}
                                 </AppBadge>
                             </div>
-                            <div class="relative flex items-center justify-between">
+                            <div class="relative flex items-center justify-between px-2">
                                 <!-- Progress Line -->
-                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-[var(--border-main)] z-0"></div>
-                                <div class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-[var(--color-primary)] transition-all duration-1000 z-0"
-                                    :style="{ width: selectedApp.status === 'applied' ? '0%' : selectedApp.status === 'verifying' ? '33%' : selectedApp.status === 'comparative_assessment' ? '66%' : '100%' }">
+                                <div class="absolute left-6 right-6 top-4 h-0.5 bg-[var(--border-main)] z-0"></div>
+                                <div class="absolute left-6 top-4 h-0.5 bg-[var(--color-primary)] transition-all duration-1000 z-0 shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.3)]"
+                                    :style="{ width: `calc(${selectedApp.status === 'applied' ? '0%' : selectedApp.status === 'verifying' ? '33.33%' : selectedApp.status === 'comparative_assessment' ? '66.66%' : '100%'} - 12px)` }">
                                 </div>
 
                                 <!-- Steps -->
@@ -346,41 +364,45 @@ const saveEdit = async () => {
                                     { id: 'verifying', icon: 'pi-search', label: 'Verified' },
                                     { id: 'comparative_assessment', icon: 'pi-chart-bar', label: 'Assessed' },
                                     { id: 'ranked', icon: 'pi-verified', label: 'Ranked' }
-                                ]" :key="step.id" class="relative z-10 flex flex-col items-center gap-2">
-                                    <div :class="['w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-500', 
+                                ]" :key="step.id" class="relative z-10 flex flex-col items-center gap-2 group/step">
+                                    <div :class="['w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 shadow-sm', 
                                         selectedApp.status === step.id || (idx < ['applied', 'verifying', 'comparative_assessment', 'ranked'].indexOf(selectedApp.status))
-                                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-lg'
+                                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white scale-110'
                                         : 'bg-[var(--surface)] border-[var(--border-main)] text-[var(--text-faint)]']">
-                                        <i :class="['pi text-[10px]', step.icon]"></i>
+                                        <i :class="['pi text-[11px]', step.icon]"></i>
                                     </div>
-                                    <span class="text-[9px] font-bold uppercase tracking-tighter text-[var(--text-faint)]">{{ step.label }}</span>
+                                    <span :class="['text-[9px] font-black transition-colors',
+                                        selectedApp.status === step.id ? 'text-[var(--color-primary)]' : 'text-[var(--text-faint)]']">
+                                        {{ step.label }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Assessment Results (If Ranked) -->
                         <div v-if="selectedApp.status === 'ranked' && selectedApp.hrRating" class="animate-fade-in-up">
-                            <div class="p-4 rounded-2xl bg-gradient-to-br from-[var(--color-primary-light)] to-white border border-[var(--color-primary-ring)] shadow-sm">
-                                <div class="flex items-center justify-between mb-4">
+                            <div class="p-5 rounded-3xl bg-gradient-to-br from-[var(--color-primary-light)] via-white to-white border border-[var(--color-primary-ring)] shadow-md overflow-hidden relative">
+                                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-[var(--color-primary)]/5 rounded-full blur-3xl"></div>
+                                <div class="flex items-center justify-between mb-5 relative z-10">
                                     <div>
-                                        <p class="text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)]">Assessment Result</p>
-                                        <h4 class="text-sm font-black text-[var(--text-main)]">Point Breakdown (DO 007)</h4>
+                                        <p class="text-[10px] font-black text-[var(--color-primary)]">Comparative Assessment</p>
+                                        <h4 class="text-base font-black text-[var(--text-main)] mt-0.5">Final Score Card</h4>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-2xl font-black text-[var(--color-primary)] tracking-tighter">{{ selectedApp.totalScore.toFixed(2) }}</p>
-                                        <p class="text-[9px] font-bold text-[var(--text-faint)] uppercase">Total Points</p>
+                                        <p class="text-3xl font-black text-[var(--color-primary)] tracking-tighter tabular-nums">{{ selectedApp.totalScore.toFixed(2) }}</p>
+                                        <p class="text-[10px] font-bold text-[var(--text-faint)]">Aggregate</p>
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="grid grid-cols-2 gap-2 relative z-10">
                                     <div v-for="(val, label) in {
                                         'Education': selectedApp.hrRating.educationPoints,
                                         'Training': selectedApp.hrRating.trainingPoints,
                                         'Experience': selectedApp.hrRating.experiencePoints,
                                         'PBAC/BEI': selectedApp.hrRating.potentialPoints?.bei
-                                    }" :key="label" class="p-2.5 rounded-xl bg-white/50 border border-[var(--color-primary-ring)]/30 flex items-center justify-between">
-                                        <span class="text-[10px] font-bold text-[var(--text-muted)]">{{ label }}</span>
-                                        <span class="text-xs font-black text-[var(--text-main)]">{{ val?.toFixed(2) || '0.00' }}</span>
+                                    }" :key="label" class="p-3 rounded-2xl bg-white/60 backdrop-blur-sm border border-[var(--color-primary-ring)]/40 flex items-center justify-between transition-transform hover:scale-[1.02]">
+                                        <span class="text-[10px] font-bold text-[var(--text-muted)] tracking-tight">{{ label }}</span>
+                                        <span class="text-xs font-black text-[var(--text-main)] tabular-nums">{{ val?.toFixed(2) || '0.00' }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -388,7 +410,7 @@ const saveEdit = async () => {
 
                         <!-- Job Details -->
                         <div v-if="selectedApp.job">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-3">Vacancy Information</p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-3 px-1">Vacancy Information</p>
                             <div class="grid grid-cols-2 gap-3">
                                 <div v-for="[label, val] in [
                                     ['Position', selectedApp.job.positionTitle],
@@ -396,77 +418,86 @@ const saveEdit = async () => {
                                     ['Track', trackLabel[selectedApp.job.hiringTrack] || selectedApp.job.hiringTrack],
                                     ['Salary Grade', `SG-${selectedApp.job.salaryGrade}`],
                                 ]" :key="label"
-                                    class="bg-[var(--bg-app)] rounded-xl p-3 border border-[var(--border-main)]">
-                                    <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-0.5">{{ label }}</p>
-                                    <p class="text-xs font-bold text-[var(--text-main)] truncate">{{ val }}</p>
+                                    class="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border-main)] shadow-sm">
+                                    <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-1">{{ label }}</p>
+                                    <p class="text-xs font-black text-[var(--text-main)] truncate uppercase">{{ val }}</p>
                                 </div>
                             </div>
                         </div>
-                    </template>
 
-                    <!-- Tab: Documents -->
-                    <template v-else-if="activeTab === 'documents'">
-                        <div class="space-y-6">
-                            <div class="p-4 bg-[var(--color-primary-light)] border border-[var(--border-main)] rounded-2xl flex gap-3 items-start">
-                                <i class="pi pi-info-circle text-[var(--color-primary)] mt-0.5"></i>
-                                <p class="text-[11px] font-medium text-[var(--color-primary)] leading-relaxed">
-                                    Upload clear scanned copies of your requirements. Documents must be in PDF or Image format (max 5MB). 
-                                    Verified documents are locked and cannot be changed.
-                                </p>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div v-for="docType in [
-                                    { id: 'transcript', label: 'Transcript of Records', icon: 'pi-file-pdf' },
-                                    { id: 'eligibility', label: 'Eligibility / Board Rating', icon: 'pi-verified' },
-                                    { id: 'service_record', label: 'Service Record / Experience', icon: 'pi-briefcase' },
-                                    { id: 'training_cert', label: 'Training Certificates', icon: 'pi-star' }
-                                ]" :key="docType.id" 
-                                    class="p-4 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl flex items-center justify-between group hover:border-[var(--color-primary-ring)] transition-all">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-[var(--bg-app)] flex items-center justify-center border border-[var(--border-main)] text-[var(--text-faint)]">
-                                            <i :class="['pi text-xs', docType.icon]"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs font-black text-[var(--text-main)]">{{ docType.label }}</p>
-                                            <p class="text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-tighter">
-                                                {{ selectedApp.attachments?.find(a => a.type === docType.id) ? 'Uploaded' : 'Pending Upload' }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="flex items-center gap-2">
-                                        <a v-if="selectedApp.attachments?.find(a => a.type === docType.id)" 
-                                           :href="selectedApp.attachments.find(a => a.type === docType.id).fileUrl" 
-                                           target="_blank"
-                                           class="h-8 px-3 rounded-lg border border-[var(--border-main)] flex items-center justify-center text-[10px] font-black uppercase text-[var(--text-muted)] hover:bg-[var(--bg-app)] transition-all">
-                                           View
-                                        </a>
-                                        <label v-if="!selectedApp.isVerified" class="h-8 px-3 rounded-lg bg-[var(--color-primary)] flex items-center justify-center text-[10px] font-black uppercase text-white cursor-pointer hover:opacity-90 transition-all">
-                                            <input type="file" class="hidden" @change="e => handleFileUpload(e, docType.id)" accept=".pdf,image/*" />
-                                            {{ selectedApp.attachments?.find(a => a.type === docType.id) ? 'Replace' : 'Upload' }}
-                                        </label>
-                                    </div>
+                        <!-- Submitted Data Summary -->
+                        <div v-if="selectedApp.applicantData">
+                            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-3 px-1">Application Snapshot</p>
+                            <div class="grid grid-cols-4 gap-2">
+                                <div v-for="[label, count, icon, color] in [
+                                    ['Edu', selectedApp.applicantData.education?.length   || 0, 'pi-graduation-cap', 'text-blue-500'],
+                                    ['Eli', selectedApp.applicantData.eligibility?.length || 0, 'pi-verified', 'text-purple-500'],
+                                    ['Trn', selectedApp.applicantData.training?.length    || 0, 'pi-star', 'text-amber-500'],
+                                    ['Exp', selectedApp.applicantData.experience?.length  || 0, 'pi-briefcase', 'text-emerald-500'],
+                                ]" :key="label" class="flex flex-col items-center justify-center p-3 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-sm group/snap">
+                                    <i :class="['pi text-[11px] mb-1.5 opacity-60 group-hover/snap:scale-125 transition-transform', icon, color]"></i>
+                                    <span class="text-base font-black text-[var(--text-main)] leading-none tabular-nums">{{ count }}</span>
+                                    <span class="text-[8px] font-black text-[var(--text-faint)] uppercase tracking-widest mt-1">{{ label }}</span>
                                 </div>
-                            </div>
-                        </div>
-                    </template>
-
-                    <!-- Submitted Data Summary -->
-                    <div v-if="selectedApp.applicantData">
-                        <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-3">Snapshot Summary</p>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div v-for="[label, count] in [
-                                ['Education',    selectedApp.applicantData.education?.length   || 0],
-                                ['Eligibility',  selectedApp.applicantData.eligibility?.length || 0],
-                                ['Training',     selectedApp.applicantData.training?.length    || 0],
-                                ['Experience',   selectedApp.applicantData.experience?.length  || 0],
-                            ]" :key="label" class="flex justify-between items-center px-4 py-2 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-lg">
-                                <span class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">{{ label }}</span>
-                                <span class="text-xs font-black text-[var(--text-main)]">{{ count }}</span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Tab: Documents -->
+                    <div v-else-if="activeTab === 'documents'" class="space-y-6">
+                        <div class="p-5 bg-[var(--color-primary-light)]/50 border border-[var(--color-primary-ring)]/30 rounded-2xl flex gap-4 items-start shadow-inner">
+                            <div class="w-8 h-8 rounded-xl bg-[var(--color-primary)] flex items-center justify-center text-white shrink-0 shadow-sm">
+                                <i class="pi pi-info-circle text-sm"></i>
+                            </div>
+                            <p class="text-[11px] font-semibold text-[var(--color-primary-dark)] leading-relaxed">
+                                Upload clear scanned copies of your requirements. Documents must be in PDF or Image format (max 5MB). 
+                                Verified documents are locked and cannot be changed.
+                            </p>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div v-for="docType in [
+                                { id: 'transcript', label: 'Transcript of Records', icon: 'pi-file-pdf' },
+                                { id: 'eligibility', label: 'Eligibility / Board Rating', icon: 'pi-verified' },
+                                { id: 'service_record', label: 'Service Record / Experience', icon: 'pi-briefcase' },
+                                { id: 'training_cert', label: 'Training Certificates', icon: 'pi-star' }
+                            ]" :key="docType.id" 
+                                class="p-4 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl flex items-center justify-between group hover:border-[var(--color-primary-ring)] hover:shadow-md transition-all">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-11 h-11 rounded-2xl bg-[var(--bg-app)] flex items-center justify-center border border-[var(--border-main)] text-[var(--text-faint)] group-hover:bg-[var(--color-primary-light)] group-hover:text-[var(--color-primary)] transition-colors">
+                                        <i :class="['pi text-sm', docType.icon]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-black text-[var(--text-main)]">{{ docType.label }}</p>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <div :class="['w-1.5 h-1.5 rounded-full', selectedApp.attachments?.find(a => a.type === docType.id) ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-[var(--text-faint)]']"></div>
+                                            <p class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-tight">
+                                                {{ selectedApp.attachments?.find(a => a.type === docType.id) ? 'Status: Uploaded' : 'Status: Pending' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <a v-if="selectedApp.attachments?.find(a => a.type === docType.id)" 
+                                       :href="selectedApp.attachments.find(a => a.type === docType.id).fileUrl" 
+                                       target="_blank"
+                                       class="h-9 px-4 rounded-xl border border-[var(--border-main)] flex items-center justify-center text-[10px] font-black uppercase text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)] transition-all">
+                                       <i class="pi pi-external-link mr-1.5"></i> View
+                                    </a>
+                                    <label v-if="!selectedApp.isVerified" class="h-9 px-4 rounded-xl bg-[var(--color-primary)] flex items-center justify-center text-[10px] font-black uppercase text-white cursor-pointer hover:opacity-90 hover:shadow-lg transition-all shadow-primary/20">
+                                        <input type="file" class="hidden" @change="e => handleFileUpload(e, docType.id)" accept=".pdf,image/*" />
+                                        <i :class="['pi mr-1.5 text-[10px]', selectedApp.attachments?.find(a => a.type === docType.id) ? 'pi-sync' : 'pi-upload']"></i>
+                                        {{ selectedApp.attachments?.find(a => a.type === docType.id) ? 'Change' : 'Upload' }}
+                                    </label>
+                                    <div v-else-if="selectedApp.attachments?.find(a => a.type === docType.id)" class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center" title="Verified">
+                                        <i class="pi pi-check-circle"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </Transition>
                 </div>
 
                 <!-- Footer (view) -->
@@ -496,134 +527,126 @@ const saveEdit = async () => {
 
                 <!-- ── EDIT MODE ────────────────────────────────────────── -->
                 <template v-else>
-                <div class="overflow-y-auto flex-1 p-6 flex flex-col gap-6 custom-scrollbar">
+                <div class="overflow-y-auto flex-1 p-6 flex flex-col gap-6 custom-scrollbar bg-[var(--surface-2)]">
 
-                    <!-- Error -->
-                    <div v-if="editError" class="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-                        <i class="pi pi-exclamation-circle flex-shrink-0"></i>{{ editError }}
-                    </div>
+                    <div class="p-5 bg-white border border-[var(--border-main)] rounded-2xl shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
+                                <i class="pi pi-pencil text-xs"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-black text-[var(--text-main)] uppercase tracking-tight">Modify Application Snapshot</h4>
+                                <p class="text-[10px] text-[var(--text-muted)] font-medium">Select specific items from your profile to include in this application.</p>
+                            </div>
+                        </div>
 
-                    <!-- No profile warning -->
-                    <div v-if="!editProfile" class="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
-                        <i class="pi pi-exclamation-triangle mt-0.5 shrink-0"></i>
-                        <p>Your profile could not be loaded. Your submitted data is shown as-is.</p>
+                        <!-- Error -->
+                        <div v-if="editError" class="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs mb-4">
+                            <i class="pi pi-exclamation-circle flex-shrink-0"></i>{{ editError }}
+                        </div>
                     </div>
 
                     <!-- Education -->
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                            <i class="pi pi-graduation-cap"></i> Education
-                            <span class="font-normal normal-case">({{ selEdu.length }}/{{ editProfile?.education?.length || 0 }} selected)</span>
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] flex items-center justify-between px-1">
+                            <span class="flex items-center gap-2"><i class="pi pi-graduation-cap"></i> Education Background</span>
+                            <span class="tabular-nums">{{ selEdu.length }} / {{ editProfile?.education?.length || 0 }}</span>
                         </p>
-                        <div v-if="!editProfile?.education?.length" class="text-xs text-[var(--text-faint)] italic">No education entries in your profile.</div>
-                        <div v-else class="flex flex-col gap-2">
+                        <div v-if="!editProfile?.education?.length" class="p-8 text-center bg-white border border-dashed border-[var(--border-main)] rounded-2xl text-[var(--text-faint)] text-xs italic">No education entries in your profile.</div>
+                        <div v-else class="grid grid-cols-1 gap-2">
                             <label v-for="(edu, i) in editProfile.education" :key="i"
-                                :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                                    selEdu.includes(i) ? 'border-[var(--color-primary-ring)] bg-[var(--color-primary-light)]' : 'border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary-ring)]']">
-                                <input type="checkbox" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)" class="mt-0.5 accent-[var(--color-primary)]" />
+                                :class="['flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md',
+                                    selEdu.includes(i) ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30 ring-1 ring-[var(--color-primary)]/20' : 'border-[var(--border-main)] bg-white opacity-70 hover:opacity-100']">
+                                <div class="relative flex items-center justify-center mt-1">
+                                    <input type="checkbox" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)" class="w-4 h-4 rounded border-[var(--border-main)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] transition-all cursor-pointer" />
+                                </div>
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ edu.degree || edu.level }}</p>
-                                    <p class="text-xs text-[var(--text-muted)]">{{ edu.school }}{{ edu.yearGraduated ? ` · ${edu.yearGraduated}` : '' }}</p>
+                                    <p class="text-xs font-black text-[var(--text-main)] uppercase tracking-tight">{{ edu.degree || edu.level }}</p>
+                                    <p class="text-[10px] font-bold text-[var(--text-muted)] mt-0.5">{{ edu.school }}</p>
                                 </div>
                             </label>
                         </div>
                     </div>
 
                     <!-- Eligibility -->
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                            <i class="pi pi-verified"></i> Eligibility
-                            <span class="font-normal normal-case">({{ selElig.length }}/{{ editProfile?.eligibility?.length || 0 }} selected)</span>
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] flex items-center justify-between px-1">
+                            <span class="flex items-center gap-2"><i class="pi pi-verified text-purple-500"></i> Civil Service Eligibility</span>
+                            <span class="tabular-nums">{{ selElig.length }} / {{ editProfile?.eligibility?.length || 0 }}</span>
                         </p>
-                        <div v-if="!editProfile?.eligibility?.length" class="text-xs text-[var(--text-faint)] italic">No eligibility entries in your profile.</div>
-                        <div v-else class="flex flex-col gap-2">
+                        <div v-if="!editProfile?.eligibility?.length" class="p-8 text-center bg-white border border-dashed border-[var(--border-main)] rounded-2xl text-[var(--text-faint)] text-xs italic">No eligibility entries in your profile.</div>
+                        <div v-else class="grid grid-cols-1 gap-2">
                             <label v-for="(elig, i) in editProfile.eligibility" :key="i"
-                                :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                                    selElig.includes(i) ? 'border-purple-300 bg-purple-50' : 'border-[var(--border-main)] bg-[var(--bg-app)] hover:border-purple-200']">
-                                <input type="checkbox" :checked="selElig.includes(i)" @change="toggle(selElig, i)" class="mt-0.5 accent-purple-600" />
-                                <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ elig.name }}</p>
-                                    <p class="text-xs text-[var(--text-muted)]">{{ elig.placeOfExam }}{{ elig.rating ? ` · Rating: ${elig.rating}` : '' }}</p>
+                                :class="['flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md',
+                                    selElig.includes(i) ? 'border-purple-400 bg-purple-50 ring-1 ring-purple-200' : 'border-[var(--border-main)] bg-white opacity-70 hover:opacity-100']">
+                                <div class="relative flex items-center justify-center mt-1">
+                                    <input type="checkbox" :checked="selElig.includes(i)" @change="toggle(selElig, i)" class="w-4 h-4 rounded border-[var(--border-main)] text-purple-600 focus:ring-purple-500 transition-all cursor-pointer" />
                                 </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Training -->
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                            <i class="pi pi-book"></i> Training &amp; Seminars
-                            <span class="font-normal normal-case">({{ selTrn.length }}/{{ editProfile?.training?.length || 0 }} selected)</span>
-                        </p>
-                        <div v-if="!editProfile?.training?.length" class="text-xs text-[var(--text-faint)] italic">No training entries in your profile.</div>
-                        <div v-else class="flex flex-col gap-2">
-                            <label v-for="(trn, i) in editProfile.training" :key="i"
-                                :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                                    selTrn.includes(i) ? 'border-amber-300 bg-amber-50' : 'border-[var(--border-main)] bg-[var(--bg-app)] hover:border-amber-200']">
-                                <input type="checkbox" :checked="selTrn.includes(i)" @change="toggle(selTrn, i)" class="mt-0.5 accent-amber-500" />
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ trn.title }}</p>
-                                    <p class="text-xs text-[var(--text-muted)]">{{ trn.provider }}{{ trn.hours ? ` · ${trn.hours}h` : '' }}</p>
+                                    <p class="text-xs font-black text-[var(--text-main)] uppercase tracking-tight">{{ elig.name }}</p>
+                                    <p class="text-[10px] font-bold text-purple-700/70 mt-0.5">Rating: {{ elig.rating || 'N/A' }} · {{ elig.placeOfExam }}</p>
                                 </div>
                             </label>
                         </div>
                     </div>
 
                     <!-- Experience -->
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                            <i class="pi pi-briefcase"></i> Work Experience
-                            <span class="font-normal normal-case">({{ selExp.length }}/{{ editProfile?.experience?.length || 0 }} selected)</span>
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] flex items-center justify-between px-1">
+                            <span class="flex items-center gap-2"><i class="pi pi-briefcase text-emerald-500"></i> Relevant Experience</span>
+                            <span class="tabular-nums">{{ selExp.length }} / {{ editProfile?.experience?.length || 0 }}</span>
                         </p>
-                        <div v-if="!editProfile?.experience?.length" class="text-xs text-[var(--text-faint)] italic">No experience entries in your profile.</div>
-                        <div v-else class="flex flex-col gap-2">
+                        <div v-if="!editProfile?.experience?.length" class="p-8 text-center bg-white border border-dashed border-[var(--border-main)] rounded-2xl text-[var(--text-faint)] text-xs italic">No experience entries in your profile.</div>
+                        <div v-else class="grid grid-cols-1 gap-2">
                             <label v-for="(exp, i) in editProfile.experience" :key="i"
-                                :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                                    selExp.includes(i) ? 'border-green-300 bg-green-50' : 'border-[var(--border-main)] bg-[var(--bg-app)] hover:border-green-200']">
-                                <input type="checkbox" :checked="selExp.includes(i)" @change="toggle(selExp, i)" class="mt-0.5 accent-green-600" />
+                                :class="['flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md',
+                                    selExp.includes(i) ? 'border-emerald-400 bg-emerald-50 ring-1 ring-emerald-200' : 'border-[var(--border-main)] bg-white opacity-70 hover:opacity-100']">
+                                <div class="relative flex items-center justify-center mt-1">
+                                    <input type="checkbox" :checked="selExp.includes(i)" @change="toggle(selExp, i)" class="w-4 h-4 rounded border-[var(--border-main)] text-emerald-600 focus:ring-emerald-500 transition-all cursor-pointer" />
+                                </div>
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-[var(--text-main)]">{{ exp.position }}</p>
-                                    <p class="text-xs text-[var(--text-muted)]">{{ exp.company }}{{ exp.months ? ` · ${exp.months} mo` : '' }}{{ exp.isGovernment ? ' · Gov\'t' : '' }}</p>
+                                    <p class="text-xs font-black text-[var(--text-main)] uppercase tracking-tight">{{ exp.position }}</p>
+                                    <p class="text-[10px] font-bold text-emerald-700/70 mt-0.5 uppercase tracking-tight">{{ exp.company }}</p>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    <!-- Performance Rating -->
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                            <i class="pi pi-star"></i> Latest Performance Rating
+                    <!-- Performance -->
+                    <div class="p-5 bg-white border border-[var(--border-main)] rounded-3xl shadow-sm space-y-4">
+                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] flex items-center gap-2">
+                            <i class="pi pi-star text-amber-500"></i> Latest Performance Rating
                         </p>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)]">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Score (e.g. 4.5)</label>
-                                <input v-model="perfRating.score" type="number" step="0.001" min="1" max="5" placeholder="Optional"
-                                    class="input text-sm" />
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="space-y-1">
+                                <label class="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">Numeric Score</label>
+                                <input v-model="perfRating.score" type="number" step="0.001" min="1" max="5" placeholder="4.500"
+                                    class="w-full h-10 px-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl text-xs font-black focus:border-[var(--color-primary)] outline-none transition-all" />
                             </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Adjective Rating</label>
-                                <input v-model="perfRating.adjective" type="text" placeholder="e.g. Very Satisfactory"
-                                    class="input text-sm" />
+                            <div class="space-y-1">
+                                <label class="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">Adjectival</label>
+                                <input v-model="perfRating.adjective" type="text" placeholder="Very Satisfactory"
+                                    class="w-full h-10 px-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl text-xs font-black focus:border-[var(--color-primary)] outline-none transition-all uppercase" />
                             </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Period Covered</label>
-                                <input v-model="perfRating.periodCovered" type="text" placeholder="e.g. Jan-Dec 2024"
-                                    class="input text-sm" />
+                            <div class="space-y-1">
+                                <label class="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">Period</label>
+                                <input v-model="perfRating.periodCovered" type="text" placeholder="Jan-Dec 2024"
+                                    class="w-full h-10 px-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl text-xs font-black focus:border-[var(--color-primary)] outline-none transition-all uppercase" />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Footer (edit) -->
-                <div class="px-6 py-4 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex items-center justify-between gap-3 flex-shrink-0">
+                <div class="px-6 py-4 border-t border-[var(--border-main)] bg-white flex items-center justify-between gap-3 flex-shrink-0 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.05)]">
                     <button @click="editMode = false"
-                        class="h-10 px-5 rounded-lg border border-[var(--border-main)] text-sm font-semibold text-[var(--text-main)] hover:bg-[var(--surface)] transition-colors">
+                        class="h-10 px-6 rounded-xl border border-[var(--border-main)] text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] hover:bg-[var(--bg-app)] transition-colors">
                         Cancel
                     </button>
                     <button @click="saveEdit" :disabled="editSaving"
-                        class="btn-primary h-10 px-5 flex items-center gap-2 disabled:opacity-60">
-                        <i :class="['pi text-xs', editSaving ? 'pi-spin pi-spinner' : 'pi-check']"></i>
-                        {{ editSaving ? 'Saving...' : 'Save Changes' }}
+                        class="h-10 px-8 rounded-xl bg-[var(--color-primary)] text-[10px] font-black uppercase tracking-[0.2em] text-white hover:opacity-90 shadow-lg shadow-primary/20 disabled:opacity-60 flex items-center gap-2">
+                        <i :class="['pi text-[10px]', editSaving ? 'pi-spin pi-spinner' : 'pi-check']"></i>
+                        {{ editSaving ? 'Saving Snapshot' : 'Save Changes' }}
                     </button>
                 </div>
                 </template>
@@ -640,4 +663,41 @@ const saveEdit = async () => {
         />
     </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-main);
+    border-radius: 10px;
+}
+
+/* Tab Transitions */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+    transition: all 0.3s ease;
+}
+.fade-slide-enter-from {
+    opacity: 0;
+    transform: translateX(10px);
+}
+.fade-slide-leave-to {
+    opacity: 0;
+    transform: translateX(-10px);
+}
+
+.shadow-primary {
+    box-shadow: 0 4px 14px 0 rgba(var(--color-primary-rgb), 0.3);
+}
+
+@keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.animate-bounce-subtle {
+    animation: bounce-subtle 3s infinite;
+}
+</style>
 

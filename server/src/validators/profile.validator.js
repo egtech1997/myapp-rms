@@ -22,30 +22,56 @@ const addressSchema = Joi.object({
   country: Joi.string().default("Philippines"),
 });
 
+const familyMemberSchema = Joi.object({
+  firstName: Joi.string().allow("", null),
+  middleName: Joi.string().allow("", null),
+  lastName: Joi.string().allow("", null),
+  suffix: Joi.string().allow("", null),
+  occupation: Joi.string().allow("", null),
+  employer: Joi.string().allow("", null),
+  businessAddress: Joi.string().allow("", null),
+  phone: Joi.string().allow("", null),
+});
+
 export const profileValidator = Joi.object({
   name: nameSchema,
   sex: Joi.string().valid("male", "female", "prefer_not_to_say").allow("", null),
   birthDate: Joi.date().allow(null),
   ethnicGroup: Joi.string().allow("", null),
   religion:    Joi.string().allow("", null),
+  disability:  Joi.string().allow("", null),
   civilStatus: Joi.string().valid("Single", "Married", "Widowed", "Separated", "Other").allow("", null),
   contact: contactSchema,
   address: addressSchema,
 
+  family: Joi.object({
+    spouse: familyMemberSchema,
+    father: familyMemberSchema,
+    mother: familyMemberSchema,
+    children: Joi.array().items(Joi.object({
+      firstName: Joi.string().allow("", null),
+      middleName: Joi.string().allow("", null),
+      lastName: Joi.string().allow("", null),
+      suffix: Joi.string().allow("", null),
+      birthDate: Joi.date().allow(null),
+    })),
+  }),
+
   eligibility: Joi.array().items(Joi.object({
     code: Joi.string().allow("", null),
     name: Joi.string().required(),
+    type: Joi.string().allow("", null),
     rating: Joi.string().allow("", null),
-    dateOfExam: Joi.date().allow(null),
+    dateOfExam: Joi.date().allow(null, ""),
     placeOfExam: Joi.string().allow("", null),
     licenseNumber: Joi.string().allow("", null),
-    licenseValidity: Joi.date().allow(null),
+    licenseValidity: Joi.date().allow(null, ""),
   })),
 
   education: Joi.array().items(Joi.object({
-    level: Joi.string().valid("Elementary", "Secondary", "Vocational", "Bachelor", "Masteral", "Doctorate").required(),
+    level: Joi.string().required(),
     school: Joi.string().required(),
-    degree: Joi.string().required(),
+    degree: Joi.string().allow("", null),
     periodFrom: Joi.string().allow("", null),
     periodTo: Joi.string().allow("", null),
     notGraduated: Joi.boolean().default(false),
@@ -56,9 +82,9 @@ export const profileValidator = Joi.object({
 
   training: Joi.array().items(Joi.object({
     title: Joi.string().required(),
-    periodFrom: Joi.date().allow(null),
-    periodTo: Joi.date().allow(null),
-    hours: Joi.number().min(0).required(),
+    periodFrom: Joi.date().allow(null, ""),
+    periodTo: Joi.date().allow(null, ""),
+    hours: Joi.number().min(0).allow(null),
     typeOfLD: Joi.string().allow("", null),
     provider: Joi.string().allow("", null),
   })),
@@ -72,5 +98,31 @@ export const profileValidator = Joi.object({
     salaryGrade: Joi.string().allow("", null),
     statusOfAppointment: Joi.string().allow("", null),
     isGovernment: Joi.boolean().default(false),
+    keyResponsibilities: Joi.array().items(Joi.string().allow("", null)),
   })),
+
+  voluntaryWork: Joi.array().items(Joi.object({
+    organization: Joi.string().required(),
+    periodFrom: Joi.date().allow(null, ""),
+    periodTo: Joi.date().allow(null, ""),
+    hours: Joi.number().allow(null),
+    position: Joi.string().allow("", null),
+  })),
+
+  competencies: Joi.array().items(Joi.string().allow("", null)),
+  specialSkills: Joi.array().items(Joi.string().allow("", null)),
+  nonAcademicDistinctions: Joi.array().items(Joi.string().allow("", null)),
+  memberships: Joi.array().items(Joi.string().allow("", null)),
+  
+  performanceRating: Joi.object({
+    score: Joi.number().allow(null),
+    adjective: Joi.string().allow("", null),
+    periodCovered: Joi.string().allow("", null),
+  }),
+
+  visibility: Joi.object({
+    phone: Joi.boolean().default(false),
+    email: Joi.boolean().default(false),
+    address: Joi.boolean().default(false),
+  }),
 });

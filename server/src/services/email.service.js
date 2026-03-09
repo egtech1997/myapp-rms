@@ -1,16 +1,8 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import Notification from "../models/Notification.js";
 
-// ── Email Transporter Setup ──────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.mailtrap.io",
-  port: parseInt(process.env.EMAIL_PORT) || 2525,
-  secure: false, 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// ── Resend Setup ─────────────────────────────────────────────────────────
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * 🔹 DEPED FORMAL LETTER WRAPPER
@@ -60,22 +52,26 @@ export const sendEmail = async ({ email, subject, html, notificationId, isFormal
   try {
     const finalHtml = isFormal ? formalLetterWrapper(html) : html;
     
-    const info = await transporter.sendMail({
-      from: '"DepEd Recruitment" <rsp.hr@deped.gov.ph>',
+    const { data, error } = await resend.emails.send({
+      from: 'DepEd Recruitment <onboarding@resend.dev>', // Replace with your verified domain in production
       to: email,
       subject,
       html: finalHtml,
     });
 
+    if (error) {
+      throw new Error(error.message);
+    }
+
     if (notificationId) {
       await Notification.findByIdAndUpdate(notificationId, { emailSent: true });
     }
-    return info;
+    return data;
   } catch (error) {
     if (notificationId) {
       await Notification.findByIdAndUpdate(notificationId, { emailError: error.message });
     }
-    console.error("❌ Email Error:", error.message);
+    console.error("❌ Resend Email Error:", error.message);
     throw error;
   }
 };

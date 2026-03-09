@@ -2,13 +2,142 @@
 import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
+import { ELIGIBILITY_GROUPS } from '@/utils/eligibilityOptions'
+import { AppTableReport } from '@/components/ui'
+import PdsPage from '@/components/PdsPage.vue'
 
 const authStore = useAuthStore()
 const toast = inject('$toast')
 
 const loading = ref(true)
 const saving  = ref(false)
+const exporting = ref(false)
+const showPdsPreview = ref(false)
 const activeTab = ref('personal')
+
+// ── REPORT ──────────────────────────────────────────────────────
+const showReport = ref(false)
+const reportTitle = ref('Service Record')
+const reportCols = ref([])
+const reportRows = ref([])
+
+const openExperienceReport = () => {
+  reportTitle.value = 'Service Record (Work Experience)'
+  reportCols.value = [
+    { label: 'Position', key: 'position' },
+    { label: 'Company / Agency', key: 'company' },
+    { label: 'From', value: (r) => formatDate(r.periodFrom) },
+    { label: 'To', value: (r) => r.periodTo ? formatDate(r.periodTo) : 'Present' },
+    { label: 'Status', key: 'statusOfAppointment' },
+    { label: 'Govt.', value: (r) => r.isGovernment ? 'Yes' : 'No' },
+    { label: 'Salary', value: (r) => r.monthlySalary ? `₱${r.monthlySalary.toLocaleString()}` : '—' }
+  ]
+  reportRows.value = form.experience
+  showReport.value = true
+}
+
+const openTrainingReport = () => {
+  reportTitle.value = 'Learning & Development (Trainings)'
+  reportCols.value = [
+    { label: 'Training Title', key: 'title' },
+    { label: 'Provider / Sponsor', key: 'provider' },
+    { label: 'From', value: (r) => formatDate(r.periodFrom) },
+    { label: 'To', value: (r) => formatDate(r.periodTo) },
+    { label: 'Hours', key: 'hours' },
+    { label: 'Type', key: 'typeOfLD' }
+  ]
+  reportRows.value = form.training
+  showReport.value = true
+}
+
+// ── EXPORT ──────────────────────────────────────────────────────
+const exportPDF = async () => {
+  exporting.value = true
+  try {
+    const response = await apiClient.get('/v1/pds/me/export', { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `PDS-${form.name.lastName || 'PROFILE'}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Export Failed', text: 'Could not generate PDS PDF.' })
+  } finally {
+    exporting.value = false
+  }
+}
+
+const printPDF = async () => {
+  exporting.value = true
+  try {
+    const response = await apiClient.get('/v1/pds/me/export', { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const win = window.open(url, '_blank')
+    if (win) win.focus()
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Print Failed', text: 'Could not generate PDS PDF.' })
+  } finally {
+    exporting.value = false
+  }
+}
+
+const exportExcel = () => {
+  // Simple CSV export of profile data
+  const data = []
+  const pushRow = (label, val) => data.push([`"${label}"`, `"${String(val || '').replace(/"/g, '""')}"`].join(','))
+  
+  pushRow('PERSONAL INFORMATION', '')
+  pushRow('Full Name', fullName.value)
+  pushRow('First Name', form.name.firstName)
+  pushRow('Middle Name', form.name.middleName)
+  pushRow('Last Name', form.name.lastName)
+  pushRow('Suffix', form.name.suffix)
+  pushRow('Sex', form.sex)
+  pushRow('Date of Birth', form.birthDate)
+  pushRow('Age', calcAge(form.birthDate))
+  pushRow('Civil Status', form.civilStatus)
+  pushRow('Ethnic Group', form.ethnicGroup)
+  pushRow('Religion', form.religion)
+  pushRow('Disability', form.disability)
+  pushRow('Email(s)', form.contact.emails.join('; '))
+  pushRow('Phone(s)', form.contact.phones.join('; '))
+  pushRow('Address', `${form.address.sitio}, ${form.address.barangay}, ${form.address.municipality}, ${form.address.province}`)
+  
+  pushRow('', '')
+  pushRow('FAMILY BACKGROUND', '')
+  pushRow('Spouse', `${form.family.spouse.firstName} ${form.family.spouse.lastName}`)
+  pushRow('Father', `${form.family.father.firstName} ${form.family.father.lastName}`)
+  pushRow('Mother', `${form.family.mother.firstName} ${form.family.mother.lastName}`)
+  form.family.children.forEach((c, i) => pushRow(`Child ${i+1}`, `${c.firstName} ${c.lastName} (B-Day: ${c.birthDate})`))
+
+  pushRow('', '')
+  pushRow('EDUCATIONAL BACKGROUND', '')
+  form.education.forEach((e, i) => pushRow(`Education ${i+1}`, `${e.level}: ${e.school} - ${e.degree} (${e.periodFrom}-${e.periodTo})`))
+
+  pushRow('', '')
+  pushRow('CIVIL SERVICE ELIGIBILITY', '')
+  form.eligibility.forEach((e, i) => pushRow(`Eligibility ${i+1}`, `${e.name} - Rating: ${e.rating} (Date: ${e.dateOfExam})`))
+
+  pushRow('', '')
+  pushRow('WORK EXPERIENCE', '')
+  form.experience.forEach((e, i) => pushRow(`Experience ${i+1}`, `${e.position} at ${e.company} (${e.periodFrom} to ${e.periodTo || 'Present'})`))
+
+  pushRow('', '')
+  pushRow('LEARNING & DEVELOPMENT (TRAININGS)', '')
+  form.training.forEach((t, i) => pushRow(`Training ${i+1}`, `${t.title} - ${t.hours} hours (${t.periodFrom} to ${t.periodTo})`))
+
+  const csv = '\uFEFF' + data.join('\r\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = Object.assign(document.createElement('a'), {
+    href: url, download: `PDS-DATA-${form.name.lastName || 'PROFILE'}.csv`,
+  })
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 const tabs = [
   { id: 'personal',    label: 'Personal Info',        icon: 'pi-user'           },
@@ -27,6 +156,7 @@ const form = reactive({
   birthDate: '',
   ethnicGroup: '',
   religion: '',
+  disability: '',
   civilStatus: '',
   contact: { phones: [''], emails: [''] },
   address: { sitio: '', barangay: '', municipality: '', city: '', province: '', zipCode: '', country: 'Philippines' },
@@ -52,7 +182,7 @@ const form = reactive({
 // ── COMPLETENESS ─────────────────────────────────────────────────
 const completenessStats = computed(() => {
   const sections = {
-    personal:    !!(form.name.firstName && form.name.lastName && form.birthDate && form.sex && form.address.province),
+    personal:    !!(form.name.firstName && form.name.lastName && form.birthDate && form.sex && form.address.province && form.disability),
     education:   form.education.length > 0,
     eligibility: form.eligibility.length > 0,
     experience:  form.experience.length > 0,
@@ -88,6 +218,8 @@ const calcAge = (dateStr) => {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+
 const addPhone = () => form.contact.phones.push('')
 const removePhone = (i) => { if (form.contact.phones.length > 1) form.contact.phones.splice(i, 1) }
 const addEmail = () => form.contact.emails.push('')
@@ -132,6 +264,7 @@ const loadProfile = async () => {
       if (d.birthDate)                 form.birthDate   = d.birthDate.substring(0, 10)
       if (d.ethnicGroup !== undefined) form.ethnicGroup = d.ethnicGroup
       if (d.religion !== undefined)    form.religion    = d.religion
+      if (d.disability !== undefined)  form.disability  = d.disability
       if (d.civilStatus !== undefined) form.civilStatus = d.civilStatus
       if (d.name)    Object.assign(form.name,    d.name)
       if (d.address) Object.assign(form.address, d.address)
@@ -150,13 +283,13 @@ const loadProfile = async () => {
         if (d.family.father)   Object.assign(form.family.father,  d.family.father)
         if (d.family.mother)   Object.assign(form.family.mother,  d.family.mother)
         if (d.family.children) form.family.children = d.family.children.map(c => ({
-          firstName: c.firstName || c.name || '', middleName: c.middleName || '',
+          firstName: c.firstName || '', middleName: c.middleName || '',
           lastName: c.lastName || '', suffix: c.suffix || '',
           birthDate: c.birthDate ? new Date(c.birthDate).toISOString().substring(0, 10) : '',
         }))
       }
       // Arrays
-      if (d.education)               form.education               = d.education.map(e => ({ ...e, birthDate: e.birthDate ? new Date(e.birthDate).toISOString().substring(0, 10) : '' }))
+      if (d.education)               form.education               = d.education.map(e => ({ ...e }))
       if (d.eligibility)             form.eligibility             = d.eligibility.map(e => ({ ...e, dateOfExam: e.dateOfExam ? new Date(e.dateOfExam).toISOString().substring(0, 10) : '', licenseValidity: e.licenseValidity ? new Date(e.licenseValidity).toISOString().substring(0, 10) : '' }))
       if (d.experience)              form.experience              = d.experience.map(e => ({ ...e, periodFrom: e.periodFrom ? new Date(e.periodFrom).toISOString().substring(0, 10) : '', periodTo: e.periodTo ? new Date(e.periodTo).toISOString().substring(0, 10) : '', keyResponsibilities: e.keyResponsibilities || [] }))
       if (d.voluntaryWork)           form.voluntaryWork           = d.voluntaryWork.map(v => ({ ...v, periodFrom: v.periodFrom ? new Date(v.periodFrom).toISOString().substring(0, 10) : '', periodTo: v.periodTo ? new Date(v.periodTo).toISOString().substring(0, 10) : '' }))
@@ -226,8 +359,36 @@ const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-
         </div>
       </div>
       <div class="flex-1 text-center md:text-left relative z-10">
-        <h2 class="text-lg font-black text-[var(--text-main)] tracking-tight">Personal Data Sheet (CS Form 212)</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-1 font-medium">{{ fullName }}</p>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-black text-[var(--text-main)] tracking-tight">Personal Data Sheet (CS Form 212)</h2>
+            <p class="text-xs text-[var(--text-muted)] mt-1 font-medium">{{ fullName }}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button @click="showPdsPreview = true"
+              class="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all">
+              <i class="pi pi-eye"></i>
+              <span>Preview PDS</span>
+            </button>
+            <div class="relative group">
+              <button
+                class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all">
+                <i class="pi pi-file-excel"></i>
+                <span>Report</span>
+                <i class="pi pi-chevron-down text-[8px]"></i>
+              </button>
+              <!-- Simple dropdown for report types -->
+              <div class="absolute right-0 top-full mt-2 w-48 bg-white border border-[var(--border-main)] rounded-xl shadow-xl py-2 z-50 hidden group-hover:block animate-fade-in">
+                <button @click="openExperienceReport" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--color-primary)] transition-colors">
+                  Service Record
+                </button>
+                <button @click="openTrainingReport" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--color-primary)] transition-colors">
+                  Training History
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
           <template v-if="completenessStats.criticalMissing.length > 0">
             <span v-for="miss in completenessStats.criticalMissing" :key="miss"
@@ -311,7 +472,7 @@ const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-
               </select>
             </div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="flex flex-col gap-1.5">
               <label :class="LABEL">Ethnic Group</label>
               <input v-model="form.ethnicGroup" :class="F" placeholder="e.g. Tagalog, Bisaya, Ilocano..." />
@@ -319,6 +480,10 @@ const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-
             <div class="flex flex-col gap-1.5">
               <label :class="LABEL">Religion</label>
               <input v-model="form.religion" :class="F" placeholder="e.g. Roman Catholic, Islam..." />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Disability (if any)</label>
+              <input v-model="form.disability" :class="F" placeholder="e.g. N/A, Visual Impairment..." />
             </div>
           </div>
         </div>
@@ -650,20 +815,10 @@ const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-
               <label :class="LABEL">Eligibility Category <span class="text-red-400">*</span></label>
               <select v-model="el.type" :class="F">
                 <option value="" disabled>Select category...</option>
-                <optgroup label="2nd Level — Professional">
-                  <option value="RA 1080 (Registered Teacher / LET)">RA 1080 — Registered Teacher (LET)</option>
-                  <option value="RA 1080 (Other Professional — Board Exam)">RA 1080 — Other Professional (Board Exam)</option>
-                  <option value="Career Service (Professional)">Career Service Professional — 2nd Level (CSE-PPT)</option>
-                  <option value="Bar (RA 1080)">RA 1080 — Bar Exam (Attorney)</option>
-                  <option value="2nd Level Eligibility (Other)">2nd Level Eligibility (Other)</option>
-                </optgroup>
-                <optgroup label="1st Level — Sub-Professional">
-                  <option value="Career Service (Sub-Professional)">Career Service Sub-Professional — 1st Level (CSE-PPT)</option>
-                  <option value="1st Level Eligibility (Other)">1st Level Eligibility (Other)</option>
-                </optgroup>
-                <optgroup label="Special / Misc">
-                  <option value="MC 11 s. 1996 (Barangay Official)">MC 11 s. 1996 — Barangay Official</option>
-                  <option value="R.A. 7883 (Barangay Health Worker)">R.A. 7883 — Barangay Health Worker</option>
+                <optgroup v-for="group in ELIGIBILITY_GROUPS" :key="group.label" :label="group.label">
+                  <option v-for="opt in group.options" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
                 </optgroup>
               </select>
             </div>
@@ -1002,6 +1157,21 @@ const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-
         <span class="font-black uppercase tracking-widest text-sm">{{ saving ? 'Saving...' : 'Save PDS Profile' }}</span>
       </button>
     </div>
+
+    <!-- REPORT MODAL -->
+    <AppTableReport
+      v-model="showReport"
+      :title="reportTitle"
+      subtitle="Personal Data Summary — RSP Portal"
+      :columns="reportCols"
+      :rows="reportRows"
+      :filename="form.name.lastName + '-' + reportTitle" />
+
+    <!-- PDS PREVIEW -->
+    <PdsPage
+      v-if="showPdsPreview"
+      :profile="form"
+      @close="showPdsPreview = false" />
 
   </div>
 </template>
