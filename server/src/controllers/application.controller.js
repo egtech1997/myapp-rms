@@ -24,41 +24,35 @@ export const applyToJob = catchAsync(async (req, res, next) => {
     return next(new AppError("You have already applied for this position.", 400));
   }
 
-  let applicantData = req.body.applicantData || null;
-  if (!applicantData) {
-    const profile = await Profile.findOne({ user: req.user._id }).lean();
-    if (profile) {
-      applicantData = {
-        personalInfo: {
-          firstName: profile.name?.firstName,
-          middleName: profile.name?.middleName,
-          lastName: profile.name?.lastName,
-          suffix: profile.name?.suffix,
-          sex: profile.sex,
-          birthDate: profile.birthDate,
-          ethnicGroup: profile.ethnicGroup,
-          religion: profile.religion,
-          disability: profile.disability,
-          civilStatus: profile.civilStatus,
-          phones: profile.contact?.phones || [],
-          emails: profile.contact?.emails || [],
-          address: profile.address,
-        },
-        education: profile.education || [],
-        eligibility: profile.eligibility || [],
-        experience: profile.experience || [],
-        training: profile.training || [],
-        voluntaryWork: profile.voluntaryWork || [],
-        competencies: profile.competencies || [],
-        specialSkills: profile.specialSkills || [],
-        nonAcademicDistinctions: profile.nonAcademicDistinctions || [],
-        memberships: profile.memberships || [],
-        performanceRating: profile.performanceRating || {},
-      };
-    } else {
-      applicantData = {};
-    }
-  }
+  let applicantData = req.body.applicantData || {};
+  
+  // ── Always Snapshot Personal Info from Profile for Integrity ─────────
+  const profile = await Profile.findOne({ user: req.user._id }).lean();
+  if (!profile) return next(new AppError("Please complete your PDS profile before applying.", 400));
+
+  applicantData.personalInfo = {
+    firstName:   profile.name?.firstName,
+    middleName:  profile.name?.middleName,
+    lastName:    profile.name?.lastName,
+    suffix:      profile.name?.suffix,
+    sex:         profile.sex,
+    birthDate:   profile.birthDate,
+    ethnicGroup: profile.ethnicGroup,
+    religion:    profile.religion,
+    disability:  profile.disability,
+    civilStatus: profile.civilStatus,
+    phones:      profile.contact?.phones || [],
+    emails:      profile.contact?.emails || [],
+    address:     profile.address,
+  };
+
+  // If other sections are missing from req.body (shouldn't happen with new UI, but for safety):
+  if (!applicantData.education)         applicantData.education = profile.education || [];
+  if (!applicantData.eligibility)       applicantData.eligibility = profile.eligibility || [];
+  if (!applicantData.experience)        applicantData.experience = profile.experience || [];
+  if (!applicantData.training)          applicantData.training = profile.training || [];
+  if (!applicantData.voluntaryWork)     applicantData.voluntaryWork = profile.voluntaryWork || [];
+  if (!applicantData.performanceRating) applicantData.performanceRating = profile.performanceRating || {};
 
   const newApplication = await Application.create({
     submittedBy: req.user._id,

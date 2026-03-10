@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import CAL from "../models/CAL.js";
 import Application from "../models/Application.js";
 import Job from "../models/Job.js";
@@ -42,31 +43,46 @@ export const generateRanking = catchAsync(async (req, res, next) => {
   const job = await Job.findById(jobId);
   if (!job) return next(new AppError("Job not found", 404));
 
-  // 1. Fetch all verified/evaluated applications for this job
+  // 1. Fetch only evaluated/ranked applications
   const apps = await Application.find({ 
     submittedTo: jobId, 
-    status: { $in: ["comparative_assessment", "ranked"] } 
+    status: "ranked" 
   }).populate("submittedBy");
 
   if (apps.length === 0) {
-    return next(new AppError("No qualified applicants found to rank", 400));
+    return next(new AppError("No evaluated applicants found. Please finalize scores first.", 400));
   }
 
-  // 2. Map data to CAL rankings structure
-  const rankings = apps.map(app => ({
-    application: app._id,
-    applicantName: `${app.applicantData.personalInfo.firstName} ${app.applicantData.personalInfo.lastName}`,
-    totalPoints: app.totalScore,
-    // Extract tie-breaker points from hrRating
-    educationPoints: app.hrRating.educationPoints || 0,
-    experiencePoints: app.hrRating.experiencePoints || 0,
-    trainingPoints: app.hrRating.trainingPoints || 0,
-    boardRating: app.hrRating.potentialPoints.writtenTest || 0, // Sample mapping
-    coiPoints: app.hrRating.potentialPoints.workSample || 0,
-    residencyPriority: false, // Default, to be set by Admin manually if needed
-  }));
+  // 2. Fetch Job Rubric for dynamic mapping
+  const rubric = await mongoose.model("Rubric").findOne({ category: job.hiringTrack });
 
-  // 3. Upsert CAL record
+  // 3. Map data to CAL rankings structure
+  const rankings = apps.map(app => {
+    const p = app.applicantData.personalInfo;
+    const fullName = [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(" ");
+    
+    // Check residency: strict matching of Municipality/City
+    const isResident = p.address?.municipality?.toLowerCase() === job.placeOfAssignment?.toLowerCase();
+
+    const rankingEntry = {
+      application: app._id,
+      applicantName: fullName,
+      totalPoints: app.totalScore,
+      residencyPriority: isResident,
+      
+      // Standard tie-breaker keys (will be filled if present in hrRating)
+      educationPoints:  app.hrRating?.educationPoints  || 0,
+      trainingPoints:   app.hrRating?.trainingPoints   || 0,
+      experiencePoints:  app.hrRating?.experiencePoints  || 0,
+      performancePoints: app.hrRating?.performancePoints || 0,
+      boardRating:      app.hrRating?.boardRating      || 0,
+      coiPoints:        app.hrRating?.coiPoints        || 0,
+    };
+
+    return rankingEntry;
+  });
+
+  // 4. Upsert CAL record
   let cal = await CAL.findOne({ job: jobId });
   if (!cal) {
     cal = new CAL({ job: jobId, rankings, hiringTrack: job.hiringTrack });
@@ -74,7 +90,7 @@ export const generateRanking = catchAsync(async (req, res, next) => {
     cal.rankings = rankings;
   }
 
-  // Trigger pre-save hook for sorting/ranking
+  // Trigger pre-save hook for sorting/ranking (handled in CAL model)
   await cal.save();
 
   res.status(200).json({ status: "success", data: cal });

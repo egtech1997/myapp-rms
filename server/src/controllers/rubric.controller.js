@@ -2,59 +2,39 @@ import Rubric from "../models/Rubric.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/AppError.js";
 
-const TRACKS = ["teaching", "teaching_related", "non_teaching"];
+const CATEGORIES = ["teaching", "teaching_related", "non_teaching", "school_admin"];
 
-// GET /api/v1/rubrics — return all three rubrics (create defaults if missing)
+// GET /api/v1/rubrics — return all rubrics
 export const getAllRubrics = catchAsync(async (req, res) => {
-  // Ensure all three tracks exist
-  await Promise.all(
-    TRACKS.map((track) =>
-      Rubric.findOneAndUpdate(
-        { track },
-        { $setOnInsert: { track } },
-        { upsert: true, new: true },
-      ),
-    ),
-  );
-
-  const rubrics = await Rubric.find({ track: { $in: TRACKS } });
+  const rubrics = await Rubric.find({ category: { $in: CATEGORIES } });
   res.status(200).json({ status: "success", data: rubrics });
 });
 
 // GET /api/v1/rubrics/:category
 export const getRubricByCategory = catchAsync(async (req, res, next) => {
-  const track = req.params.category;
+  const category = req.params.category;
 
-  if (!TRACKS.includes(track)) {
-    return next(new AppError(`Invalid track. Must be one of: ${TRACKS.join(", ")}`, 400));
+  if (!CATEGORIES.includes(category)) {
+    return next(new AppError(`Invalid category. Must be one of: ${CATEGORIES.join(", ")}`, 400));
   }
 
-  const rubric = await Rubric.findOneAndUpdate(
-    { track },
-    { $setOnInsert: { track } },
-    { upsert: true, new: true },
-  );
+  const rubric = await Rubric.findOne({ category });
+  if (!rubric) return next(new AppError("Rubric not found", 404));
 
   res.status(200).json({ status: "success", data: rubric });
 });
 
-// PUT /api/v1/rubrics/:category — upsert for a track
+// PUT /api/v1/rubrics/:category — upsert for a category
 export const upsertRubric = catchAsync(async (req, res, next) => {
-  const track = req.params.category;
-  const { criteria, title, active } = req.body;
-
-  if (!TRACKS.includes(track)) {
-    return next(new AppError(`Invalid track. Must be one of: ${TRACKS.join(", ")}`, 400));
+  const category = req.params.category;
+  
+  if (!CATEGORIES.includes(category)) {
+    return next(new AppError(`Invalid category. Must be one of: ${CATEGORIES.join(", ")}`, 400));
   }
 
-  const updatePayload = {};
-  if (criteria !== undefined) updatePayload.criteria = criteria;
-  if (title    !== undefined) updatePayload.title    = title;
-  if (active   !== undefined) updatePayload.active   = active;
-
   const rubric = await Rubric.findOneAndUpdate(
-    { track },
-    { $set: updatePayload },
+    { category },
+    { $set: { ...req.body, category } },
     { upsert: true, new: true, runValidators: false },
   );
 

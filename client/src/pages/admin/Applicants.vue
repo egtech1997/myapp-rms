@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, inject } from 'vue'
+import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
 import apiClient from '@/api/axios'
 import { AppBadge, AppButton, AppTableReport, AppPageHeader, AppModal } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
@@ -108,7 +108,10 @@ const onJobChange = () => {
 }
 
 const loadApplications = async () => {
-  if (!selectedJobId.value) return
+  if (!selectedJobId.value) {
+    applications.value = []
+    return
+  }
   loading.value = true
   try {
     const { data } = await apiClient.get(`/v1/applications/job/${selectedJobId.value}`)
@@ -117,6 +120,11 @@ const loadApplications = async () => {
     loading.value = false
   }
 }
+
+watch(selectedJobId, () => {
+  statusFilter.value = 'review'
+  loadApplications()
+})
 
 const openReview = (app) => {
   selected.value = app
@@ -191,7 +199,8 @@ const getPlaceName = (place) => {
 
 const fullName = (app) => {
   const p = app.applicantData?.personalInfo
-  return p ? `${p.firstName} ${p.lastName}` : 'Unknown Candidate'
+  if (!p) return 'Unknown Candidate'
+  return [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(' ')
 }
 
 onMounted(fetchJobs)
@@ -566,15 +575,17 @@ const filterTabs = [
                         ['First Name',   selected.applicantData?.personalInfo?.firstName],
                         ['Middle Name',  selected.applicantData?.personalInfo?.middleName],
                         ['Last Name',    selected.applicantData?.personalInfo?.lastName],
+                        ['Suffix',       selected.applicantData?.personalInfo?.suffix],
                         ['Birth Date',   formatDate(selected.applicantData?.personalInfo?.birthDate)],
                         ['Sex',          selected.applicantData?.personalInfo?.sex],
                         ['Civil Status', selected.applicantData?.personalInfo?.civilStatus],
                         ['Ethnic Group', selected.applicantData?.personalInfo?.ethnicGroup],
                         ['Religion',     selected.applicantData?.personalInfo?.religion],
                         ['Disability',   selected.applicantData?.personalInfo?.disability],
-                        ['Contact',      selected.applicantData?.personalInfo?.contact?.phone || selected.applicantData?.personalInfo?.contact?.phones?.[0]],
-                        ['Email',        selected.applicantData?.personalInfo?.contact?.email || selected.applicantData?.personalInfo?.contact?.emails?.[0]],
-                        ['Address',      [selected.applicantData?.personalInfo?.address?.barangay, selected.applicantData?.personalInfo?.address?.municipality, selected.applicantData?.personalInfo?.address?.province].filter(Boolean).join(', ')],
+                        ['Contact',      selected.applicantData?.personalInfo?.phones?.[0] || selected.applicantData?.personalInfo?.contact?.phone],
+                        ['Email',        selected.applicantData?.personalInfo?.emails?.[0] || selected.applicantData?.personalInfo?.contact?.email],
+                        ['Address',      selected.applicantData?.personalInfo?.address ? 
+                          [selected.applicantData.personalInfo.address.sitio, selected.applicantData.personalInfo.address.barangay, selected.applicantData.personalInfo.address.municipality, selected.applicantData.personalInfo.address.province].filter(Boolean).join(', ') : '—'],
                       ]" :key="l">
                         <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
                         <p class="text-sm font-bold text-[var(--text-main)] mt-1.5 uppercase leading-tight">{{ v || '—' }}</p>

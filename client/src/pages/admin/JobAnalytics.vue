@@ -4,8 +4,12 @@ import { useRouter } from 'vue-router'
 import apiClient from '@/api/axios'
 import { StatCard, AppCard, EmptyState, AppBadge, AppSpinner, AppBreadcrumb } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
+import { useRecruitmentStore } from '@/stores/recruitment'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
+const recruitmentStore = useRecruitmentStore()
+const { selectedJobId } = storeToRefs(recruitmentStore)
 
 // ── BREADCRUMBS ───────────────────────────────────────────────────────────
 const breadcrumbs = [
@@ -15,7 +19,6 @@ const breadcrumbs = [
 const loading = ref(false)
 const jobsLoading = ref(true)
 const jobs = ref([])
-const selectedJobId = ref('')
 const analytics = ref(null)
 
 // ── FETCH JOBS ───────────────────────────────────────────────────────────
@@ -23,6 +26,9 @@ const fetchJobs = async () => {
     try {
         const { data } = await apiClient.get('/v1/jobs')
         jobs.value = data.data || []
+        if (selectedJobId.value) {
+            fetchJobAnalytics(selectedJobId.value)
+        }
     } finally {
         jobsLoading.value = false
     }
@@ -91,7 +97,7 @@ const fieldClasses = "h-11 px-4 text-sm bg-[var(--bg-app)] border border-[var(--
                 <p class="text-xs text-[var(--text-muted)] font-medium">Detailed performance metrics per vacancy.</p>
             </div>
             <div class="flex gap-2 w-full sm:w-auto">
-                <select v-model="selectedJobId" :class="[fieldClasses, 'flex-1 sm:w-80 shadow-sm']" :disabled="jobsLoading">
+                <select :value="selectedJobId" @change="e => recruitmentStore.setSelectedJobId(e.target.value)" :class="[fieldClasses, 'flex-1 sm:w-80 shadow-sm']" :disabled="jobsLoading">
                     <option value="">— Select Vacancy to Analyze —</option>
                     <option v-for="job in jobs" :key="job._id" :value="job._id">
                         {{ job.positionTitle }} ({{ job.positionCode }})

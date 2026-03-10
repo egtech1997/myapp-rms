@@ -1,11 +1,15 @@
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 import { AppBadge, AppButton, AppCard, AppDrawer, AppInput, AppTextarea, AppPageHeader } from '@/components/ui'
+import { useRecruitmentStore } from '@/stores/recruitment'
+import { storeToRefs } from 'pinia'
 
 const authStore = useAuthStore()
 const toast = inject('$toast')
+const recruitmentStore = useRecruitmentStore()
+const { selectedJobId } = storeToRefs(recruitmentStore)
 
 // ── BREADCRUMBS ───────────────────────────────────────────────────────────
 const breadcrumbs = [
@@ -17,7 +21,6 @@ const breadcrumbs = [
 const jobs = ref([])
 const poolData = ref(null)
 const loading = ref(false)
-const selectedJobId = ref('')
 
 // Focus Mode: Appointment Decision
 const selectedApp = ref(null)
@@ -34,10 +37,16 @@ const appointForm = ref({
 const fetchJobs = async () => {
   const { data } = await apiClient.get('/v1/jobs')
   jobs.value = data.data
+  if (selectedJobId.value) {
+    loadPool()
+  }
 }
 
 const loadPool = async () => {
-  if (!selectedJobId.value) return
+  if (!selectedJobId.value) {
+    poolData.value = null
+    return
+  }
   loading.value = true
   try {
     const { data } = await apiClient.get(`/v1/appointments/pool/${selectedJobId.value}`)
@@ -49,6 +58,8 @@ const loadPool = async () => {
     loading.value = false
   }
 }
+
+watch(selectedJobId, () => loadPool())
 
 const openDecision = (item) => {
   selectedApp.value = item
@@ -85,7 +96,7 @@ onMounted(fetchJobs)
 
     <!-- 1. Selection Toolbar -->
     <header class="bg-[var(--surface)] border border-[var(--border-main)] p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
-      <select v-model="selectedJobId" @change="loadPool"
+      <select :value="selectedJobId" @change="e => recruitmentStore.setSelectedJobId(e.target.value)"
         class="w-full sm:w-96 h-10 px-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl text-sm font-bold text-[var(--text-main)] focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all outline-none">
         <option value="">Select vacancy for appointment...</option>
         <option v-for="job in jobs" :key="job._id" :value="job._id">{{ job.positionTitle }} - {{ job.placeOfAssignment }}</option>

@@ -25,6 +25,7 @@ const profileComplete = computed(() => {
     const p = profile.value
     const checks = [
         !!(p.name?.firstName && p.name?.lastName),
+        !!(p.ethnicGroup && p.religion && p.disability),
         (p.education?.length || 0) > 0,
         (p.eligibility?.length || 0) > 0,
         (p.experience?.length || 0) > 0,

@@ -151,9 +151,19 @@ const submitApplication = async () => {
   const p = profile.value
   const applicantData = {
     personalInfo: {
-      firstName: p.name?.firstName, lastName: p.name?.lastName,
-      sex: p.sex, birthDate: p.birthDate, civilStatus: p.civilStatus,
-      contact: p.contact, address: p.address,
+      firstName:   p.name?.firstName,
+      middleName:  p.name?.middleName,
+      lastName:    p.name?.lastName,
+      suffix:      p.name?.suffix,
+      sex:         p.sex,
+      birthDate:   p.birthDate,
+      ethnicGroup: p.ethnicGroup,
+      religion:    p.religion,
+      disability:  p.disability,
+      civilStatus: p.civilStatus,
+      phones:      p.contact?.phones || [],
+      emails:      p.contact?.emails || [],
+      address:     p.address,
     },
     education:   p?.education  ?.filter((_, i) => selEdu.value .includes(i)) || [],
     eligibility: p?.eligibility?.filter((_, i) => selElig.value.includes(i)) || [],

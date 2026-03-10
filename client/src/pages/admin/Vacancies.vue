@@ -1,14 +1,25 @@
 <script setup>
 import { ref, computed, watch, onMounted, inject } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 import { AppButton, AppBadge, AppModal, AppInput, AppTextarea, AppTableReport, AppPageHeader } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { ELIGIBILITY_GROUPS } from '@/utils/eligibilityOptions'
+import { useRecruitmentStore } from '@/stores/recruitment'
 
 const toast = inject('$toast')
 const swal  = inject('$swal')
+const router = useRouter()
 const authStore = useAuthStore()
+const recruitmentStore = useRecruitmentStore()
+
+// ... rest of state ...
+
+const manageRecruitment = (jobId) => {
+  recruitmentStore.setSelectedJobId(jobId)
+  router.push('/admin/applicants')
+}
 
 // ─── Data ──────────────────────────────────────────────────────────────────
 const jobs      = ref([])
@@ -651,8 +662,12 @@ const confirmBulkArchive = async () => {
               </td>
               <td class="px-5 py-3.5 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-1">
+                  <button @click="manageRecruitment(job._id)" title="Manage recruitment"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors border border-transparent hover:border-[var(--color-primary-ring)]">
+                    <i class="pi pi-users text-xs"></i>
+                  </button>
                   <button v-if="canManage" @click="openEdit(job)" title="Edit vacancy"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] transition-colors border border-transparent hover:border-[var(--color-primary-ring)]">
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)] transition-colors border border-transparent hover:border-[var(--border-main)] ml-1">
                     <i class="pi pi-pencil text-xs"></i>
                   </button>
                   <button v-if="canManage" @click="handleDelete(job)" title="Delete vacancy"

@@ -151,10 +151,19 @@ const saveEdit = async () => {
     editError.value  = ''
     const p = editProfile.value
     const personalInfo = p ? {
-        firstName: p.name?.firstName, middleName: p.name?.middleName,
-        lastName:  p.name?.lastName,  suffix:     p.name?.suffix,
-        sex: p.sex, birthDate: p.birthDate, civilStatus: p.civilStatus,
-        contact: p.contact, address: p.address,
+        firstName:   p.name?.firstName,
+        middleName:  p.name?.middleName,
+        lastName:    p.name?.lastName,
+        suffix:      p.name?.suffix,
+        sex:         p.sex,
+        birthDate:   p.birthDate,
+        ethnicGroup: p.ethnicGroup,
+        religion:    p.religion,
+        disability:  p.disability,
+        civilStatus: p.civilStatus,
+        phones:      p.contact?.phones || [],
+        emails:      p.contact?.emails || [],
+        address:     p.address,
     } : {}
 
     const applicantData = {

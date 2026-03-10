@@ -10,6 +10,7 @@ const props = defineProps({
   icon:       { type: String, default: '' },
   size:       { type: String, default: 'md',
     validator: (v) => ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'full'].includes(v) },
+  width:      { type: String, default: '' },
   persistent: { type: Boolean, default: false },
   hideHeader: { type: Boolean, default: false },
   scrollable: { type: Boolean, default: true },
@@ -110,15 +111,13 @@ const sizeMap = {
             sizeMap[size],
             scrollable ? 'max-h-[90vh]' : '',
           ]"
-          style="
-            border: 1px solid var(--border-main);
-            box-shadow:
-              0 0 0 0.5px rgba(0,0,0,0.05),
-              0 2px 6px rgba(0,0,0,0.04),
-              0 12px 28px rgba(0,0,0,0.08),
-              0 40px 72px rgba(0,0,0,0.12);
-            margin: auto;
-          ">
+          :style="{
+            border: '1px solid var(--border-main)',
+            boxShadow: '0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.08), 0 40px 72px rgba(0,0,0,0.12)',
+            margin: 'auto',
+            width: width || undefined,
+            maxWidth: width ? '95vw' : undefined
+          }">
 
           <!-- Blue accent strip -->
           <div style="height: 3px; background: var(--color-primary); border-radius: 1rem 1rem 0 0; flex-shrink: 0;"></div>

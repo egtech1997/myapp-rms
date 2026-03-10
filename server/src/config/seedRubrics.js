@@ -1,38 +1,64 @@
 import Rubric from "../models/Rubric.js";
 
 export const seedRubrics = async () => {
-  const counts = await Rubric.countDocuments();
-  if (counts > 0) return;
+  // ── Clear existing collection & indexes ──────────────────────────────
+  try {
+    await Rubric.collection.drop();
+    console.log("🧹 Old rubrics collection and indexes cleared.");
+  } catch (e) {
+    // Collection might not exist, ignore
+    await Rubric.deleteMany({});
+  }
 
   const seeds = [
     {
-      category: "non_teaching",
-      title: "Non-Teaching Personnel Rubric",
-      criteria: [
-        { key: "educationPoints", label: "Education", maxPoints: 5 },
-        { key: "trainingPoints", label: "Training", maxPoints: 5 },
-        { key: "experiencePoints", label: "Experience", maxPoints: 20 },
-        { key: "performancePoints", label: "Performance", maxPoints: 20 },
-        { key: "outstandingAccomplishments", label: "Outstanding Accomplishments", maxPoints: 5 },
-        { key: "appEducationPoints", label: "Application of Education", maxPoints: 10 },
-        { key: "appLearningPoints", label: "Application of L&D", maxPoints: 10 },
-        { key: "potentialPoints.bei", label: "Potential (BEI)", maxPoints: 25 }
-      ]
-    },
-    {
       category: "teaching",
       title: "Teaching Personnel Rubric (Teacher I)",
+      description: "Official DepEd DO 007, s. 2023 weights for Teacher I (Elementary, Secondary, Senior High).",
       criteria: [
-        { key: "educationPoints", label: "Education", maxPoints: 20 },
-        { key: "trainingPoints", label: "Training", maxPoints: 10 },
-        { key: "experiencePoints", label: "Experience", maxPoints: 10 },
-        { key: "potentialPoints.writtenTest", label: "LET/PBET Rating", maxPoints: 15 },
-        { key: "potentialPoints.workSample", label: "Classroom Observation (Demo)", maxPoints: 35 },
-        { key: "potentialPoints.bei", label: "Interview", maxPoints: 10 }
-      ]
+        { key: "educationPoints", label: "Education", maxPoints: 10, isPotential: false },
+        { key: "trainingPoints", label: "Training", maxPoints: 10, isPotential: false },
+        { key: "experiencePoints", label: "Experience", maxPoints: 10, isPotential: false },
+        { key: "boardRating", label: "LET/PBET Rating", maxPoints: 15, isPotential: true },
+        { key: "coiPoints", label: "PPST COIs (Classroom Observation)", maxPoints: 35, isPotential: true },
+        { key: "ncoiPoints", label: "PPST NCOIs (Teacher Portfolio)", maxPoints: 20, isPotential: true }
+      ],
+      totalPoints: 100
+    },
+    {
+      category: "non_teaching",
+      title: "Non-Teaching Personnel Rubric",
+      description: "Official DepEd DO 007, s. 2023 weights for Non-Teaching (General) positions.",
+      criteria: [
+        { key: "educationPoints", label: "Education", maxPoints: 5, isPotential: false },
+        { key: "trainingPoints", label: "Training", maxPoints: 5, isPotential: false },
+        { key: "experiencePoints", label: "Experience", maxPoints: 20, isPotential: false },
+        { key: "performancePoints", label: "Performance", maxPoints: 20, isPotential: false },
+        { key: "outstanding_accomplishments", label: "Outstanding Accomplishments", maxPoints: 10, isPotential: false },
+        { key: "app_education", label: "Application of Education", maxPoints: 10, isPotential: false },
+        { key: "app_learning", label: "Application of L&D", maxPoints: 10, isPotential: false },
+        { key: "boardRating", label: "Potential (BEI)", maxPoints: 20, isPotential: true }
+      ],
+      totalPoints: 100
+    },
+    {
+      category: "teaching_related",
+      title: "Related-Teaching Rubric",
+      description: "Official DepEd DO 007, s. 2023 weights for Related-Teaching positions.",
+      criteria: [
+        { key: "educationPoints", label: "Education", maxPoints: 10, isPotential: false },
+        { key: "trainingPoints", label: "Training", maxPoints: 10, isPotential: false },
+        { key: "experiencePoints", label: "Experience", maxPoints: 10, isPotential: false },
+        { key: "performancePoints", label: "Performance", maxPoints: 20, isPotential: false },
+        { key: "outstanding_accomplishments", label: "Outstanding Accomplishments", maxPoints: 10, isPotential: false },
+        { key: "app_education", label: "Application of Education", maxPoints: 10, isPotential: false },
+        { key: "app_learning", label: "Application of L&D", maxPoints: 10, isPotential: false },
+        { key: "boardRating", label: "Potential (BEI)", maxPoints: 20, isPotential: true }
+      ],
+      totalPoints: 100
     }
   ];
 
   await Rubric.insertMany(seeds);
-  console.log("✅ Rubrics Seeded");
+  console.log("✅ Official DepEd DO 007, s. 2023 Rubrics Seeded");
 };

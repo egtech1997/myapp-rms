@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, inject } from 'vue'
+import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import apiClient from '@/api/axios'
 import html2canvas from 'html2canvas'
@@ -112,6 +112,10 @@ const downloadCAR_RQA = async () => {
     exporting.value = false
   }
 }
+
+watch(selectedJobId, () => {
+  loadRQA()
+})
 
 onMounted(fetchJobs)
 </script>

@@ -40,21 +40,7 @@ const applicationSchema = new mongoose.Schema(
       performanceRating: {},
     },
 
-    hrRating: {
-      educationPoints: { type: Number, default: 0 },
-      trainingPoints: { type: Number, default: 0 },
-      experiencePoints: { type: Number, default: 0 },
-      performancePoints: { type: Number, default: 0 },
-      outstandingAccomplishments: { type: Number, default: 0 },
-      appEducationPoints: { type: Number, default: 0 },
-      appLearningPoints: { type: Number, default: 0 },
-      potentialPoints: {
-        writtenTest: { type: Number, default: 0 },
-        bei: { type: Number, default: 0 },
-        workSample: { type: Number, default: 0 },
-      },
-      remarks: String,
-    },
+    hrRating: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     isEvaluated: { type: Boolean, default: false },
     evaluatedAt: Date,
@@ -111,18 +97,18 @@ applicationSchema.pre("save", async function () {
   }
 
   if (this.hrRating) {
-    const r = this.hrRating;
-    this.totalScore =
-      (r.educationPoints || 0) +
-      (r.trainingPoints || 0) +
-      (r.experiencePoints || 0) +
-      (r.performancePoints || 0) +
-      (r.outstandingAccomplishments || 0) +
-      (r.appEducationPoints || 0) +
-      (r.appLearningPoints || 0) +
-      (r.potentialPoints?.writtenTest || 0) +
-      (r.potentialPoints?.bei || 0) +
-      (r.potentialPoints?.workSample || 0);
+    let sum = 0;
+    const recursiveSum = (obj) => {
+      for (const key in obj) {
+        if (typeof obj[key] === "number") {
+          sum += obj[key];
+        } else if (typeof obj[key] === "object" && obj[key] !== null) {
+          recursiveSum(obj[key]);
+        }
+      }
+    };
+    recursiveSum(this.hrRating);
+    this.totalScore = sum;
   }
 });
 

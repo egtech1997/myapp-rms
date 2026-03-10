@@ -1,7 +1,7 @@
 <script setup>
-import { ref, reactive, computed, onMounted, inject } from 'vue'
+import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
 import apiClient from '@/api/axios'
-import { AppBadge, AppButton, AppCard, AppDrawer, AppPageHeader, AppModal } from '@/components/ui'
+import { AppBadge, AppButton, AppCard, AppDrawer, AppInput, AppTextarea, AppPageHeader, AppModal } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { useRecruitmentStore } from '@/stores/recruitment'
 import { storeToRefs } from 'pinia'
@@ -24,39 +24,43 @@ const jobPickerSearch = ref('')
 // Focus Mode: Scoring state
 const selectedApp = ref(null)
 const showScorecard = ref(false)
-const evalTab = ref('credentials')
 const saving = ref(false)
 
-const evalTabs = [
-  { id: 'credentials', label: 'A. Credentials', icon: 'pi-file' },
-  { id: 'potential',   label: 'B. Potential',   icon: 'pi-bolt' },
-  { id: 'finalize',    label: 'Summary',        icon: 'pi-check-circle' },
-]
-
-const rating = reactive({
-  panelMembers: '',
-  educationPoints: 0,
-  trainingPoints: 0,
-  experiencePoints: 0,
-  performancePoints: 0,
-  outstandingAccomplishments: 0,
-  appEducationPoints: 0,
-  appLearningPoints: 0,
-  potentialPoints: { writtenTest: 0, bei: 0, workSample: 0 },
-  remarks: '',
-})
+// Dynamic Rating Object
+const rating = ref({})
+const panelMembers = ref('')
+const remarks = ref('')
 
 // ── COMPUTED ──────────────────────────────────────────────────────────────────
+const stats = computed(() => ({
+  total: applications.value.length,
+  draft: applications.value.filter(a => a.status !== 'ranked').length,
+  finalized: applications.value.filter(a => a.status === 'ranked').length,
+}))
+
 const selectedJob = computed(() => jobs.value.find(j => j._id === selectedJobId.value) || null)
+
+const activeRubric = computed(() => {
+  if (!selectedJob.value) return null
+  return rubrics.value.find(r => r.category === selectedJob.value.hiringTrack) || null
+})
 
 const filteredJobs = computed(() => {
   if (!jobPickerSearch.value) return jobs.value
   const q = jobPickerSearch.value.toLowerCase()
   return jobs.value.filter(j => 
     j.positionTitle.toLowerCase().includes(q) || 
-    (j.positionCode || '').toLowerCase().includes(q) ||
-    j.placeOfAssignment.toLowerCase().includes(q)
+    (j.positionCode || '').toLowerCase().includes(q)
   )
+})
+
+const filtered = computed(() => {
+  let list = applications.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(a => fullName(a).toLowerCase().includes(q) || (a.applicationCode || '').toLowerCase().includes(q))
+  }
+  return list
 })
 
 // ── METHODS ───────────────────────────────────────────────────────────────
@@ -67,9 +71,7 @@ const fetchInitialData = async () => {
   ])
   jobs.value = jobsRes.data.data
   rubrics.value = rubricsRes.data.data
-  if (selectedJobId.value) {
-    loadApplications()
-  }
+  if (selectedJobId.value) loadApplications()
 }
 
 const selectJob = (jobId) => {
@@ -83,7 +85,7 @@ const loadApplications = async () => {
   loading.value = true
   try {
     const { data } = await apiClient.get(`/v1/applications/job/${selectedJobId.value}`)
-    applications.value = data.data.filter(a => ['comparative_assessment', 'ranked'].includes(a.status))
+    applications.value = data.data.filter(a => ['comparative_assessment', 'ranked', 'appointed'].includes(a.status))
   } finally {
     loading.value = false
   }
@@ -91,46 +93,52 @@ const loadApplications = async () => {
 
 const openScoring = (app) => {
   selectedApp.value = app
-  evalTab.value = 'credentials'
   
+  // Initialize dynamic rating object based on rubric criteria
   const r = app.hrRating || {}
-  rating.panelMembers = r.panelMembers || ''
-  rating.educationPoints = r.educationPoints || 0
-  rating.trainingPoints = r.trainingPoints || 0
-  rating.experiencePoints = r.experiencePoints || 0
-  rating.performancePoints = r.performancePoints || 0
-  rating.outstandingAccomplishments = r.outstandingAccomplishments || 0
-  rating.appEducationPoints = r.appEducationPoints || 0
-  rating.appLearningPoints = r.appLearningPoints || 0
-  rating.potentialPoints = {
-    writtenTest: r.potentialPoints?.writtenTest || 0,
-    bei: r.potentialPoints?.bei || 0,
-    workSample: r.potentialPoints?.workSample || 0
+  const newRating = {}
+  
+  if (activeRubric.value) {
+    activeRubric.value.criteria.forEach(c => {
+      newRating[c.key] = r[c.key] || 0
+    })
   }
-  rating.remarks = r.remarks || ''
+  
+  rating.value = newRating
+  panelMembers.value = r.panelMembers || ''
+  remarks.value = r.remarks || ''
   showScorecard.value = true
 }
 
-const activeRubric = computed(() => {
-  if (!selectedApp.value) return null
-  const track = selectedApp.value.submittedTo?.hiringTrack || selectedApp.value.category
-  return rubrics.value.find(r => r.category === track) || null
+const liveTotal = computed(() => {
+  return Object.values(rating.value).reduce((s, v) => s + (Number(v) || 0), 0)
 })
 
-const liveTotal = computed(() => {
-  const r = rating
-  return (
-    Number(r.educationPoints || 0) + Number(r.trainingPoints || 0) + Number(r.experiencePoints || 0) +
-    Number(r.performancePoints || 0) + Number(r.outstandingAccomplishments || 0) + Number(r.appEducationPoints || 0) +
-    Number(r.appLearningPoints || 0) + Number(r.potentialPoints.writtenTest || 0) + Number(r.potentialPoints.bei || 0) +
-    Number(r.potentialPoints.workSample || 0)
-  )
+const partATotal = computed(() => {
+  if (!activeRubric.value) return 0
+  return activeRubric.value.criteria
+    .filter(c => !c.isPotential)
+    .reduce((s, c) => s + (Number(rating.value[c.key]) || 0), 0)
+})
+
+const partBTotal = computed(() => {
+  if (!activeRubric.value) return 0
+  return activeRubric.value.criteria
+    .filter(c => c.isPotential)
+    .reduce((s, c) => s + (Number(rating.value[c.key]) || 0), 0)
 })
 
 const submitEval = async (finalize = false) => {
   saving.value = true
   try {
-    const payload = { hrRating: rating, finalize }
+    const payload = { 
+      hrRating: { 
+        ...rating.value, 
+        panelMembers: panelMembers.value, 
+        remarks: remarks.value 
+      }, 
+      finalize 
+    }
     await apiClient.patch(`/v1/applications/${selectedApp.value._id}/evaluate`, payload)
     toast.fire({ icon: 'success', title: finalize ? 'Scores Published' : 'Draft Saved' })
     showScorecard.value = false
@@ -140,146 +148,171 @@ const submitEval = async (finalize = false) => {
   }
 }
 
-onMounted(fetchInitialData)
+const fullName = (app) => {
+  const p = app.applicantData?.personalInfo
+  if (!p) return 'Unknown Candidate'
+  return [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(' ')
+}
 
-const filtered = computed(() => {
-  let list = applications.value
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    list = list.filter(a => (a.applicantData?.personalInfo?.lastName || '').toLowerCase().includes(q) || a.applicationCode.toLowerCase().includes(q))
-  }
-  return list
+watch(selectedJobId, () => {
+  loadApplications()
 })
 
-const catATotal = computed(() =>
-  Number(rating.educationPoints    || 0) + Number(rating.trainingPoints       || 0) +
-  Number(rating.experiencePoints   || 0) + Number(rating.performancePoints    || 0) +
-  Number(rating.outstandingAccomplishments || 0) + Number(rating.appEducationPoints || 0) +
-  Number(rating.appLearningPoints  || 0)
-)
-const catBTotal = computed(() =>
-  Number(rating.potentialPoints.writtenTest || 0) + Number(rating.potentialPoints.bei || 0) +
-  Number(rating.potentialPoints.workSample  || 0)
-)
+onMounted(fetchInitialData)
 
-const isLocked = computed(() => selectedApp.value?.status === 'ranked' && selectedApp.value?.isEvaluated)
-const scoreClasses = "w-full h-12 px-4 text-xl font-black bg-[var(--bg-app)] border-2 border-[var(--border-main)] rounded-xl focus:border-[var(--color-primary)] transition-all tabular-nums text-center disabled:opacity-60 disabled:cursor-not-allowed";
+const isLocked = computed(() => selectedApp.value?.status === 'ranked' || selectedApp.value?.status === 'appointed')
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 h-full">
-    <AppPageHeader title="Assessment Board" subtitle="Score applicants based on rubric criteria and potential points." icon="pi-list-check" />
+  <div class="flex flex-col gap-5 h-full">
+    <AppPageHeader title="Merit Assessment" subtitle="Track-specific scoring based on official DepEd rubrics." icon="pi-list-check" />
 
-    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-[var(--surface)] border border-[var(--border-main)] p-4 rounded-2xl shadow-sm">
-      <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-        <button @click="showJobPicker = true"
-          class="flex items-center gap-3 px-4 h-12 bg-[var(--bg-app)] border-2 border-transparent hover:border-[var(--color-primary-ring)] rounded-xl transition-all text-left w-full sm:min-w-[400px] group">
-          <div class="w-9 h-9 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
-            <i class="pi pi-search text-sm"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p v-if="selectedJob" class="text-xs font-black text-[var(--text-main)] truncate uppercase tracking-tight">{{ selectedJob.positionTitle }}</p>
-            <p v-if="selectedJob" class="text-[10px] text-[var(--text-muted)] font-mono truncate">{{ selectedJob.positionCode }} &bull; {{ selectedJob.placeOfAssignment }}</p>
-            <p v-else class="text-sm font-bold text-[var(--text-faint)]">Search vacancy for scoring...</p>
-          </div>
-          <i class="pi pi-chevron-down text-[10px] text-[var(--text-faint)] group-hover:text-[var(--color-primary)]"></i>
-        </button>
-
-        <div v-if="selectedJobId" class="h-8 w-px bg-[var(--border-main)] hidden sm:block"></div>
-
-        <div v-if="selectedJobId" class="relative w-full sm:w-64">
-          <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-[10px]"></i>
-          <input v-model="searchQuery" placeholder="Filter applicants..."
-            class="w-full h-10 pl-9 pr-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl text-[11px] font-black focus:ring-2 focus:ring-[var(--color-primary-ring)] outline-none" />
+    <!-- Selection Toolbar -->
+    <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-3.5 flex flex-col lg:flex-row gap-3">
+      <button @click="showJobPicker = true"
+        class="flex items-center gap-3 px-4 h-10 bg-[var(--bg-app)] border border-[var(--border-main)] hover:border-[var(--color-primary)] rounded-lg transition-all text-left flex-1 group">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
+          <i class="pi pi-briefcase text-xs"></i>
         </div>
-      </div>
+        <div class="flex-1 min-w-0">
+          <p v-if="selectedJob" class="text-xs font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{{ selectedJob.positionTitle }}</p>
+          <p v-else class="text-xs font-semibold text-[var(--text-faint)]">Select a vacancy to begin assessment...</p>
+        </div>
+        <i class="pi pi-chevron-down text-[10px] text-[var(--text-faint)] group-hover:text-[var(--color-primary)] transition-colors"></i>
+      </button>
 
-      <div v-if="selectedJob" class="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">
-        <div class="flex flex-col items-end leading-tight">
-          <span>Hiring Track</span>
-          <span class="text-[var(--text-main)] uppercase">{{ selectedJob.hiringTrack.replace('_', ' ') }}</span>
-        </div>
-        <div class="w-px h-6 bg-[var(--border-main)]"></div>
-        <div class="flex flex-col items-end leading-tight">
-          <span>Finalized</span>
-          <span class="text-emerald-600 tabular-nums font-bold">{{ applications.filter(a => a.status === 'ranked').length }} / {{ applications.length }}</span>
-        </div>
+      <div v-if="selectedJobId" class="relative w-full lg:w-64">
+        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-xs"></i>
+        <input v-model="searchQuery" type="search" placeholder="Search..."
+          class="w-full h-10 pl-9 pr-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 transition-all" />
       </div>
     </div>
 
-    <div v-if="selectedJobId" class="flex-1 overflow-hidden flex flex-col min-h-0 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-sm">
-      <div class="grid grid-cols-12 px-6 py-3 border-b border-[var(--border-main)] bg-[var(--bg-app)] text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">
-        <div class="col-span-5">Applicant</div>
-        <div class="col-span-3 text-center">Merit Points</div>
-        <div class="col-span-2 text-center">Phase</div>
-        <div class="col-span-2 text-right">Actions</div>
+    <!-- Applicant Table -->
+    <div v-if="selectedJobId" class="flex-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div class="grid grid-cols-12 px-6 py-3 border-b border-[var(--border-main)] bg-[var(--bg-app)] text-[10px] font-black uppercase text-[var(--text-faint)] tracking-widest">
+        <div class="col-span-5">Candidate</div>
+        <div class="col-span-3 text-center">Current Total Score</div>
+        <div class="col-span-2 text-center">Status</div>
+        <div class="col-span-2 text-right">Action</div>
       </div>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[var(--border-main)]">
-        <div v-for="app in filtered" :key="app._id" class="grid grid-cols-12 px-6 py-4 items-center group hover:bg-[var(--bg-app)] transition-colors cursor-default">
-          <div class="col-span-5 flex items-center gap-4">
-            <div class="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-xs font-black shadow-xs">{{ app.applicantData.personalInfo.lastName.charAt(0) }}</div>
-            <div class="min-w-0">
-              <p class="text-sm font-black text-[var(--text-main)] uppercase truncate">{{ app.applicantData.personalInfo.firstName }} {{ app.applicantData.personalInfo.lastName }}</p>
-              <p class="text-[10px] text-[var(--text-muted)] font-mono tracking-tight uppercase">{{ app.applicationCode }}</p>
+        <div v-if="loading" class="p-8 flex justify-center"><i class="pi pi-spin pi-spinner text-2xl text-[var(--text-faint)]"></i></div>
+        <div v-else-if="filtered.length === 0" class="py-20 text-center opacity-40">
+          <i class="pi pi-inbox text-4xl mb-3 block"></i>
+          <p class="text-xs font-black uppercase tracking-widest">No qualified applicants found</p>
+        </div>
+        <div v-for="app in filtered" :key="app._id" class="grid grid-cols-12 px-6 py-4 items-center hover:bg-[var(--bg-app)] transition-colors group">
+          <div class="col-span-5 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center text-xs font-black text-[var(--color-primary)]">
+              {{ app.applicantData?.personalInfo?.lastName?.charAt(0) }}
+            </div>
+            <div>
+              <p class="text-sm font-bold text-[var(--text-main)] truncate uppercase leading-tight">{{ fullName(app) }}</p>
+              <p class="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">{{ app.applicationCode }}</p>
             </div>
           </div>
-          <div class="col-span-3 text-center"><span class="text-xl font-black text-[var(--color-primary)] tabular-nums">{{ app.totalScore?.toFixed(2) || '0.00' }}</span></div>
-          <div class="col-span-2 text-center">
-            <AppBadge :variant="app.status === 'ranked' ? 'success' : 'neutral'" size="sm" class="uppercase">{{ app.status === 'ranked' ? 'Finalized' : 'Draft' }}</AppBadge>
+          <div class="col-span-3 text-center">
+            <span class="text-xl font-black tabular-nums text-[var(--color-primary)]">{{ (app.totalScore || 0).toFixed(2) }}</span>
+          </div>
+          <div class="col-span-2 flex justify-center">
+            <AppBadge :variant="app.status === 'ranked' ? 'success' : 'gold'" size="xs">{{ app.status === 'ranked' ? 'Evaluated' : 'Pending' }}</AppBadge>
           </div>
           <div class="col-span-2 text-right">
-            <AppButton size="xs" :variant="app.status === 'ranked' ? 'ghost' : 'primary'" @click="openScoring(app)" class="h-8 px-4 text-[10px] font-black uppercase tracking-widest">
-              <i :class="['pi mr-1.5', app.status === 'ranked' ? 'pi-eye' : 'pi-pencil']"></i>{{ app.status === 'ranked' ? 'View' : 'Score' }}
+            <AppButton variant="secondary" size="xs" @click="openScoring(app)">
+              <i :class="['pi text-[10px] mr-1.5', app.status === 'ranked' ? 'pi-eye' : 'pi-pencil']"></i>
+              {{ app.status === 'ranked' ? 'Review' : 'Score' }}
             </AppButton>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Job Picker -->
-    <AppModal v-model="showJobPicker" title="Select Assessment Vacancy" icon="pi-search" width="max-w-2xl">
-      <div class="p-1 space-y-4">
-        <input v-model="jobPickerSearch" placeholder="Filter vacancies..." class="w-full h-12 px-5 bg-[var(--bg-app)] border-2 border-[var(--border-main)] rounded-xl text-sm font-bold focus:border-[var(--color-primary)] outline-none transition-all uppercase tracking-tight" />
-        <div class="max-h-[400px] overflow-y-auto custom-scrollbar space-y-2">
-          <button v-for="job in filteredJobs" :key="job._id" @click="selectJob(job._id)" class="w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center justify-between group" :class="selectedJobId === job._id ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30 shadow-md' : 'border-[var(--bg-app)] bg-[var(--bg-app)] hover:border-[var(--border-main)]'">
-            <div class="flex-1 min-w-0">
-              <span class="text-[9px] font-black text-[var(--color-primary)] uppercase tracking-widest">{{ job.hiringTrack }}</span>
-              <h4 class="text-sm font-black text-[var(--text-main)] truncate uppercase mt-1">{{ job.positionTitle }}</h4>
-              <p class="text-[10px] text-[var(--text-muted)] font-mono">{{ job.positionCode }} &bull; {{ job.placeOfAssignment }}</p>
+    <!-- Scoring Drawer -->
+    <AppDrawer :show="showScorecard" :title="selectedApp ? fullName(selectedApp) : ''" subtitle="Official Assessment Scorecard" size="xl" @close="showScorecard = false">
+      <div v-if="selectedApp && activeRubric" class="flex flex-col h-full overflow-hidden">
+        
+        <!-- Score Banner -->
+        <div class="bg-[var(--color-navy)] rounded-2xl p-6 text-white flex justify-between items-center shadow-xl mb-8 relative overflow-hidden">
+          <div class="flex items-center gap-6 relative z-10">
+            <div class="w-20 h-20 rounded-2xl bg-[var(--color-primary)] flex flex-col items-center justify-center border border-white/10">
+              <span class="text-2xl font-black tabular-nums leading-none">{{ liveTotal.toFixed(2) }}</span>
+              <span class="text-[9px] font-black uppercase tracking-widest opacity-60 mt-1">Total Pts</span>
             </div>
-            <AppBadge :variant="job.status" size="xs" class="uppercase">{{ job.status }}</AppBadge>
+            <div>
+              <h2 class="text-lg font-black uppercase tracking-tight leading-none">{{ activeRubric.title }}</h2>
+              <div class="flex gap-3 mt-3">
+                <span class="text-[10px] font-bold bg-white/10 px-2 py-1 rounded">Part A: {{ partATotal.toFixed(2) }}</span>
+                <span class="text-[10px] font-bold bg-white/10 px-2 py-1 rounded">Part B: {{ partBTotal.toFixed(2) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2 relative z-10">
+            <AppButton v-if="!isLocked" variant="secondary" size="sm" class="!bg-white/10 !text-white !border-white/20" @click="submitEval(false)" :loading="saving">Draft</AppButton>
+            <AppButton v-if="!isLocked" variant="primary" size="sm" @click="submitEval(true)" :loading="saving">Finalize & Rank</AppButton>
+          </div>
+          <div class="absolute right-0 bottom-0 opacity-10 translate-x-1/4 translate-y-1/4"><i class="pi pi-verified text-[160px]"></i></div>
+        </div>
+
+        <!-- Dynamic Inputs -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-12">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <div class="space-y-6">
+              <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] border-b border-[var(--border-main)] pb-2 flex items-center gap-2">
+                <i class="pi pi-file"></i> Part A: Credentials
+              </h3>
+              <div v-for="c in activeRubric.criteria.filter(x => !x.isPotential)" :key="c.key" class="bg-[var(--surface)] border border-[var(--border-main)] p-4 rounded-2xl hover:border-[var(--color-primary-ring)] transition-all">
+                <div class="flex justify-between items-center mb-2">
+                  <label class="text-[10px] font-black uppercase text-[var(--text-muted)]">{{ c.label }}</label>
+                  <span class="text-[9px] font-bold text-[var(--text-faint)]">Max: {{ c.maxPoints }}</span>
+                </div>
+                <input v-model.number="rating[c.key]" type="number" step="0.01" :max="c.maxPoints" :disabled="isLocked"
+                  class="w-full h-12 text-center text-2xl font-black bg-[var(--bg-app)] rounded-xl outline-none border-2 border-transparent focus:border-[var(--color-primary)] transition-all tabular-nums" />
+              </div>
+            </div>
+
+            <div class="space-y-6">
+              <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 border-b border-amber-100 pb-2 flex items-center gap-2">
+                <i class="pi pi-bolt"></i> Part B: Potential
+              </h3>
+              <div v-for="c in activeRubric.criteria.filter(x => x.isPotential)" :key="c.key" class="bg-amber-50/30 border border-amber-100 p-4 rounded-2xl hover:border-amber-300 transition-all">
+                <div class="flex justify-between items-center mb-2">
+                  <label class="text-[10px] font-black uppercase text-amber-800">{{ c.label }}</label>
+                  <span class="text-[9px] font-bold text-amber-600/60">Max: {{ c.maxPoints }}</span>
+                </div>
+                <input v-model.number="rating[c.key]" type="number" step="0.01" :max="c.maxPoints" :disabled="isLocked"
+                  class="w-full h-12 text-center text-2xl font-black bg-white rounded-xl outline-none border-2 border-transparent focus:border-amber-400 transition-all tabular-nums text-amber-700" />
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Remarks -->
+          <div class="mt-10 space-y-4">
+            <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] border-b border-[var(--border-main)] pb-2">Consensus Remarks</h3>
+            <textarea v-model="remarks" :disabled="isLocked" rows="4" class="w-full p-4 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 transition-all resize-none"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </AppDrawer>
+
+    <!-- Job Picker -->
+    <AppModal v-model="showJobPicker" title="Select Assessment Vacancy" width="max-w-2xl">
+      <div class="space-y-4">
+        <AppInput v-model="jobPickerSearch" placeholder="Filter positions..." prefixIcon="pi-search" />
+        <div class="max-h-[400px] overflow-y-auto custom-scrollbar space-y-2">
+          <button v-for="job in filteredJobs" :key="job._id" @click="selectJob(job._id)"
+            class="w-full p-4 rounded-xl border border-[var(--border-main)] bg-[var(--surface)] hover:border-[var(--color-primary)] text-left transition-all group">
+            <span class="text-[9px] font-black text-[var(--color-primary)] uppercase tracking-widest">{{ job.hiringTrack.replace('_', ' ') }}</span>
+            <h4 class="text-sm font-bold text-[var(--text-main)] uppercase mt-1 group-hover:text-[var(--color-primary)] transition-colors">{{ job.positionTitle }}</h4>
+            <p class="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">{{ job.positionCode }} &bull; {{ job.placeOfAssignment }}</p>
           </button>
         </div>
       </div>
     </AppModal>
 
-    <!-- Original Scoring Drawer -->
-    <AppDrawer :show="showScorecard" :title="selectedApp ? `${selectedApp.applicantData.personalInfo.firstName} ${selectedApp.applicantData.personalInfo.lastName}` : ''" subtitle="HRMPSB Assessment Board" size="xl" @close="showScorecard = false">
-      <div class="flex flex-col gap-8 py-4">
-        <div class="sticky top-0 z-10 p-5 rounded-xl bg-[var(--color-navy)] text-white shadow-2xl flex justify-between items-center transition-all">
-          <div class="flex items-center gap-6">
-            <div class="w-16 h-16 rounded-2xl bg-[var(--color-primary)] flex flex-col items-center justify-center shadow-lg border border-white/10">
-              <span class="text-lg font-black tabular-nums leading-none">{{ liveTotal.toFixed(1) }}</span>
-              <span class="text-[8px] font-black uppercase tracking-widest opacity-70 mt-0.5">Total</span>
-            </div>
-            <div>
-              <p class="text-[10px] font-black uppercase tracking-widest opacity-50">Board Consensus Score</p>
-              <h2 class="text-base font-black mt-0.5 tracking-tight uppercase">{{ activeRubric?.title || 'Assessment' }}</h2>
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <AppButton v-if="!isLocked" variant="ghost" size="sm" @click="submitEval(false)" :loading="saving" class="text-white hover:bg-white/10">Save Draft</AppButton>
-            <AppButton v-if="!isLocked" variant="primary" size="sm" @click="submitEval(true)" :loading="saving">Finalize &amp; Rank</AppButton>
-            <AppButton v-else variant="secondary" size="sm" @click="showScorecard = false">Close</AppButton>
-          </div>
-        </div>
-        <!-- (Rest of fields matching original Turn 24 structure) -->
-        <AppCard class="card-raised p-6 border-[var(--border-main)]">
-          <h3 class="text-xs font-black text-[var(--text-main)] uppercase tracking-widest mb-4">Board Remarks</h3>
-          <textarea v-model="rating.remarks" class="w-full p-4 bg-[var(--bg-app)] border-2 border-[var(--border-main)] rounded-2xl text-sm font-bold min-h-[140px] focus:border-[var(--color-primary)] transition-all resize-none outline-none" :disabled="isLocked"></textarea>
-        </AppCard>
-      </div>
-    </AppDrawer>
   </div>
 </template>
