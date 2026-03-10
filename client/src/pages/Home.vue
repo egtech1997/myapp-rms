@@ -264,6 +264,77 @@ onUnmounted(() => {
         <HomeTeamModal v-model:visible="isTeamModalOpen" :member="selectedMember" />
         <HomeBulletinModal v-model:visible="isBulletinDialogOpen" :announcement="selectedAnnouncement" />
 
+        <!-- ── Footer ────────────────────────────────────────── -->
+        <footer class="w-full bg-white border-t border-slate-200 py-12 lg:py-16">
+            <div class="max-w-7xl mx-auto px-8">
+                <div class="flex flex-col md:flex-row justify-between items-start gap-12 mb-12 lg:mb-16">
+                    <div class="max-w-xs space-y-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl overflow-hidden shadow-xl shadow-blue-500/10 border border-slate-100 p-0.5 bg-white">
+                                <img v-if="settingsStore.resolvedLogoUrl" :src="settingsStore.resolvedLogoUrl" alt="Logo" class="w-full h-full object-contain" />
+                                <div v-else class="w-full h-full bg-blue-600 flex items-center justify-center">
+                                    <i class="pi pi-shield text-white text-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex flex-col leading-tight">
+                                <span class="text-xl font-black text-slate-900 tracking-tight">{{ settingsStore.systemName }}</span>
+                                <span class="text-[10px] text-slate-400 uppercase font-bold tracking-[0.2em] mt-1">{{ settingsStore.systemSubName }}</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-500 font-medium leading-relaxed">
+                            Official recruitment and selection portal for the {{ settingsStore.systemName }}. 
+                            Standardized, transparent, and merit-based career opportunities.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-12 lg:gap-24">
+                        <div class="space-y-4">
+                            <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Navigation</h4>
+                            <ul class="space-y-2">
+                                <li v-for="link in ['home', 'bullet', 'jobs']" :key="link">
+                                    <button @click="scrollTo(link)" class="text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors uppercase tracking-widest text-[10px]">{{ getLinkLabel(link) }}</button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="space-y-4">
+                            <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Resources</h4>
+                            <ul class="space-y-2">
+                                <li v-for="link in ['about', 'teams', 'faq']" :key="link">
+                                    <button @click="scrollTo(link)" class="text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors uppercase tracking-widest text-[10px]">{{ getLinkLabel(link) }}</button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="space-y-4 col-span-2 sm:col-span-1">
+                            <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Portal</h4>
+                            <ul class="space-y-3">
+                                <li>
+                                    <button @click="router.push('/auth/login')" class="flex items-center gap-2 text-xs font-black text-slate-900 hover:text-blue-600 transition-colors">
+                                        SIGN IN <i class="pi pi-arrow-right text-[10px]"></i>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button @click="router.push('/auth/register')" class="flex items-center gap-2 text-xs font-black text-slate-900 hover:text-blue-600 transition-colors">
+                                        CREATE ACCOUNT <i class="pi pi-arrow-right text-[10px]"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        &copy; {{ new Date().getFullYear() }} {{ settingsStore.copyrightText }}
+                    </p>
+                    <div class="flex items-center gap-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <a href="#" class="hover:text-slate-900 transition-colors">Privacy Policy</a>
+                        <div class="w-1 h-1 rounded-full bg-slate-200"></div>
+                        <a href="#" class="hover:text-slate-900 transition-colors">Terms of Service</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
     </div>
 </template>
 

@@ -256,16 +256,19 @@ const closeMenu = () => { showMobileMenu.value = false }
         <footer class="border-t border-[var(--border-main)] bg-[var(--surface)]" role="contentinfo">
             <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row justify-between items-center gap-3">
                 <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded bg-[var(--color-primary)] flex items-center justify-center">
-                        <i class="pi pi-shield text-white text-[9px]" aria-hidden="true"></i>
+                    <div class="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center border border-[var(--border-main)]">
+                        <img v-if="settingsStore.resolvedLogoUrl" :src="settingsStore.resolvedLogoUrl" alt="Logo" class="w-full h-full object-contain p-0.5" />
+                        <div v-else class="w-full h-full bg-[var(--color-primary)] flex items-center justify-center">
+                            <i class="pi pi-shield text-white text-[10px]" aria-hidden="true"></i>
+                        </div>
                     </div>
-                    <p class="text-xs text-[var(--text-muted)]">
+                    <p class="text-[11px] font-medium text-[var(--text-muted)]">
                         &copy; {{ new Date().getFullYear() }} {{ settingsStore.copyrightText }}
                     </p>
                 </div>
-                <div class="flex gap-5 text-xs text-[var(--text-muted)]">
+                <div class="flex gap-5 text-[11px] font-medium text-[var(--text-muted)]">
                     <a href="#" class="hover:text-[var(--text-main)] transition-colors">Privacy Policy</a>
-                    <a href="#" class="hover:text-[var(--text-main)] transition-colors">Support</a>
+                    <a href="#" class="hover:text-[var(--text-main)] transition-colors">Support Center</a>
                 </div>
             </div>
         </footer>

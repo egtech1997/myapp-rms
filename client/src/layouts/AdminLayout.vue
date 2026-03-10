@@ -219,14 +219,22 @@ onMounted(() => {
                 </div>
 
                 <!-- Footer -->
-                <footer class="mt-auto border-t border-[var(--border-main)] bg-[var(--surface)]/50 px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <p class="text-[11px] font-medium text-[var(--text-muted)] tracking-tight">
-                        &copy; {{ new Date().getFullYear() }} <span class="font-bold text-[var(--text-main)]">{{ settingsStore.copyrightText }}</span>
-                    </p>
+                <footer class="mt-auto border-t border-[var(--border-main)] bg-[var(--surface)]/50 px-8 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center border border-[var(--border-main)] bg-white shadow-sm">
+                            <img v-if="settingsStore.resolvedLogoUrl" :src="settingsStore.resolvedLogoUrl" alt="Logo" class="w-full h-full object-contain p-0.5" />
+                            <div v-else class="w-full h-full bg-[var(--color-primary)] flex items-center justify-center">
+                                <i class="pi pi-shield text-white text-[10px]" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                        <p class="text-[11px] font-medium text-[var(--text-muted)] tracking-tight">
+                            &copy; {{ new Date().getFullYear() }} <span class="font-bold text-[var(--text-main)]">{{ settingsStore.copyrightText }}</span>
+                        </p>
+                    </div>
                     <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-faint)]">
-                        <span class="hover:text-[var(--color-primary)] cursor-pointer transition-colors">{{ settingsStore.systemName }} v2.4.0</span>
-                        <div class="w-1 h-1 rounded-full bg-[var(--border-main)]"></div>
-                        <span class="hover:text-[var(--text-main)] cursor-pointer transition-colors">Internal Console</span>
+                        <span class="hover:text-[var(--color-primary)] cursor-pointer transition-colors">{{ settingsStore.systemName }} Internal Console</span>
+                        <div class="w-1.5 h-1.5 rounded-full bg-[var(--border-main)]"></div>
+                        <span class="hover:text-[var(--text-main)] cursor-pointer transition-colors">v2.4.0 Stable</span>
                     </div>
                 </footer>
             </main>
