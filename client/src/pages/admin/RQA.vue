@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import apiClient from '@/api/axios'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
-import { AppBadge, AppButton, AppCard, AppModal, AppTableReport, AppPageHeader } from '@/components/ui'
+import { AppBadge, AppButton, AppCard, AppModal, AppTableReport, AppDataTable, AppPageHeader } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { useRecruitmentStore } from '@/stores/recruitment'
 import { storeToRefs } from 'pinia'
@@ -20,6 +20,7 @@ const rqaData = ref(null)
 const loading = ref(false)
 const generating = ref(false)
 const exporting = ref(false)
+const showReportModal = ref(false)
 
 // ── PICKER STATE ─────────────────────────────────────────────────────────────
 const showJobPicker = ref(false)
@@ -30,6 +31,16 @@ const selectedCandidate = ref(null)
 const showDecisionModal = ref(false)
 const reportRef = ref(null)
 
+const reportCols = [
+  { label: 'Rank', key: 'rank' },
+  { label: 'Applicant Name', key: 'applicantName' },
+  { label: 'Total Score', value: (r) => r.totalPoints.toFixed(2) },
+  { label: 'Residency', value: (r) => r.residencyPriority ? 'Local' : 'Non-Local' },
+  { label: 'Education', key: 'educationPoints' },
+  { label: 'Experience', key: 'experiencePoints' },
+  { label: 'Training', key: 'trainingPoints' },
+]
+
 // ── COMPUTED ──────────────────────────────────────────────────────────────────
 const selectedJob = computed(() => jobs.value.find(j => j._id === selectedJobId.value) || null)
 
@@ -39,7 +50,7 @@ const filteredJobs = computed(() => {
   return jobs.value.filter(j => 
     j.positionTitle.toLowerCase().includes(q) || 
     (j.positionCode || '').toLowerCase().includes(q) ||
-    j.placeOfAssignment.toLowerCase().includes(q)
+    (j.placeOfAssignment || '').toString().toLowerCase().includes(q)
   )
 })
 
@@ -89,30 +100,6 @@ const openDecisionStation = (item) => {
   showDecisionModal.value = true
 }
 
-const downloadCAR_RQA = async () => {
-  if (!rqaData.value) return
-  exporting.value = true
-  toast.fire({ icon: 'info', title: 'Generating Report', text: 'Please wait...' })
-  try {
-    const el = reportRef.value
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' })
-    const imgData = canvas.toDataURL('image/jpeg', 1.0)
-    
-    // Using Letter size portrait for official form
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight)
-    pdf.save(`CAR-RQA_${selectedJob.value.positionCode}.pdf`)
-    toast.fire({ icon: 'success', title: 'CAR-RQA Exported' })
-  } catch {
-    toast.fire({ icon: 'error', title: 'Export Failed' })
-  } finally {
-    exporting.value = false
-  }
-}
-
 watch(selectedJobId, () => {
   loadRQA()
 })
@@ -126,7 +113,7 @@ onMounted(fetchJobs)
       <template #actions>
         <template v-if="selectedJobId">
           <AppButton variant="secondary" icon="pi-sync" @click="generateRanking" :loading="generating" size="sm">Generate/Update Rank</AppButton>
-          <AppButton v-if="rqaData" variant="primary" icon="pi-file-pdf" @click="downloadCAR_RQA" :disabled="exporting" size="sm">Export CAR-RQA</AppButton>
+          <AppButton v-if="rqaData" variant="primary" icon="pi-file-pdf" @click="showReportModal = true" size="sm">Export CAR-RQA</AppButton>
         </template>
       </template>
     </AppPageHeader>
@@ -156,7 +143,8 @@ onMounted(fetchJobs)
 
     <!-- Registry Table -->
     <div v-if="rqaData" class="flex-1 overflow-hidden flex flex-col min-h-0">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <!-- Top 3 highlights -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" v-if="rqaData.rankings?.length">
         <div v-for="item in rqaData.rankings.slice(0, 3)" :key="item._id" @click="openDecisionStation(item)" class="bg-white border-2 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all cursor-pointer" :class="item.rank === 1 ? 'border-[var(--color-gold)]' : 'border-[var(--border-main)]'">
           <div class="flex justify-between items-start mb-2">
             <div :class="['w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black shadow-inner', item.rank === 1 ? 'bg-[var(--color-gold)] text-white' : 'bg-[var(--bg-app)] text-[var(--text-muted)]']">#{{ item.rank }}</div>
@@ -166,25 +154,48 @@ onMounted(fetchJobs)
           <p class="text-3xl font-black text-[var(--text-main)] tabular-nums mt-1">{{ item.totalPoints.toFixed(2) }}</p>
         </div>
       </div>
-      <AppTableReport :title="`Official RQA Ledger for ${selectedJob.positionTitle}`" :data="rqaData.rankings" :columns="['Rank', 'Applicant', 'Score', 'Residency']" class="flex-1">
-        <template #body="{ item }">
-          <td class="w-16 text-center">{{ item.rank }}</td>
-          <td>{{ item.applicantName }}</td>
-          <td class="w-24 text-center font-bold">{{ item.totalPoints.toFixed(2) }}</td>
-          <td class="w-24 text-center">
-            <AppBadge v-if="item.residencyPriority" variant="primary" size="sm">Local</AppBadge>
-          </td>
-          <td class="w-32 text-right">
-            <AppButton size="xs" @click="openDecisionStation(item)" class="h-7 px-3 text-[10px]">Details</AppButton>
-          </td>
+
+      <AppDataTable v-if="rqaData.rankings?.length" :columns="['Rank', 'Applicant', 'Score', 'Residency']" :rows="rqaData.rankings" class="flex-1">
+        <template #default="{ item }">
+          <div class="col-span-1 text-center tabular-nums font-bold text-[var(--text-muted)]">{{ item.rank }}</div>
+          <div class="col-span-5 font-black text-[var(--text-main)] uppercase tracking-tight">{{ item.applicantName }}</div>
+          <div class="col-span-2 text-center">
+            <span class="text-xl font-black text-[var(--color-primary)] tabular-nums">{{ item.totalPoints.toFixed(2) }}</span>
+          </div>
+          <div class="col-span-2 flex justify-center">
+            <AppBadge v-if="item.residencyPriority" variant="primary" size="xs">Local</AppBadge>
+            <span v-else class="text-[9px] font-bold text-[var(--text-faint)] uppercase">Non-Local</span>
+          </div>
+          <div class="col-span-2 text-right">
+            <AppButton size="xs" variant="secondary" @click="openDecisionStation(item)" class="h-8 px-3">
+              <i class="pi pi-search-plus mr-1.5 text-[10px]"></i> Details
+            </AppButton>
+          </div>
         </template>
-      </AppTableReport>
+      </AppDataTable>
+
+      <div v-else class="flex-1 flex flex-col items-center justify-center py-20 text-center opacity-40">
+        <i class="pi pi-users text-4xl mb-3 block"></i>
+        <p class="text-xs font-black uppercase tracking-widest">No candidates have been ranked yet</p>
+      </div>
+    </div>
+
+    <!-- Empty State: No Record -->
+    <div v-else-if="selectedJobId && !loading" class="flex-1 flex flex-col items-center justify-center py-20 text-center bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-sm">
+      <div class="w-16 h-16 rounded-3xl bg-[var(--bg-app)] flex items-center justify-center mb-4">
+        <i class="pi pi-verified text-2xl text-[var(--color-primary)]/30"></i>
+      </div>
+      <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-tight">RQA Not Generated</h3>
+      <p class="text-xs text-[var(--text-muted)] max-w-xs mt-1 font-medium">The Comparative Assessment Result (CAR-RQA) for this position hasn't been finalized yet.</p>
+      <AppButton variant="primary" size="sm" class="mt-6 font-black uppercase tracking-widest text-[10px]" @click="generateRanking" :loading="generating">
+        <i class="pi pi-sync mr-2"></i> Click to Generate Now
+      </AppButton>
     </div>
 
     <!-- Job Picker -->
     <AppModal v-model="showJobPicker" title="Select Vacancy Registry" icon="pi-search" width="max-w-2xl">
-       <div class="p-1 space-y-4">
-        <input v-model="jobPickerSearch" placeholder="Filter by position or station..." class="w-full h-12 px-5 bg-[var(--bg-app)] border-2 border-[var(--border-main)] rounded-xl text-sm font-bold focus:border-[var(--color-primary)] outline-none transition-all uppercase tracking-tight" />
+       <div class="space-y-4">
+        <AppInput v-model="jobPickerSearch" placeholder="Filter by position or station..." prefixIcon="pi-search" />
         <div class="max-h-[400px] overflow-y-auto custom-scrollbar space-y-2">
           <button v-for="job in filteredJobs" :key="job._id" @click="selectJob(job._id)" class="w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center justify-between group" :class="selectedJobId === job._id ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/30 shadow-md' : 'border-[var(--bg-app)] bg-[var(--bg-app)] hover:border-[var(--border-main)]'">
             <div class="flex-1 min-w-0">
@@ -207,7 +218,7 @@ onMounted(fetchJobs)
           </div>
           <div class="text-right">
             <p class="text-[10px] font-black uppercase tracking-widest opacity-60">Total Merit Points</p>
-            <p class="text-5xl font-black tabular-nums">{{ selectedCandidate.totalPoints.toFixed(2) }}</p>
+            <p class="text-5xl font-black tabular-nums">{{ (selectedCandidate.totalPoints || 0).toFixed(2) }}</p>
           </div>
         </div>
         
@@ -221,7 +232,7 @@ onMounted(fetchJobs)
             ['Performance', selectedCandidate.performancePoints],
           ]" :key="l" class="bg-white border border-[var(--border-main)] p-4 rounded-xl flex justify-between items-center">
             <span class="text-xs font-bold text-[var(--text-muted)]">{{ l }}</span>
-            <span class="text-base font-black text-[var(--text-main)] tabular-nums">{{ v.toFixed(2) }}</span>
+            <span class="text-base font-black text-[var(--text-main)] tabular-nums">{{ (v || 0).toFixed(2) }}</span>
           </div>
         </div>
       </div>
@@ -232,5 +243,15 @@ onMounted(fetchJobs)
         </div>
       </template>
     </AppModal>
+
+    <!-- ── Export Report Modal ────────────────────────────────────────────────── -->
+    <AppTableReport
+      v-model="showReportModal"
+      title="Registry of Qualified Applicants"
+      :subtitle="selectedJob?.positionTitle"
+      :columns="reportCols"
+      :rows="rqaData?.rankings || []"
+      :filename="`RQA-${selectedJob?.positionCode}`" />
+
   </div>
 </template>

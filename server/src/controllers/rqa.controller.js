@@ -58,25 +58,34 @@ export const generateRanking = catchAsync(async (req, res, next) => {
 
   // 3. Map data to CAL rankings structure
   const rankings = apps.map(app => {
-    const p = app.applicantData.personalInfo;
-    const fullName = [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(" ");
+    const p = app.applicantData?.personalInfo || {};
+    const fullName = [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(" ") || "Unknown Candidate";
     
-    // Check residency: strict matching of Municipality/City
-    const isResident = p.address?.municipality?.toLowerCase() === job.placeOfAssignment?.toLowerCase();
+    // Check residency: matching Municipality/City against any place of assignment
+    const appMun = p.address?.municipality?.toLowerCase();
+    let isResident = false;
+    
+    if (appMun) {
+      if (Array.isArray(job.placeOfAssignment)) {
+        isResident = job.placeOfAssignment.some(place => place?.toLowerCase().includes(appMun));
+      } else if (typeof job.placeOfAssignment === "string") {
+        isResident = job.placeOfAssignment.toLowerCase().includes(appMun);
+      }
+    }
 
     const rankingEntry = {
       application: app._id,
       applicantName: fullName,
-      totalPoints: app.totalScore,
-      residencyPriority: isResident,
+      totalPoints: Number(app.totalScore || 0),
+      residencyPriority: !!isResident,
       
       // Standard tie-breaker keys (will be filled if present in hrRating)
-      educationPoints:  app.hrRating?.educationPoints  || 0,
-      trainingPoints:   app.hrRating?.trainingPoints   || 0,
-      experiencePoints:  app.hrRating?.experiencePoints  || 0,
-      performancePoints: app.hrRating?.performancePoints || 0,
-      boardRating:      app.hrRating?.boardRating      || 0,
-      coiPoints:        app.hrRating?.coiPoints        || 0,
+      educationPoints:  Number(app.hrRating?.educationPoints  || 0),
+      trainingPoints:   Number(app.hrRating?.trainingPoints   || 0),
+      experiencePoints:  Number(app.hrRating?.experiencePoints  || 0),
+      performancePoints: Number(app.hrRating?.performancePoints || 0),
+      boardRating:      Number(app.hrRating?.boardRating      || 0),
+      coiPoints:        Number(app.hrRating?.coiPoints        || 0),
     };
 
     return rankingEntry;

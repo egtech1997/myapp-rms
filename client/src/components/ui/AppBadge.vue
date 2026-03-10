@@ -10,9 +10,10 @@ const props = defineProps({
       'gold', 'neutral', 'dark', 'info',
       'applied', 'verifying', 'assessment', 'comparative_assessment', 'ranked', 'disqualified',
       'draft', 'published', 'closed', 'archived', 'appointed',
+      'teaching', 'teaching_related', 'non_teaching',
     ].includes(v),
   },
-  size:       { type: String, default: 'md', validator: (v) => ['sm', 'md', 'lg'].includes(v) },
+  size:       { type: String, default: 'md', validator: (v) => ['xs', 'sm', 'md', 'lg'].includes(v) },
   dot:        { type: Boolean, default: false },
   pulseDot:   { type: Boolean, default: false },  // animated ping dot
   icon:       { type: String, default: '' },
@@ -44,6 +45,10 @@ const variants = {
   published:  'bg-green-50  text-green-700 border-green-200',
   closed:     'bg-red-50    text-red-600   border-red-200',
   archived:   'bg-amber-50  text-amber-700 border-amber-200',
+  // Hiring tracks
+  teaching:         'bg-blue-50   text-blue-700   border-blue-200',
+  teaching_related: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  non_teaching:     'bg-slate-50  text-slate-700  border-slate-200',
 }
 
 const dotColors = {
@@ -63,9 +68,13 @@ const dotColors = {
   published:              'bg-green-500',
   closed:                 'bg-red-500',
   archived:               'bg-amber-500',
+  teaching:               'bg-blue-500',
+  teaching_related:       'bg-indigo-500',
+  non_teaching:           'bg-slate-500',
 }
 
 const sizes = {
+  xs: 'text-[9px]  px-1.5 py-[1px]  gap-1   font-black uppercase tracking-widest',
   sm: 'text-[10px] px-2   py-[2px]  gap-1   font-semibold',
   md: 'text-[11px] px-2.5 py-[3px]  gap-1.5 font-semibold',
   lg: 'text-xs     px-3   py-[5px]  gap-2   font-semibold',
