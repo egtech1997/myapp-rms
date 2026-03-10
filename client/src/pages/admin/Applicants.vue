@@ -226,7 +226,15 @@ const sanitizeApplicantData = (app) => {
   // Helper to extract a string from a potentially nested object or array
   const extractString = (val) => {
     if (!val) return '—'
-    if (typeof val === 'string') return val
+    if (typeof val === 'string') {
+      if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(val)
+          return extractString(parsed)
+        } catch (e) { return val }
+      }
+      return val
+    }
     if (Array.isArray(val)) return val.map(v => extractString(v)).filter(v => v !== '—').join(', ')
     if (typeof val === 'object') {
       return val.label || val.name || val.type || val.value || val.title || JSON.stringify(val)
@@ -245,24 +253,30 @@ const sanitizeApplicantData = (app) => {
             normalized = (parsed && typeof parsed === 'object') ? parsed : { name: item, isRelevant: true }
           } catch (e) {
             normalized = { 
-              name: item.length > 50 ? item.substring(0, 50) + '...' : item, 
+              name: item, 
               isRelevant: true, 
               _isCorrupt: true,
-              auditRemarks: 'Data format error: This record was stored as a string.'
+              auditRemarks: 'Stored as plain string'
             }
           }
         }
         
-        // Comprehensive string extraction for main fields
+        // Handle all properties in the record that might be objects
         if (normalized && typeof normalized === 'object') {
+          // 1. Primary identification field
           const nameKey = key === 'training' ? 'title' : (key === 'experience' ? 'position' : 'name')
           
-          // Fix: If it's eligibility and 'name' is missing, check 'type' first
+          // Special for eligibility: if 'name' is missing but 'type' exists, use 'type' as name
           if (key === 'eligibility' && !normalized.name && normalized.type) {
             normalized.name = extractString(normalized.type)
-          } else {
-            normalized[nameKey] = extractString(normalized[nameKey])
           }
+
+          // 2. Normalize all fields to strings for simple template display
+          Object.keys(normalized).forEach(field => {
+            if (field !== 'isRelevant' && field !== 'auditRemarks' && field !== '_isCorrupt') {
+              normalized[field] = extractString(normalized[field])
+            }
+          })
         }
         
         return normalized
