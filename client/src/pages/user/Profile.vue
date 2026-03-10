@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
+import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 import { ELIGIBILITY_GROUPS } from '@/utils/eligibilityOptions'
@@ -10,7 +10,12 @@ const toast = inject('$toast')
 
 const loading = ref(true)
 const saving = ref(false)
-const activeTab = ref('personal')
+const activeTab = ref(localStorage.getItem('pds_active_tab') || 'personal')
+
+const setTab = (id) => {
+  activeTab.value = id
+  localStorage.setItem('pds_active_tab', id)
+}
 
 const tabs = [
   { id: 'personal', label: 'Personal Info', icon: 'pi-user' },
@@ -61,6 +66,7 @@ const completenessStats = computed(() => {
     education: form.education.length > 0,
     eligibility: form.eligibility.length > 0,
     experience: form.experience.length > 0,
+    training: form.training.length > 0,
     family: !!(form.family.father.lastName || form.family.mother.lastName),
     others: (form.competencies.length > 0 || form.specialSkills.length > 0),
   }
@@ -75,7 +81,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'n
 // ── DYNAMIC ACTIONS ──────────────────────────────────────────────
 const addItem = (list) => {
   if (list === 'children') form.family.children.push({ firstName: '', middleName: '', lastName: '', suffix: '', birthDate: '' })
-  else if (list === 'education') form.education.push({ level: 'Bachelor', school: '', degree: '', periodFrom: '', periodTo: '', status: 'Graduated', unitsEarned: null, yearGraduated: null, honorsReceived: '' })
+  else if (list === 'education') form.education.push({ level: 'Bachelor', school: '', degree: '', periodFrom: '', periodTo: '', status: 'Graduated', unitsEarned: '', yearGraduated: '', honorsReceived: '' })
   else if (list === 'eligibility') form.eligibility.push({ type: '', name: '', rating: '', dateOfExam: '', placeOfExam: '', licenseNumber: '', licenseValidity: '' })
   else if (list === 'experience') form.experience.push({ periodFrom: '', periodTo: '', position: '', company: '', monthlySalary: null, salaryGrade: '', statusOfAppointment: 'Permanent', isGovernment: false })
   else if (list === 'voluntary') form.voluntaryWork.push({ organization: '', periodFrom: '', periodTo: '', hours: null, position: '' })
@@ -171,7 +177,7 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
 
     <!-- TABS -->
     <div class="flex gap-1 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-1.5 mb-8 overflow-x-auto no-scrollbar shadow-sm">
-      <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+      <button v-for="tab in tabs" :key="tab.id" @click="setTab(tab.id)"
         :class="['flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all relative',
           activeTab === tab.id ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)]']">
         <i :class="['pi text-[11px]', tab.icon]"></i>{{ tab.label }}
@@ -193,16 +199,21 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
             <div class="flex flex-col gap-1.5"><label :class="LABEL">Last Name</label><input v-model="form.name.lastName" :class="F" /></div>
             <div class="flex flex-col gap-1.5"><label :class="LABEL">Suffix</label><input v-model="form.name.suffix" :class="F" /></div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <div class="flex flex-col gap-1.5"><label :class="LABEL">Date of Birth</label><input v-model="form.birthDate" type="date" :class="F" /></div>
             <div class="flex flex-col gap-1.5"><label :class="LABEL">Sex</label><select v-model="form.sex" :class="F"><option value="male">Male</option><option value="female">Female</option></select></div>
-            <div class="flex flex-col gap-1.5"><label :class="LABEL">Civil Status</label><select v-model="form.civilStatus" :class="F"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">Civil Status</label><select v-model="form.civilStatus" :class="F"><option value="">Select...</option><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">Ethnic Group</label><input v-model="form.ethnicGroup" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">Religion</label><input v-model="form.religion" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">Disability (if any)</label><input v-model="form.disability" :class="F" /></div>
           </div>
         </div>
         
         <div :class="SECTION">
           <h3 :class="H3">Contacts & Identification</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
             <div class="space-y-3">
               <div class="flex items-center justify-between"><label :class="LABEL">Mobile Numbers</label><button @click="addPhone" :class="ADD_BTN"><i class="pi pi-plus text-[8px]"></i> Add Phone</button></div>
               <transition-group name="list" tag="div" class="space-y-2">
@@ -220,6 +231,40 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
                   <button @click="removeItem('emails', i)" :disabled="form.contact.emails.length === 1" :class="REMOVE_BTN"><i class="pi pi-trash text-xs"></i></button>
                 </div>
               </transition-group>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">GSIS ID NO.</label><input v-model="form.gsisNo" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">PAG-IBIG ID NO.</label><input v-model="form.pagibigNo" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">PHILHEALTH NO.</label><input v-model="form.philhealthNo" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">SSS NO.</label><input v-model="form.sssNo" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">TIN NO.</label><input v-model="form.tinNo" :class="F" /></div>
+            <div class="flex flex-col gap-1.5"><label :class="LABEL">AGENCY EMPLOYEE NO.</label><input v-model="form.agencyEmployeeNo" :class="F" /></div>
+          </div>
+        </div>
+
+        <div :class="SECTION">
+          <h3 :class="H3">Residential Address</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2 flex flex-col gap-1.5">
+              <label :class="LABEL">Sitio / House No. / Street</label>
+              <input v-model="form.address.sitio" :class="F" placeholder="Block 4, Lot 7, Magsaysay St." />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Barangay</label>
+              <input v-model="form.address.barangay" :class="F" placeholder="Barangay" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Municipality / City</label>
+              <input v-model="form.address.municipality" :class="F" placeholder="Municipality" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">Province</label>
+              <input v-model="form.address.province" :class="F" placeholder="Province" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label :class="LABEL">ZIP Code</label>
+              <input v-model="form.address.zipCode" :class="F" placeholder="6214" />
             </div>
           </div>
         </div>
@@ -254,7 +299,7 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
       <section v-if="activeTab === 'education'" class="space-y-6 animate-fade-in">
         <div class="flex justify-between items-center"><h3 :class="H3" class="mb-0 text-base">Educational Background</h3><AppButton size="sm" icon="pi-plus" @click="addItem('education')">Add Record</AppButton></div>
         <transition-group name="list" tag="div" class="space-y-4">
-          <div v-for="(e, i) in form.education" :key="i" :class="SECTION" class="group/item transition-all hover:border-[var(--color-primary)]">
+          <div v-for="(e, i) in form.education" :key="i" :class="SECTION" class="group/item overflow-hidden transition-all hover:border-[var(--color-primary)]">
             <div class="flex justify-between items-start mb-5">
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)] shadow-sm"><i class="pi pi-graduation-cap text-lg"></i></div>
@@ -273,7 +318,10 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
             </div>
             <div v-if="!['Elementary','Secondary'].includes(e.level)" class="p-5 bg-[var(--bg-app)]/50 rounded-xl border border-[var(--border-main)] grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div class="flex flex-col gap-1.5"><label :class="LABEL">Academic Status</label><select v-model="e.status" :class="F"><option>Graduated</option><option v-if="['Masteral','Doctorate'].includes(e.level)">CAR (Completed Academic Requirements)</option><option>Ongoing / Units Earned</option><option>Associate / Diploma</option></select></div>
-              <div v-if="e.status === 'Graduated'" class="flex flex-col gap-1.5"><label :class="LABEL">Honors Received</label><input v-model="e.honorsReceived" :class="F" placeholder="e.g. Cum Laude, CPA, Rank 1" /></div>
+              <div v-if="e.status === 'Graduated'" class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5"><label :class="LABEL">Year Graduated</label><input v-model="e.yearGraduated" :class="F" placeholder="YYYY" /></div>
+                <div class="flex flex-col gap-1.5"><label :class="LABEL">Honors Received</label><input v-model="e.honorsReceived" :class="F" placeholder="Cum Laude, CPA, etc." /></div>
+              </div>
               <div v-else class="flex flex-col gap-1.5"><label :class="LABEL">Highest Units Earned</label><input v-model="e.unitsEarned" :class="F" placeholder="e.g. 36 Units" /></div>
             </div>
           </div>
@@ -317,7 +365,7 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
 
       <!-- ══ TAB 5: EXPERIENCE ════════════════════════════════════════ -->
       <section v-if="activeTab === 'experience'" class="space-y-6 animate-fade-in">
-        <div class="flex justify-between items-center"><h3 :class="H3" class="mb-0 text-base">Work Experience</h3><AppButton size="sm" icon="pi-plus" @click="addItem('experience')">Add Service Record</AppButton></div>
+        <div class="flex justify-between items-center"><h3 :class="H3" class="mb-0 text-base">Work Experience</h3><AppButton size="sm" icon="pi-plus" @click="addItem('experience')">Add Record</AppButton></div>
         <transition-group name="list" tag="div" class="space-y-4">
           <div v-for="(e, i) in form.experience" :key="i" :class="SECTION" class="transition-all hover:border-[var(--color-primary)]">
             <div class="flex justify-between items-start mb-5">

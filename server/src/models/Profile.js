@@ -30,6 +30,14 @@ const profileSchema = new mongoose.Schema(
       enum: ["Single", "Married", "Widowed", "Separated", "Other"],
     },
 
+    // --- Identification Numbers ---
+    gsisNo: String,
+    pagibigNo: String,
+    philhealthNo: String,
+    sssNo: String,
+    tinNo: String,
+    agencyEmployeeNo: String,
+
     // --- Contact & Address ---
     contact: {
       phones: [{ type: String, trim: true }],

@@ -47,6 +47,14 @@ export const profileValidator = Joi.object({
   religion:    Joi.string().allow("", null),
   disability:  Joi.string().allow("", null),
   civilStatus: Joi.string().valid("Single", "Married", "Widowed", "Separated", "Other").allow("", null),
+  
+  gsisNo: Joi.string().allow("", null),
+  pagibigNo: Joi.string().allow("", null),
+  philhealthNo: Joi.string().allow("", null),
+  sssNo: Joi.string().allow("", null),
+  tinNo: Joi.string().allow("", null),
+  agencyEmployeeNo: Joi.string().allow("", null),
+
   contact: contactSchema,
   address: addressSchema,
 
@@ -80,16 +88,15 @@ export const profileValidator = Joi.object({
     degree: Joi.string().allow("", null),
     periodFrom: Joi.string().allow("", null),
     periodTo: Joi.string().allow("", null),
-    notGraduated: Joi.boolean().default(false),
-    unitsEarned: Joi.number().allow(null),
-    yearGraduated: Joi.number().allow(null),
+    status: Joi.string().allow("", null),
+    unitsEarned: Joi.string().allow("", null),
+    yearGraduated: Joi.string().allow("", null),
     honorsReceived: Joi.string().allow("", null),
   })),
 
   training: Joi.array().items(Joi.object({
     title: Joi.string().required(),
-    periodFrom: Joi.date().allow(null, ""),
-    periodTo: Joi.date().allow(null, ""),
+    dateIssued: Joi.date().allow(null, ""),
     hours: Joi.number().min(0).allow(null),
     typeOfLD: Joi.string().allow("", null),
     provider: Joi.string().allow("", null),

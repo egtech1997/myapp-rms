@@ -31,28 +31,38 @@ export const applyToJob = catchAsync(async (req, res, next) => {
   if (!profile) return next(new AppError("Please complete your PDS profile before applying.", 400));
 
   applicantData.personalInfo = {
-    firstName:   profile.name?.firstName,
-    middleName:  profile.name?.middleName,
-    lastName:    profile.name?.lastName,
-    suffix:      profile.name?.suffix,
-    sex:         profile.sex,
-    birthDate:   profile.birthDate,
-    ethnicGroup: profile.ethnicGroup,
-    religion:    profile.religion,
-    disability:  profile.disability,
-    civilStatus: profile.civilStatus,
-    phones:      profile.contact?.phones || [],
-    emails:      profile.contact?.emails || [],
-    address:     profile.address,
+    firstName:        profile.name?.firstName,
+    middleName:       profile.name?.middleName,
+    lastName:         profile.name?.lastName,
+    suffix:           profile.name?.suffix,
+    sex:              profile.sex,
+    birthDate:        profile.birthDate,
+    ethnicGroup:      profile.ethnicGroup,
+    religion:         profile.religion,
+    disability:       profile.disability,
+    civilStatus:      profile.civilStatus,
+    gsisNo:           profile.gsisNo,
+    pagibigNo:        profile.pagibigNo,
+    philhealthNo:     profile.philhealthNo,
+    sssNo:            profile.sssNo,
+    tinNo:            profile.tinNo,
+    agencyEmployeeNo: profile.agencyEmployeeNo,
+    phones:           profile.contact?.phones || [],
+    emails:           profile.contact?.emails || [],
+    address:          profile.address,
   };
 
-  // If other sections are missing from req.body (shouldn't happen with new UI, but for safety):
-  if (!applicantData.education)         applicantData.education = profile.education || [];
-  if (!applicantData.eligibility)       applicantData.eligibility = profile.eligibility || [];
-  if (!applicantData.experience)        applicantData.experience = profile.experience || [];
-  if (!applicantData.training)          applicantData.training = profile.training || [];
-  if (!applicantData.voluntaryWork)     applicantData.voluntaryWork = profile.voluntaryWork || [];
-  if (!applicantData.performanceRating) applicantData.performanceRating = profile.performanceRating || {};
+  // ── Snapshot other sections from Profile for Integrity ──────────────
+  applicantData.education         = profile.education || [];
+  applicantData.eligibility       = profile.eligibility || [];
+  applicantData.experience        = profile.experience || [];
+  applicantData.training          = profile.training || [];
+  applicantData.voluntaryWork     = profile.voluntaryWork || [];
+  applicantData.performanceRating = profile.performanceRating || {};
+  applicantData.competencies      = profile.competencies || [];
+  applicantData.specialSkills     = profile.specialSkills || [];
+  applicantData.nonAcademicDistinctions = profile.nonAcademicDistinctions || [];
+  applicantData.memberships       = profile.memberships || [];
 
   const newApplication = await Application.create({
     submittedBy: req.user._id,
