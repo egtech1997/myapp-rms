@@ -131,32 +131,31 @@ export const notifyStatusUpdate = async ({ user, application, oldStatus, newStat
   }
 
   if (isFormal) {
-    // 💡 EMAIL DISABLED FOR STATUS UPDATES PER USER REQUEST
-    // Only in-app notification is created above.
-    /*
+    // Enable email for formal status updates (Qualification/Disqualification)
     await sendEmail({ 
       email: user.email, 
       subject: `[OFFICIAL] ${statusLabels[newStatus]} - ${jobTitle}`, 
       html: formalContent, 
       notificationId: notification._id,
       isFormal: true
-    });
-    */
+    }).catch(err => console.error(`Failed to send formal email to ${user.email}:`, err.message));
   } else {
     // Standard informal update for other statuses
-    // 💡 EMAIL DISABLED FOR STATUS UPDATES PER USER REQUEST
-    /*
     const informalHtml = `
-      <p>Dear ${user.name?.firstName || user.username},</p>
-      <p>Your application for <strong>${jobTitle}</strong> is now <strong>${statusLabels[newStatus] || newStatus}</strong>.</p>
-      <p>Log in to your dashboard for more details.</p>
+      <div style="font-family: sans-serif; padding: 20px; color: #1e293b;">
+        <h2 style="color: #1d4ed8;">Application Update</h2>
+        <p>Dear ${user.name?.firstName || user.username},</p>
+        <p>Your application for <strong>${jobTitle}</strong> has been updated to: <span style="font-weight: bold; color: #1d4ed8;">${statusLabels[newStatus] || newStatus}</span>.</p>
+        <p>Please log in to your dashboard to view more details and track your application journey.</p>
+        <br/>
+        <p style="font-size: 12px; color: #64748b;">This is an automated notification. Please do not reply to this email.</p>
+      </div>
     `;
     await sendEmail({ 
       email: user.email, 
       subject: `[UPDATE] ${title}`, 
       html: informalHtml, 
       notificationId: notification._id 
-    });
-    */
+    }).catch(err => console.error(`Failed to send status email to ${user.email}:`, err.message));
   }
 };

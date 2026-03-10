@@ -14,19 +14,166 @@ const fonts = {
     bold:        'Helvetica-Bold',
     italics:     'Helvetica-Oblique',
     bolditalics: 'Helvetica-BoldOblique'
+  },
+  Courier: {
+    normal:      'Courier',
+    bold:        'Courier-Bold',
+    italics:     'Courier-Oblique',
+    bolditalics: 'Courier-BoldOblique'
   }
 };
 
 const printer = new PdfPrinter(fonts);
 
 /**
+ * Official DepEd Header (Dual Logo)
+ */
+const getOfficialHeader = () => ({
+  columns: [
+    { width: '*', text: '' }, // Flexible spacer left
+    {
+      image: path.resolve(__dirname, '../../public/deped-national-logo.png'),
+      width: 45,
+      margin: [0, 0, 10, 0] // 10px right margin to be beside labels
+    },
+    {
+      stack: [
+        { text: 'Republic of the Philippines', fontSize: 8, alignment: 'center' },
+        { text: 'Department of Education', fontSize: 12, bold: true, alignment: 'center', color: '#1d4ed8' },
+        { text: 'Negros Island Region (NIR)', fontSize: 9, alignment: 'center' },
+        { text: 'SCHOOLS DIVISION OFFICE OF GUIHULNGAN CITY', fontSize: 10, bold: true, alignment: 'center' }
+      ],
+      width: 'auto'
+    },
+    {
+      image: path.resolve(__dirname, '../../public/deped-logo.png'),
+      width: 45,
+      margin: [10, 0, 0, 0] // 10px left margin to be beside labels
+    },
+    { width: '*', text: '' } // Flexible spacer right
+  ],
+  margin: [0, 0, 0, 5]
+});
+
+const getHeaderLine = (width = 890) => ({ 
+  canvas: [{ type: 'line', x1: 0, y1: 0, x2: width, y2: 0, lineWidth: 1.5, lineColor: '#000000' }], 
+  margin: [0, 0, 0, 10] 
+});
+
+/**
+ * Helper to extract a field from a string that looks like an object (Mongoose/inspect format)
+ */
+const extractField = (str, field) => {
+  if (!str || typeof str !== 'string') return null;
+  // Try quoted: field: 'value' or field: "value"
+  let match = str.match(new RegExp(`${field}:\\s*['"]([^'"]+)['"]`));
+  if (match) return match[1];
+  // Try unquoted (for dates/numbers): field: 2023-10-26T...
+  match = str.match(new RegExp(`${field}:\\s*([^,\\s}]+)`));
+  if (match) return match[1];
+  return null;
+};
+
+/**
+ * Helper to extract a string from a potentially nested object or array
+ */
+const extractString = (val) => {
+  if (!val) return '—';
+  
+  if (val instanceof Date) return val.toISOString();
+
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    
+    // Handle JSON strings
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return extractString(parsed);
+      } catch (e) {
+        // If not valid JSON, try to extract 'name', 'label', or 'type' using regex (handles Mongoose/inspect format)
+        const name = extractField(trimmed, 'name') || extractField(trimmed, 'label') || extractField(trimmed, 'type') || extractField(trimmed, 'title');
+        if (name) return name;
+      }
+    }
+    return val;
+  }
+  
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '—';
+    return val.map(v => extractString(v)).filter(v => v && v !== '—').join(', ');
+  }
+  
+  if (typeof val === 'object') {
+    // Prioritize most descriptive fields
+    return val.label || val.name || val.type || val.title || val.value || JSON.stringify(val);
+  }
+  
+  return String(val);
+};
+
+/**
+ * Helper to shorten eligibility names for report space
+ */
+const shortenEligibility = (name) => {
+  const raw = extractString(name);
+  if (!raw || raw === '—') return '';
+  const n = raw.toUpperCase();
+  if (n.includes('RA 1080')) return 'RA 1080';
+  if (n.includes('PROFESSIONAL') && n.includes('SERVICE')) return 'CSC PROF';
+  if (n.includes('SUBPROFESSIONAL') || n.includes('SUB-PROFESSIONAL')) return 'CSC SUBPROF';
+  if (n.includes('BAR') && n.includes('PHILIPPINES')) return 'BAR';
+  if (n.includes('PRC')) return 'PRC';
+  if (n.includes('LICENSURE')) return 'RA 1080';
+  return n.length > 15 ? n.substring(0, 15) + '...' : n;
+};
+
+/**
+ * Helper to calculate total training hours
+ */
+const calculateTotalTrainingHours = (trainings) => {
+  return (trainings || [])
+    .filter(t => t.isRelevant !== false && t.hours)
+    .reduce((sum, t) => sum + (Number(t.hours) || 0), 0);
+};
+
+/**
+ * Helper to calculate total years/months from multiple experience entries
+ */
+const calculateTotalExperience = (experiences) => {
+  const relevant = (experiences || []).filter(e => e.isRelevant !== false && e.periodFrom);
+  if (relevant.length === 0) return '0 mos';
+
+  let totalMonths = 0;
+  relevant.forEach(e => {
+    const start = new Date(e.periodFrom);
+    const end = e.isPresent ? new Date() : (e.periodTo ? new Date(e.periodTo) : new Date());
+    
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    totalMonths += (years * 12) + months;
+  });
+
+  const yrs = Math.floor(totalMonths / 12);
+  const mos = totalMonths % 12;
+  
+  const yStr = yrs > 0 ? `${yrs} yr${yrs > 1 ? 's' : ''}` : '';
+  const mStr = mos > 0 ? `${mos} mo${mos > 1 ? 's' : ''}` : '';
+  
+  return [yStr, mStr].filter(Boolean).join(' ') || '0 mos';
+};
+
+/**
  * 🔹 IER (Initial Evaluation Result)
- * Used to announce who met the minimum QS.
  */
 export const generateIERDoc = (data) => {
   const { job, applicants, dateEvaluated = new Date() } = data;
-  const qualified = applicants.filter(a => a.isQualified);
-  const disqualified = applicants.filter(a => !a.isQualified);
+  
+  const sortedApplicants = [...applicants].sort((a, b) => {
+    const pA = a.applicantData?.personalInfo;
+    const pB = b.applicantData?.personalInfo;
+    return (pA?.lastName || "").localeCompare(pB?.lastName || "");
+  });
 
   const fullName = (a) => {
     const p = a.applicantData?.personalInfo;
@@ -34,219 +181,290 @@ export const generateIERDoc = (data) => {
     return `${p.lastName}, ${p.firstName} ${p.middleName || ""} ${p.suffix || ""}`.toUpperCase();
   };
 
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return "—";
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
   const docDefinition = {
-    pageSize: 'A4',
-    pageMargins: [40, 60, 40, 60],
+    pageSize: { width: 936, height: 612 }, // 13" x 8.5" (Folio)
+    pageMargins: [20, 20, 20, 20],
     content: [
-      { text: 'Republic of the Philippines', alignment: 'center', fontSize: 9 },
-      { text: 'Department of Education', alignment: 'center', fontSize: 12, bold: true, color: '#1d4ed8' },
-      { text: 'Schools Division Office', alignment: 'center', fontSize: 9, margin: [0, 0, 0, 20] },
-      
-      { text: 'INITIAL EVALUATION RESULT (IER)', style: 'mainTitle', alignment: 'center', margin: [0, 0, 0, 20] },
-      
-      {
-        table: {
-          widths: ['20%', '80%'],
-          body: [
-            [{ text: 'Position:', bold: true }, job.positionTitle],
-            [{ text: 'Item Number:', bold: true }, job.itemNumbers?.join(', ') || 'N/A'],
-            [{ text: 'Level:', bold: true }, job.salaryGrade >= 18 ? 'Second Level' : 'First Level'],
-          ]
-        },
-        layout: 'noBorders',
-        margin: [0, 0, 0, 20]
-      },
+      getOfficialHeader(),
+      getHeaderLine(896),
 
-      { text: 'I. QUALIFIED APPLICANTS (Meets QS)', style: 'sectionTitle' },
-      {
-        table: {
-          headerRows: 1,
-          widths: ['8%', '70%', '22%'],
-          body: [
-            [{ text: 'NO.', style: 'tableHeader' }, { text: 'NAME', style: 'tableHeader' }, { text: 'REMARKS', style: 'tableHeader' }],
-            ...qualified.map((a, i) => [
-              { text: i + 1, alignment: 'center' },
-              fullName(a),
-              { text: 'Qualified', alignment: 'center', fontSize: 8 }
-            ])
-          ]
-        }
-      },
+      { text: 'INITIAL EVALUATION RESULT (IER)', fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 15] },
 
-      { text: '\nII. DISQUALIFIED APPLICANTS (Below QS)', style: 'sectionTitle' },
-      {
-        table: {
-          headerRows: 1,
-          widths: ['8%', '32%', '60%'],
-          body: [
-            [{ text: 'NO.', style: 'tableHeader' }, { text: 'NAME', style: 'tableHeader' }, { text: 'REASON(S)', style: 'tableHeader' }],
-            ...disqualified.map((a, i) => [
-              { text: i + 1, alignment: 'center' },
-              fullName(a),
-              { text: a.disqualificationReason || 'Incomplete Documents', fontSize: 8 }
-            ])
-          ]
-        },
-        margin: [0, 0, 0, 40]
-      },
-
-      // IER Signatories
       {
         columns: [
           {
+            width: '45%',
             stack: [
-              { text: 'Prepared by:\n\n', fontSize: 10 },
-              { text: '__________________________', bold: true },
-              { text: 'HR Secretariat / PBAC Secretary', fontSize: 9 }
+              {
+                columns: [
+                  { text: 'Position:', fontSize: 7, bold: true, width: 80 },
+                  { text: job.positionTitle.toUpperCase(), fontSize: 7, decoration: 'underline', width: '*' }
+                ],
+                margin: [0, 0, 0, 1]
+              },
+              {
+                columns: [
+                  { text: 'Salary Grade and Monthly Salary:', fontSize: 7, bold: true, width: 80 },
+                  { text: `SG-${job.salaryGrade} / Php ${Number(job.monthlySalary || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, fontSize: 7, decoration: 'underline', width: '*' }
+                ],
+                margin: [0, 0, 0, 1]
+              },
+              { text: 'Qualification Standards:', fontSize: 7, bold: true, margin: [0, 1, 0, 1] },
+              {
+                columns: [
+                  { text: '   Education:', fontSize: 7, italic: true, width: 80 },
+                  { text: job.qs?.education || 'None Required', fontSize: 7, decoration: 'underline', width: '*' }
+                ],
+                margin: [0, 0, 0, 1]
+              },
+              {
+                columns: [
+                  { text: '   Experience:', fontSize: 7, italic: true, width: 80 },
+                  { text: job.qs?.experience || 'None Required', fontSize: 7, decoration: 'underline', width: '*' }
+                ],
+                margin: [0, 0, 0, 1]
+              },
+              {
+                columns: [
+                  { text: '   Training:', fontSize: 7, italic: true, width: 80 },
+                  { text: job.qs?.training || 'None Required', fontSize: 7, decoration: 'underline', width: '*' }
+                ],
+                margin: [0, 0, 0, 1]
+              },
+              {
+                columns: [
+                  { text: '   Eligibility:', fontSize: 7, italic: true, width: 80 },
+                  { text: job.qs?.eligibility || 'None Required', fontSize: 7, decoration: 'underline', width: '*' }
+                ],
+                margin: [0, 0, 0, 1]
+              }
             ]
           },
-          {
-            stack: [
-              { text: 'Certified Correct:\n\n', fontSize: 10 },
-              { text: '__________________________', bold: true },
-              { text: 'HRMPSB Chairperson', fontSize: 9 }
+          { width: '*', text: '' }
+        ],
+        margin: [0, 0, 0, 10]
+      },
+
+      {
+        table: {
+          headerRows: 1,
+          widths: [12, 35, 75, 70, 18, 18, 25, 30, 28, 30, 50, 45, 70, 60, 20, 100, 60, 60, 55],
+          body: [
+            [
+              { text: 'No.', style: 'tableHeader' },
+              { text: 'Application Code', style: 'tableHeader' },
+              { text: 'Name of Applicant', style: 'tableHeader' },
+              { text: 'Address', style: 'tableHeader' },
+              { text: 'Age', style: 'tableHeader' },
+              { text: 'Sex', style: 'tableHeader' },
+              { text: 'Status', style: 'tableHeader' },
+              { text: 'Religion', style: 'tableHeader' },
+              { text: 'Disability', style: 'tableHeader' },
+              { text: 'Ethnic', style: 'tableHeader' },
+              { text: 'Email', style: 'tableHeader' },
+              { text: 'Contact', style: 'tableHeader' },
+              { text: 'Education', style: 'tableHeader' },
+              { text: 'Training', style: 'tableHeader' },
+              { text: 'Hrs', style: 'tableHeader' },
+              { text: 'Experience', style: 'tableHeader' },
+              { text: 'Total Yrs/Mos', style: 'tableHeader' },
+              { text: 'Eligibility', style: 'tableHeader' },
+              { text: 'Remarks', style: 'tableHeader' }
+            ],
+            ...sortedApplicants.map((a, i) => {
+              const p = a.applicantData?.personalInfo || {};
+              const addr = p.address || {};
+              const educ = a.applicantData?.education || [];
+              const trng = a.applicantData?.training || [];
+              const exp = a.applicantData?.experience || [];
+              const elig = a.applicantData?.eligibility || [];
+              
+              return [
+                { text: i + 1, alignment: 'center', fontSize: 6 },
+                { text: a.applicationCode, alignment: 'center', fontSize: 6, font: 'Courier' },
+                { text: fullName(a), fontSize: 7, bold: true },
+                { text: `${addr.sitio ? addr.sitio + ', ' : ''}${addr.barangay || ''}, ${addr.municipality || ''}, ${addr.province || ''}`.toUpperCase(), fontSize: 5 },
+                { text: calculateAge(p.birthDate), alignment: 'center', fontSize: 6 },
+                { text: p.sex?.toUpperCase()?.charAt(0) || '—', alignment: 'center', fontSize: 6 },
+                { text: p.civilStatus?.toUpperCase() || '—', alignment: 'center', fontSize: 6 },
+                { text: p.religion?.toUpperCase() || 'NONE', alignment: 'center', fontSize: 5 },
+                { text: p.disability?.toUpperCase() || 'NONE', alignment: 'center', fontSize: 5 },
+                { text: p.ethnicGroup?.toUpperCase() || 'NONE', alignment: 'center', fontSize: 5 },
+                { text: p.emails?.join('\n\n') || p.contact?.email || '—', fontSize: 5 },
+                { text: p.phones?.join('\n\n') || p.contact?.phone || '—', fontSize: 5 },
+                { 
+                  stack: educ.filter(e => e.isRelevant !== false).map(e => ({ text: extractString(e.degree).toUpperCase(), fontSize: 5, margin: [0, 2] })),
+                  margin: [0, 2]
+                },
+                { 
+                  stack: trng.filter(t => t.isRelevant !== false).map(t => ({ text: extractString(t.title).toUpperCase(), fontSize: 5, margin: [0, 2] })),
+                  margin: [0, 2]
+                },
+                { text: calculateTotalTrainingHours(trng), alignment: 'center', fontSize: 6 },
+                { 
+                  stack: exp.filter(e => e.isRelevant !== false).map(e => ({ text: extractString(e.position).toUpperCase(), fontSize: 5, margin: [0, 2] })),
+                  margin: [0, 2]
+                },
+                { text: calculateTotalExperience(exp), alignment: 'center', fontSize: 6 },
+                { 
+                  stack: elig.filter(e => e.isRelevant !== false).map(e => {
+                    const raw = e.name || e.type || e.category || e;
+                    const val = (typeof raw === 'object') 
+                      ? (raw.label || raw.name || raw.type || raw.value || JSON.stringify(raw)) 
+                      : raw;
+                    const shortened = shortenEligibility(val);
+                    return shortened ? { text: shortened, fontSize: 5, margin: [0, 2] } : null;
+                  }).filter(item => item !== null),
+                  margin: [0, 2]
+                },
+                { 
+                  text: (elig.filter(e => e.isRelevant !== false).length === 0) ? '—' : '',
+                  fontSize: 6, alignment: 'center'
+                },
+                { text: a.isQualified ? 'QUALIFIED' : 'DISQUALIFIED', alignment: 'center', fontSize: 7, bold: true, color: a.isQualified ? 'black' : 'red' }
+              ];
+            })
+          ]
+        },
+        layout: {
+          hLineWidth: (i, node) => 0.5,
+          vLineWidth: (i, node) => 0.5,
+          hLineColor: (i, node) => '#000000',
+          vLineColor: (i, node) => '#000000',
+          paddingLeft: (i) => 2,
+          paddingRight: (i) => 2,
+          paddingTop: (i) => 2,
+          paddingBottom: (i) => 2,
+        }
+      },
+
+      { text: '\n\n' },
+
+      {
+        table: {
+          widths: ['33%', '33%', '33%'],
+          body: [
+            [
+              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member, HRMPSB', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
+              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member, HRMPSB', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
+              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member, HRMPSB', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
+            ],
+            [
+              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member, HRMPSB', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
+              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member, HRMPSB', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
+              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Chairperson, HRMPSB', fontSize: 9, bold: true, alignment: 'center' }], border: [false, false, false, false] },
             ]
-          }
-        ]
+          ]
+        },
+        layout: 'noBorders'
       }
     ],
     styles: {
-      mainTitle: { fontSize: 14, bold: true },
-      sectionTitle: { fontSize: 10, bold: true, margin: [0, 10, 0, 5] },
-      tableHeader: { fontSize: 8, bold: true, fillColor: '#f8fafc', alignment: 'center' }
+      tableHeader: {
+        fontSize: 7,
+        bold: true,
+        fillColor: '#1d4ed8',
+        color: '#ffffff',
+        alignment: 'center'
+      }
     },
-    defaultStyle: { font: 'Roboto', fontSize: 10 }
+    defaultStyle: { font: 'Roboto', fontSize: 11 }
   };
 
   return printer.createPdfKitDocument(docDefinition);
 };
 
 /**
- * 🔹 IES (Individual Evaluation Sheet) - REFINED
- * Behavioral Event Interview Scorecard.
+ * 🔹 DIGITAL IES (Interview Evaluation Sheet)
  */
 export const generateIESDoc = (data) => {
-  const { application, interview, job, panelistName = "________________" } = data;
-  const p = application.applicantData?.personalInfo;
-  const candidateName = `${p?.lastName}, ${p?.firstName} ${p?.middleName || ""} ${p?.suffix || ""}`.toUpperCase();
-
-  const totalScore = interview.criteria.reduce((s, c) => s + (Number(c.score) || 0), 0);
-  const maxPossible = interview.criteria.reduce((s, c) => s + (Number(c.maxScore) || 0), 0);
+  const { job, applicant, scores, totalScore, averageScore, dateEvaluated = new Date() } = data;
 
   const docDefinition = {
     pageSize: 'A4',
     pageMargins: [40, 40, 40, 40],
     content: [
-      // ── Header ──────────────────────────────────────────────
+      getOfficialHeader(),
+      getHeaderLine(515),
+
+      { text: 'INTERVIEW EVALUATION SHEET (IES)', fontSize: 16, bold: true, alignment: 'center', margin: [0, 0, 0, 20] },
+
       {
         columns: [
           {
-            image: path.resolve(__dirname, '../../public/deped-logo.png'),
-            width: 50
+            width: '50%',
+            stack: [
+              { text: `APPLICANT: ${applicant.name?.toUpperCase()}`, fontSize: 10, bold: true },
+              { text: `POSITION: ${job.positionTitle?.toUpperCase()}`, fontSize: 9, margin: [0, 2] },
+            ]
           },
           {
+            width: '50%',
             stack: [
-              { text: 'Republic of the Philippines', alignment: 'center', fontSize: 9 },
-              { text: 'Department of Education', alignment: 'center', fontSize: 12, bold: true, color: '#1d4ed8' },
-              { text: 'Schools Division Office of Guihulngan City', alignment: 'center', fontSize: 9 },
-              { text: 'Human Resource Merit Promotion and Selection Board', alignment: 'center', fontSize: 8, italics: true },
-            ],
-            width: '*'
-          },
-          { text: '', width: 50 } // Spacer for balance
-        ]
-      },
-      { canvas: [{ type: 'line', x1: 0, y1: 10, x2: 515, y2: 10, lineWidth: 1, lineColor: '#1d4ed8' }] },
-      { text: '\n' },
-
-      { text: 'INDIVIDUAL EVALUATION SHEET (IES)', style: 'mainTitle', alignment: 'center', margin: [0, 10, 0, 20] },
-
-      // ── Candidate Info ──────────────────────────────────────
-      {
-        table: {
-          widths: ['20%', '30%', '20%', '30%'],
-          body: [
-            [
-              { text: 'NAME OF APPLICANT:', style: 'label' },
-              { text: candidateName, style: 'value', colSpan: 3 },
-              {}, {}
-            ],
-            [
-              { text: 'POSITION APPLIED:', style: 'label' },
-              { text: job.positionTitle.toUpperCase(), style: 'value' },
-              { text: 'DATE OF INTERVIEW:', style: 'label' },
-              { text: new Date(interview.submittedAt || interview.createdAt).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }), style: 'value' }
-            ],
-            [
-              { text: 'DIVISION/OFFICE:', style: 'label' },
-              { text: 'Schools Division Office', style: 'value' },
-              { text: 'PLANTILLA ITEM:', style: 'label' },
-              { text: job.positionCode, style: 'value' }
-            ]
-          ]
-        },
-        layout: 'lightHorizontalLines',
-        margin: [0, 0, 0, 25]
-      },
-
-      // ── Scoring Table ───────────────────────────────────────
-      {
-        table: {
-          headerRows: 1,
-          widths: ['40%', '15%', '45%'],
-          body: [
-            [
-              { text: 'EVALUATION CRITERIA', style: 'tableHeader' },
-              { text: 'SCORE', style: 'tableHeader' },
-              { text: 'BEHAVIORAL EVIDENCE / REMARKS', style: 'tableHeader' }
-            ],
-            ...interview.criteria.map(c => [
-              { text: c.label, bold: true, fontSize: 10, margin: [0, 8, 0, 8] },
-              { text: `${c.score} / ${c.maxScore}`, alignment: 'center', bold: true, color: '#1d4ed8', margin: [0, 8, 0, 8] },
-              { text: c.remarks || '---', fontSize: 8, italics: true, margin: [0, 8, 0, 8] }
-            ]),
-            [
-              { text: 'TOTAL SCORE', alignment: 'right', bold: true, fillColor: '#f1f5f9', margin: [0, 5, 0, 5] },
-              { text: `${totalScore.toFixed(2)} / ${maxPossible}`, alignment: 'center', bold: true, fillColor: '#f1f5f9', margin: [0, 5, 0, 5] },
-              { text: `(${( (totalScore/maxPossible) * 100 ).toFixed(2)}% Overall Performance)`, fontSize: 8, alignment: 'center', fillColor: '#f1f5f9', margin: [0, 5, 0, 5] }
-            ]
-          ]
-        }
-      },
-
-      { text: '\nOVERALL ASSESSMENT & RECOMMENDATION:', style: 'sectionTitle', margin: [0, 20, 0, 5] },
-      { 
-        table: {
-          widths: ['*'],
-          body: [[{ text: interview.overallRemarks || 'No additional remarks provided by the evaluator.', italics: true, fontSize: 10, minHeight: 60, padding: [10, 10, 10, 10] }]]
-        }
-      },
-
-      { text: '\n\n' },
-
-      // ── Signatures ──────────────────────────────────────────
-      {
-        columns: [
-          { width: '*', text: '' },
-          {
-            width: 250,
-            stack: [
-              { text: 'I certify that the above evaluation is true and correct based on the results of the interview.', fontSize: 8, italics: true, margin: [0, 0, 0, 15] },
-              { text: (interview.panelist?.name || panelistName).toUpperCase(), bold: true, alignment: 'center', fontSize: 11 },
-              { canvas: [{ type: 'line', x1: 20, y1: 2, x2: 230, y2: 2, lineWidth: 1 }] },
-              { text: 'Member, HRMPSB / Evaluator', fontSize: 9, alignment: 'center', margin: [0, 2, 0, 0] }
+              { text: `DATE: ${new Date(dateEvaluated).toLocaleDateString()}`, fontSize: 9, alignment: 'right' },
+              { text: `TRACK: ${job.hiringTrack?.replace('_', ' ').toUpperCase()}`, fontSize: 9, alignment: 'right' }
             ]
           }
         ],
-        margin: [0, 40, 0, 0]
+        margin: [0, 0, 0, 20]
+      },
+
+      {
+        table: {
+          widths: ['*', 60, 60],
+          body: [
+            [
+              { text: 'CRITERIA', style: 'tableHeader' },
+              { text: 'MAX', style: 'tableHeader' },
+              { text: 'SCORE', style: 'tableHeader' }
+            ],
+            ...scores.map(s => [
+              { text: s.criterion, fontSize: 9 },
+              { text: s.maxPoints, alignment: 'center', fontSize: 9 },
+              { text: s.score, alignment: 'center', fontSize: 9, bold: true }
+            ]),
+            [
+              { text: 'TOTAL SCORE', bold: true, fillColor: '#f3f4f6' },
+              { text: '100', alignment: 'center', bold: true, fillColor: '#f3f4f6' },
+              { text: totalScore, alignment: 'center', bold: true, fillColor: '#f3f4f6' }
+            ]
+          ]
+        }
+      },
+
+      {
+        margin: [0, 40, 0, 0],
+        columns: [
+          { width: '*', text: '' },
+          {
+            width: 200,
+            stack: [
+              { text: 'Evaluated by:', fontSize: 9, italic: true, margin: [0, 0, 0, 30] },
+              { text: '____________________', alignment: 'center' },
+              { text: 'Member, HRMPSB', alignment: 'center', fontSize: 8 }
+            ]
+          }
+        ]
       }
     ],
     styles: {
-      mainTitle: { fontSize: 14, bold: true, color: '#1e293b' },
-      sectionTitle: { fontSize: 10, bold: true, uppercase: true, tracking: 1 },
-      tableHeader: { fontSize: 9, bold: true, fillColor: '#1d4ed8', color: 'white', alignment: 'center', margin: [0, 5, 0, 5] },
-      label: { fontSize: 8, bold: true, textTransform: 'uppercase', color: '#64748b' },
-      value: { fontSize: 10, bold: true }
+      tableHeader: {
+        fontSize: 10,
+        bold: true,
+        fillColor: '#1d4ed8',
+        color: '#ffffff',
+        alignment: 'center'
+      }
     },
     defaultStyle: { font: 'Roboto' }
   };
@@ -255,165 +473,146 @@ export const generateIESDoc = (data) => {
 };
 
 /**
- * 🔹 CAR-RQA (Comparative Assessment Result)
- * The "Bible" of the recruitment process. Multi-signatory.
+ * 🔹 CS FORM 33-A (REVISED 2018) - APPOINTMENT FORM
  */
-export const generateRQADoc = (data) => {
-  const { job, rankings, schoolYear = "2023-2024", signatories = [] } = data;
+export const generateCS33Form = (data) => {
+  const { appointee, application, nature, status, salary, effectiveDate, formMetadata = {} } = data;
+  const job = application?.submittedTo || {};
 
   const docDefinition = {
-    pageOrientation: 'landscape',
-    pageSize: 'LEGAL',
-    pageMargins: [30, 40, 30, 40],
+    pageSize: 'A4',
+    pageMargins: [40, 40, 40, 40],
     content: [
-      { text: 'COMPARATIVE ASSESSMENT RESULT (CAR-RQA)', style: 'mainTitle', alignment: 'center' },
-      { text: `Position: ${job.positionTitle} (${job.positionCode})`, style: 'subTitle', alignment: 'center', margin: [0, 5, 0, 20] },
+      getOfficialHeader(),
+      getHeaderLine(515),
+
+      { text: 'CS Form No. 33-A', fontSize: 8, italic: true, alignment: 'right' },
+      { text: 'Revised 2018', fontSize: 8, italic: true, alignment: 'right', margin: [0, 0, 0, 10] },
+
+      { text: 'APPOINTMENT FORM', fontSize: 16, bold: true, alignment: 'center', margin: [0, 0, 0, 20] },
 
       {
-        table: {
-          headerRows: 1,
-          widths: ['4%', '24%', '8%', '8%', '8%', '10%', '8%', '10%', '10%', '10%'],
-          body: [
-            [
-              { text: 'RANK', style: 'tableHeader' },
-              { text: 'NAME OF APPLICANT', style: 'tableHeader' },
-              { text: 'EDUC\n(20)', style: 'tableHeader' },
-              { text: 'TRAIN\n(10)', style: 'tableHeader' },
-              { text: 'EXP\n(15)', style: 'tableHeader' },
-              { text: 'PBAC/BEI\n(35)', style: 'tableHeader' },
-              { text: 'PERF\n(20)', style: 'tableHeader' },
-              { text: 'TOTAL\n(100)', style: 'tableHeader' },
-              { text: 'RESIDENCY', style: 'tableHeader' },
-              { text: 'REMARKS', style: 'tableHeader' }
-            ],
-            ...rankings.map((item, idx) => [
-              { text: item.rank || idx + 1, alignment: 'center' },
-              { text: item.applicantName.toUpperCase(), bold: true, fontSize: 9 },
-              { text: (item.educationPoints || 0).toFixed(2), alignment: 'center' },
-              { text: (item.trainingPoints || 0).toFixed(2), alignment: 'center' },
-              { text: (item.experiencePoints || 0).toFixed(2), alignment: 'center' },
-              { text: (item.coiPoints || 0).toFixed(2), alignment: 'center' },
-              { text: (item.performancePoints || 0).toFixed(2), alignment: 'center' },
-              { text: (item.totalPoints || 0).toFixed(2), alignment: 'center', bold: true },
-              { text: item.residencyPriority ? 'YES' : 'NO', alignment: 'center', fontSize: 8 },
-              { text: item.isTie ? 'Tie-broken' : '', fontSize: 7, color: 'red' }
-            ])
-          ]
-        },
-        layout: 'lightHorizontalLines'
+        text: [
+          { text: 'Mr./Ms. ' },
+          { text: `${appointee.name || appointee.username}`.toUpperCase(), bold: true, decoration: 'underline' }
+        ],
+        fontSize: 11,
+        margin: [0, 0, 0, 15]
       },
 
-      { text: '\n\n' },
-
-      // HRMPSB Signatory Grid
       {
-        table: {
-          widths: ['33%', '33%', '33%'],
-          body: [
-            [
-              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
-              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
-              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
-            ],
-            [
-              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
-              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Member', fontSize: 8, alignment: 'center' }], border: [false, false, false, false] },
-              { stack: [{ text: '\n\n____________________', alignment: 'center' }, { text: 'Chairperson, HRMPSB', fontSize: 9, bold: true, alignment: 'center' }], border: [false, false, false, false] },
+        text: [
+          { text: 'You are hereby appointed as ' },
+          { text: `${job.positionTitle}`.toUpperCase(), bold: true, decoration: 'underline' },
+          { text: ` (SG-${job.salaryGrade})` },
+          { text: ' under ' },
+          { text: `${status}`.toUpperCase(), bold: true, decoration: 'underline' },
+          { text: ' status in the ' },
+          { text: 'DEPARTMENT OF EDUCATION', bold: true },
+          { text: ' effective ' },
+          { text: `${new Date(effectiveDate).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}`.toUpperCase(), bold: true, decoration: 'underline' },
+          { text: '.' }
+        ],
+        fontSize: 11,
+        lineHeight: 1.5,
+        margin: [0, 0, 0, 20]
+      },
+
+      {
+        columns: [
+          {
+            width: '50%',
+            stack: [
+              { text: 'Nature of Appointment:', fontSize: 9, italic: true },
+              { text: nature.toUpperCase(), fontSize: 11, bold: true, margin: [10, 2, 0, 0] }
             ]
-          ]
-        },
-        margin: [0, 20, 0, 40]
+          },
+          {
+            width: '50%',
+            stack: [
+              { text: 'Monthly Salary:', fontSize: 9, italic: true },
+              { text: `Php ${Number(salary || job.monthlySalary || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, fontSize: 11, bold: true, margin: [10, 2, 0, 0] }
+            ]
+          }
+        ],
+        margin: [0, 0, 0, 30]
       },
 
       {
         stack: [
-          { text: 'APPROVED:\n\n', fontSize: 10, bold: true, alignment: 'center' },
-          { text: '____________________________________', alignment: 'center' },
-          { text: 'Schools Division Superintendent', bold: true, alignment: 'center', fontSize: 11 },
-          { text: 'Appointing Authority', alignment: 'center', fontSize: 9 }
-        ]
+          { text: 'Very truly yours,', fontSize: 11, margin: [0, 0, 0, 40] },
+          { text: (formMetadata.signatoryName || 'SDS NAME HERE').toUpperCase(), fontSize: 12, bold: true, alignment: 'center', decoration: 'underline' },
+          { text: (formMetadata.signatoryTitle || 'Schools Division Superintendent').toUpperCase(), fontSize: 10, alignment: 'center' }
+        ],
+        margin: [250, 0, 0, 0]
       }
     ],
-    styles: {
-      mainTitle: { fontSize: 14, bold: true },
-      subTitle: { fontSize: 10 },
-      tableHeader: { fontSize: 7, bold: true, fillColor: '#f8fafc', alignment: 'center' }
-    },
-    defaultStyle: { font: 'Roboto', fontSize: 9 }
+    defaultStyle: { font: 'Roboto' }
   };
 
   return printer.createPdfKitDocument(docDefinition);
 };
 
 /**
- * 🔹 CS FORM NO. 33-A (Appointment Form)
+ * 🔹 CAR-RQA (Comparative Assessment Result)
  */
-export const generateCS33Form = (data) => {
-  const { appointee, application, nature, status, salary, effectiveDate, formMetadata } = data;
-  const job = application.submittedTo;
+export const generateRQADoc = (data) => {
+  const { job, rankings, schoolYear } = data;
 
   const docDefinition = {
-    pageSize: 'LEGAL',
-    pageMargins: [40, 40, 40, 40],
+    pageSize: 'A4',
+    pageOrientation: 'landscape',
+    pageMargins: [30, 30, 30, 30],
     content: [
-      { text: 'Republic of the Philippines', alignment: 'center', fontSize: 10 },
-      { text: 'DEPARTMENT OF EDUCATION', alignment: 'center', bold: true, fontSize: 12 },
-      { text: formMetadata?.station || 'Schools Division Office', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 20] },
+      getOfficialHeader(),
+      getHeaderLine(780),
 
-      { text: 'APPOINTMENT FORM', alignment: 'center', bold: true, fontSize: 14, margin: [0, 0, 0, 10] },
-      { text: '(CS Form No. 33-A, Revised 2018)', alignment: 'center', fontSize: 8, margin: [0, 0, 0, 30] },
-
-      {
-        text: [
-          'Mr./Ms. ', 
-          { text: `${appointee.name?.firstName} ${appointee.name?.lastName}`.toUpperCase(), bold: true, decoration: 'underline' },
-          '\n\n'
-        ]
-      },
+      { text: 'COMPARATIVE ASSESSMENT RESULT (CAR-RQA)', fontSize: 14, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
+      { text: `School Year: ${schoolYear}`, fontSize: 10, alignment: 'center', margin: [0, 0, 0, 15] },
 
       {
-        text: [
-          'You are hereby appointed as ',
-          { text: job.positionTitle.toUpperCase(), bold: true },
-          ' (SG-', { text: job.salaryGrade, bold: true }, ') ',
-          'under ', { text: status.toUpperCase(), bold: true }, ' status ',
-          'effective ', { text: new Date(effectiveDate).toLocaleDateString(), bold: true }, '.'
-        ],
-        lineHeight: 1.5
-      },
-
-      {
-        margin: [0, 30, 0, 30],
         table: {
-          widths: ['*', '*'],
+          headerRows: 1,
+          widths: [20, '*', 50, 50, 50, 50, 50, 50, 50, 60],
           body: [
             [
-              { text: 'Nature of Appointment:', bold: true, border: [false, false, false, false] },
-              { text: nature.toUpperCase(), border: [false, false, false, true] }
+              { text: 'Rank', style: 'tableHeader' },
+              { text: 'Name of Candidate', style: 'tableHeader' },
+              { text: 'Educ', style: 'tableHeader' },
+              { text: 'Train', style: 'tableHeader' },
+              { text: 'Exp', style: 'tableHeader' },
+              { text: 'Perf', style: 'tableHeader' },
+              { text: 'Board', style: 'tableHeader' },
+              { text: 'COI', style: 'tableHeader' },
+              { text: 'Total', style: 'tableHeader' },
+              { text: 'Remarks', style: 'tableHeader' }
             ],
-            [
-              { text: 'Compensation Rate:', bold: true, border: [false, false, false, false] },
-              { text: `PHP ${Number(salary).toLocaleString()}`, border: [false, false, false, true] }
-            ]
+            ...rankings.map((r, i) => [
+              { text: i + 1, alignment: 'center', fontSize: 8 },
+              { text: r.applicantName?.toUpperCase(), fontSize: 8, bold: true },
+              { text: r.educationPoints || 0, alignment: 'center', fontSize: 8 },
+              { text: r.trainingPoints || 0, alignment: 'center', fontSize: 8 },
+              { text: r.experiencePoints || 0, alignment: 'center', fontSize: 8 },
+              { text: r.performancePoints || 0, alignment: 'center', fontSize: 8 },
+              { text: r.boardRating || 0, alignment: 'center', fontSize: 8 },
+              { text: r.coiPoints || 0, alignment: 'center', fontSize: 8 },
+              { text: r.totalPoints || 0, alignment: 'center', fontSize: 9, bold: true },
+              { text: r.totalPoints >= 50 ? 'QUALIFIED' : 'NOT QUALIFIED', fontSize: 7, alignment: 'center' }
+            ])
           ]
         }
-      },
-
-      {
-        columns: [
-          { width: '*', text: '' },
-          {
-            width: 200,
-            stack: [
-              { text: '\n\n\n__________________________', alignment: 'center' },
-              { text: 'Appointing Authority', bold: true, alignment: 'center', fontSize: 10 },
-              { text: 'SCHOOLS DIVISION SUPERINTENDENT', alignment: 'center', fontSize: 8 }
-            ]
-          }
-        ]
       }
     ],
-    defaultStyle: { font: 'Roboto', fontSize: 11 }
+    styles: {
+      tableHeader: {
+        fontSize: 9,
+        bold: true,
+        fillColor: '#1d4ed8',
+        color: '#ffffff',
+        alignment: 'center'
+      }
+    },
+    defaultStyle: { font: 'Roboto' }
   };
 
   return printer.createPdfKitDocument(docDefinition);

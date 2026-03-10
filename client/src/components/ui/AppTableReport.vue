@@ -54,12 +54,20 @@ async function downloadPdf() {
     const el     = pageRef.value
     const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
     const img    = canvas.toDataURL('image/jpeg', 0.95)
-    const pdf    = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    
+    // Custom size: 8.5" x 13" (Folio/F4)
+    // 13 inches = 330.2 mm
+    // 8.5 inches = 215.9 mm
+    const pdf = new jsPDF({ 
+      orientation: 'landscape', 
+      unit: 'mm', 
+      format: [330.2, 215.9] 
+    })
+    
     const W      = pdf.internal.pageSize.getWidth()
-    const H      = pdf.internal.pageSize.getHeight()
     const ratio  = canvas.height / canvas.width
     const imgH   = W * ratio
-    pdf.addImage(img, 'JPEG', 0, 0, W, Math.min(imgH, H))
+    pdf.addImage(img, 'JPEG', 0, 0, W, imgH)
     pdf.save(`${props.filename}.pdf`)
   } finally {
     generating.value = false
@@ -75,8 +83,9 @@ function printReport() {
     <title>${props.title}</title>
     <style>
       *{margin:0;padding:0;box-sizing:border-box;}
-      @page{size:A4 landscape;margin:8mm;}
+      @page{size:330.2mm 215.9mm landscape;margin:5mm;}
       body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,sans-serif;}
+      .print-page { width: 100% !important; box-shadow: none !important; margin: 0 !important; }
     </style>
   </head><body>${html}</body></html>`)
   win.document.close()
@@ -93,7 +102,7 @@ function printReport() {
         @click.self="close">
 
         <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-2xl
-                    w-full max-w-6xl flex flex-col overflow-hidden max-h-[95vh] animate-zoom-in">
+                    w-full max-w-[1360px] flex flex-col overflow-hidden max-h-[95vh] animate-zoom-in">
 
           <!-- Toolbar -->
           <div class="px-5 py-3.5 border-b border-[var(--border-main)] flex items-center
@@ -108,6 +117,7 @@ function printReport() {
               </div>
             </div>
             <div class="flex items-center gap-2">
+              <slot name="extra-actions"></slot>
               <button @click="downloadCsv"
                 class="h-9 px-3.5 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
                        hover:bg-[var(--bg-app)] text-sm font-semibold text-[var(--text-main)]
@@ -139,96 +149,82 @@ function printReport() {
           </div>
 
           <!-- Preview -->
-          <div class="overflow-y-auto flex-1 bg-slate-200 flex justify-center p-6 custom-scrollbar">
+          <div class="overflow-auto flex-1 bg-slate-200 flex justify-center p-6 custom-scrollbar">
 
-            <!-- A4 Landscape page — 1123px = 297mm at 96dpi -->
+            <!-- Page Container — 13" Landscape is roughly 1248px wide at 96dpi -->
             <div ref="pageRef"
-              style="width:1123px;min-height:794px;background:#fff;
-                     font-family:'Arial',sans-serif;color:#001F3F;flex-shrink:0;"
-              class="shadow-2xl">
+              style="width:1248px; min-height:816px; background:#fff;
+                     font-family:'Arial',sans-serif; color:#000; flex-shrink:0; padding: 30px;
+                     display: flex; flex-direction: column;"
+              class="shadow-2xl print-page">
 
-              <!-- DepEd header band -->
-              <div style="background:#001F3F;color:#fff;padding:10px 28px;
-                          display:flex;align-items:center;gap:16px;">
-                <div style="width:42px;height:42px;border:2px solid rgba(255,255,255,.3);
-                             border-radius:50%;display:flex;align-items:center;
-                             justify-content:center;font-size:20px;flex-shrink:0;">
-                  &#127973;
+              <!-- Official Header (Dual Logo - Centered together) -->
+              <div style="display:flex;align-items:center;justify-content:center;margin-bottom:10px;gap:20px; flex-shrink: 0;">
+                <div style="width:45px;flex-shrink:0;">
+                  <img src="/deped-national-logo.png" style="width:100%;height:auto;" />
                 </div>
-                <div style="flex:1;">
-                  <div style="font-size:6.5pt;letter-spacing:.1em;opacity:.7;text-transform:uppercase;">
-                    Republic of the Philippines
-                  </div>
-                  <div style="font-size:11.5pt;font-weight:800;letter-spacing:.04em;line-height:1.2;">
-                    Department of Education
-                  </div>
-                  <div style="font-size:7.5pt;opacity:.8;margin-top:1px;">
-                    Schools Division of Guihulngan City
-                  </div>
+                <div style="text-align:center;">
+                  <div style="font-size:8pt;text-transform:uppercase; line-height: 1;">Republic of the Philippines</div>
+                  <div style="font-size:12pt;font-weight:900;color:#1d4ed8;line-height:1.1;">DEPARTMENT OF EDUCATION</div>
+                  <div style="font-size:9pt;line-height: 1;">Negros Island Region (NIR)</div>
+                  <div style="font-size:10pt;font-weight:800;text-transform:uppercase; line-height: 1;">Schools Division Office of Guihulngan City</div>
                 </div>
-                <div style="text-align:right;">
-                  <div style="font-size:13pt;font-weight:900;letter-spacing:.05em;text-transform:uppercase;">
-                    {{ title }}
-                  </div>
-                  <div v-if="subtitle" style="font-size:7.5pt;opacity:.75;margin-top:2px;">{{ subtitle }}</div>
-                  <div style="font-size:6.5pt;opacity:.6;margin-top:3px;">Generated: {{ printDate }}</div>
+                <div style="width:45px;flex-shrink:0;">
+                  <img src="/deped-logo.png" style="width:100%;height:auto;" />
                 </div>
               </div>
-              <!-- Gold stripe -->
-              <div style="background:#EFBF04;height:4px;"></div>
+
+              <!-- Thick line -->
+              <div style="background:#000;height:1.5px;margin-bottom:15px; flex-shrink: 0;"></div>
+
+              <!-- Title Section -->
+              <div style="text-align:center;margin-bottom:15px; flex-shrink: 0;">
+                <div style="font-size:12pt;font-weight:900;text-transform:uppercase;letter-spacing:1px;">{{ title }}</div>
+                <div v-if="subtitle" style="font-size:9pt;font-weight:700;margin-top:2px;">{{ subtitle }}</div>
+              </div>
 
               <!-- Table -->
-              <div style="padding:18px 24px;">
-                <table style="width:100%;border-collapse:collapse;font-size:8pt;">
+              <div style="flex: 1 1 auto; overflow: hidden;">
+                <table style="width:100%; border-collapse:collapse; font-size:6pt; border:1px solid #000; table-layout: fixed;">
                   <thead>
-                    <tr style="background:#001F3F;color:#fff;">
-                      <th style="padding:7px 10px;text-align:left;font-size:6.5pt;
-                                 letter-spacing:.08em;text-transform:uppercase;width:32px;">#</th>
+                    <tr style="background:#1d4ed8;color:#fff;">
+                      <th style="padding:4px 2px; border:1px solid #000; text-align:center; width:25px;">#</th>
                       <th v-for="col in columns" :key="col.label"
-                        style="padding:7px 10px;text-align:left;font-size:6.5pt;
-                               letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;">
+                        :style="{
+                          padding: '4px 2px',
+                          border: '1px solid #000',
+                          textAlign: 'center',
+                          width: col.width || 'auto'
+                        }">
                         {{ col.label }}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(row, i) in rows" :key="i"
-                      :style="{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }">
-                      <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;
-                                 color:#94a3b8;font-size:7pt;">{{ i + 1 }}</td>
+                    <tr v-for="(row, i) in rows" :key="i">
+                      <td style="padding:3px 2px; border:1px solid #000; text-align:center;">{{ i + 1 }}</td>
                       <td v-for="col in columns" :key="col.label"
-                        style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#0f172a;">
+                        style="padding:3px 2px; border:1px solid #000; color:#000; overflow: hidden; text-overflow: ellipsis; white-space: pre-line; word-break: break-word;">
                         {{ cell(row, col) }}
                       </td>
                     </tr>
                   </tbody>
-                  <tfoot>
-                    <tr style="background:#f1f5f9;">
-                      <td :colspan="columns.length + 1"
-                        style="padding:7px 10px;font-size:7.5pt;font-weight:700;
-                               color:#475569;border-top:2px solid #001F3F;">
-                        Total Records: {{ rows.length }}
-                      </td>
-                    </tr>
-                  </tfoot>
                 </table>
+              </div>
 
-                <!-- Footer -->
-                <div style="margin-top:18px;border-top:1.5px solid #cbd5e1;
-                            padding-top:8px;display:flex;justify-content:space-between;">
-                  <div style="font-size:6.5pt;color:#64748b;line-height:1.7;">
-                    <div style="font-weight:800;color:#001F3F;">DepEd — RSP Portal</div>
-                    <div>Schools Division of Guihulngan City &bull; Poblacion, Guihulngan City, Negros Oriental 6214</div>
-                    <div style="color:#94a3b8;margin-top:1px;">System-generated document.</div>
-                  </div>
-                  <div style="font-size:6.5pt;color:#64748b;text-align:right;line-height:1.7;">
-                    <div>Generated: {{ printDate }}</div>
-                    <div>Total: {{ rows.length }} records</div>
-                  </div>
+              <!-- Official Footer -->
+              <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink: 0;">
+                <div style="font-size:7pt;color:#666;">
+                  <div>Generated by DepEd Recruitment & Selection Portal (ORAS)</div>
+                  <div>Date: {{ printDate }}</div>
+                </div>
+                <div style="text-align:right;">
+                   <div style="font-size:8pt;font-weight:800;">GUIHULNGAN CITY DIVISION</div>
+                   <div style="font-size:7pt;font-style:italic;">"Service with a heart, Quality with a smile"</div>
                 </div>
               </div>
 
-            </div><!-- /A4 -->
+            </div><!-- /Page -->
           </div><!-- /scroll -->
 
         </div>
@@ -242,4 +238,9 @@ function printReport() {
 .modal-leave-active { transition: opacity 150ms ease-in; }
 .modal-enter-from,
 .modal-leave-to     { opacity: 0; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 </style>

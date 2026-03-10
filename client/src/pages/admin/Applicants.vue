@@ -219,58 +219,59 @@ watch(showPreview, (val) => {
   if (val) setPreview(activePdsTab.value)
 })
 
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+// Helper to extract a field from a string that looks like an object (Mongoose/inspect format)
+const extractField = (str, field) => {
+  if (!str || typeof str !== 'string') return null
+  // Try quoted: field: 'value' or field: "value"
+  let match = str.match(new RegExp(`${field}:\\s*['"]([^'"]+)['"]`))
+  if (match) return match[1]
+  // Try unquoted (for dates/numbers): field: 2023-10-26T...
+  match = str.match(new RegExp(`${field}:\\s*([^,\\s}]+)`))
+  if (match) return match[1]
+  return null
+}
+
+// Helper to extract a string from a potentially nested object or array
+const extractString = (val) => {
+  if (!val) return '—'
+  
+  if (val instanceof Date) return val.toISOString()
+
+  if (typeof val === 'string') {
+    const trimmed = val.trim()
+    
+    // Handle JSON strings
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        return extractString(parsed)
+      } catch (e) {
+        // If not valid JSON, try to extract 'name', 'label', or 'type' using regex (handles Mongoose/inspect format)
+        const name = extractField(trimmed, 'name') || extractField(trimmed, 'label') || extractField(trimmed, 'type') || extractField(trimmed, 'title')
+        if (name) return name
+      }
+    }
+    return val
+  }
+  
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '—'
+    return val.map(v => extractString(v)).filter(v => v && v !== '—').join(', ')
+  }
+  
+  if (typeof val === 'object') {
+    // Prioritize most descriptive fields
+    return val.label || val.name || val.type || val.title || val.value || JSON.stringify(val)
+  }
+  
+  return String(val)
+}
+
 // ── Refresh Snapshot ─────────────────────────────────────────────────────────
 const sanitizeApplicantData = (app) => {
   if (!app?.applicantData) return
   
-  // Helper to extract a field from a string that looks like an object (Mongoose/inspect format)
-  const extractField = (str, field) => {
-    if (!str || typeof str !== 'string') return null
-    // Try quoted: field: 'value' or field: "value"
-    let match = str.match(new RegExp(`${field}:\\s*['"]([^'"]+)['"]`))
-    if (match) return match[1]
-    // Try unquoted (for dates/numbers): field: 2023-10-26T...
-    match = str.match(new RegExp(`${field}:\\s*([^,\\s}]+)`))
-    if (match) return match[1]
-    return null
-  }
-
-  // Helper to extract a string from a potentially nested object or array
-  const extractString = (val) => {
-    if (!val) return '—'
-    
-    if (val instanceof Date) return val.toISOString()
-
-    if (typeof val === 'string') {
-      const trimmed = val.trim()
-      
-      // Handle JSON strings
-      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(trimmed)
-          return extractString(parsed)
-        } catch (e) {
-          // If not valid JSON, try to extract 'name', 'label', or 'type' using regex (handles Mongoose/inspect format)
-          const name = extractField(trimmed, 'name') || extractField(trimmed, 'label') || extractField(trimmed, 'type') || extractField(trimmed, 'title')
-          if (name) return name
-        }
-      }
-      return val
-    }
-    
-    if (Array.isArray(val)) {
-      if (val.length === 0) return '—'
-      return val.map(v => extractString(v)).filter(v => v && v !== '—').join(', ')
-    }
-    
-    if (typeof val === 'object') {
-      // Prioritize most descriptive fields
-      return val.label || val.name || val.type || val.title || val.value || JSON.stringify(val)
-    }
-    
-    return String(val)
-  }
-
   const sections = ['education', 'eligibility', 'experience', 'training']
   sections.forEach(key => {
     if (Array.isArray(app.applicantData[key])) {
@@ -306,16 +307,12 @@ const sanitizeApplicantData = (app) => {
         
         // Handle all properties in the record that might be objects
         if (normalized && typeof normalized === 'object') {
-          // 1. Primary identification field
-          const nameKey = key === 'training' ? 'title' : (key === 'experience' ? 'position' : 'name')
-          
           // Special for eligibility: if 'name' is missing but 'type' exists, use 'type' as name
           if (key === 'eligibility' && !normalized.name && normalized.type) {
             normalized.name = extractString(normalized.type)
           }
 
-          // 2. Normalize ONLY object/array fields to strings for simple template display
-          // Primitives (strings, numbers) and Dates are left alone to preserve formatting
+          // Normalize ONLY object/array fields to strings for simple template display
           Object.keys(normalized).forEach(field => {
             const val = normalized[field]
             if (field !== 'isRelevant' && field !== 'auditRemarks' && field !== '_isCorrupt') {
@@ -359,8 +356,6 @@ const syncFromProfile = async () => {
   }
 }
 
-
-
 const openReview = (app) => {
   sanitizeApplicantData(app)
   selected.value = app
@@ -386,11 +381,22 @@ const closeAudit = () => {
 }
 
 const postIER = async () => {
+  if (stats.value.forReview > 0) {
+    const confirm = await swal.fire({
+      title: 'Pending Reviews',
+      text: `There are still ${stats.value.forReview} applicants for review. Posting the IER now will only include verified applicants. Continue?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Proceed anyway',
+    })
+    if (!confirm.isConfirmed) return
+  }
+
   const result = await swal.fire({
     title: isIerPosted.value ? 'Re-post Initial Evaluation Results?' : 'Post Initial Evaluation Results?',
     text: isIerPosted.value 
       ? 'This will update the existing IER announcement on the public bulletin.' 
-      : 'This will publish the IER to the public bulletin.',
+      : 'This will publish the IER to the public bulletin and notify all qualified/disqualified candidates.',
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Yes, Publish Now',
@@ -400,27 +406,18 @@ const postIER = async () => {
     await apiClient.post('/v1/announcements/ier', { jobId: selectedJobId.value })
     toast.fire({ icon: 'success', title: 'IER Posted Successfully' })
     isIerPosted.value = true
-  } catch {
-    toast.fire({ icon: 'error', title: 'Failed to post IER' })
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Failed to post IER', text: err.response?.data?.message })
   }
 }
 
-const exportIER = async () => {
+const exportIER = () => {
   if (!selectedJobId.value) return
-  try {
-    const response = await apiClient.get(`/v1/rqa/${selectedJobId.value}/export-ier`, {
-      responseType: 'blob'
-    })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `IER-${selectedJob.value.positionCode}.pdf`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } catch (err) {
-    toast.fire({ icon: 'error', title: 'Export Failed' })
-  }
+  showIerReport.value = true
+}
+
+const downloadCsv = () => {
+  // logic handled by component
 }
 
 const submitVerification = async () => {
@@ -458,7 +455,17 @@ const getPlaceName = (place) => {
 const fullName = (app) => {
   const p = app.applicantData?.personalInfo
   if (!p) return 'Unknown Candidate'
-  return [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(' ')
+  return `${p.lastName}, ${p.firstName} ${p.middleName || ''} ${p.suffix || ''}`.toUpperCase()
+}
+
+const calculateAge = (birthDate) => {
+  if (!birthDate) return '—'
+  const today = new Date()
+  const birth = new Date(birthDate)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
 }
 
 const calculateDuration = (from, to, isPresent) => {
@@ -480,17 +487,149 @@ const calculateDuration = (from, to, isPresent) => {
   return [yStr, mStr].filter(Boolean).join(' ') || '0 mos'
 }
 
+const shortenEligibility = (name) => {
+  const raw = extractString(name)
+  if (!raw || raw === '—') return ''
+  let n = raw.toUpperCase().trim()
+  
+  // Remove "TYPE:" prefix if it exists (handles Mongoose object-to-string quirks)
+  n = n.replace(/^TYPE:\s*/, '').replace(/['"]/g, '')
+  
+  if (n === '—' || n === '') return ''
+  
+  if (n.includes('RA 1080')) return 'RA 1080'
+  if (n.includes('2ND LEVEL') || n.includes('SECOND LEVEL')) return '2nd LEVEL'
+  if (n.includes('1ST LEVEL') || n.includes('FIRST LEVEL')) return '1st LEVEL'
+  if (n.includes('PROFESSIONAL') && (n.includes('SERVICE') || n.includes('CSC'))) return 'CSC PROF'
+  if (n.includes('SUBPROFESSIONAL') || n.includes('SUB-PROFESSIONAL')) return 'CSC SUBPROF'
+  if (n.includes('BAR') && n.includes('PHILIPPINES')) return 'BAR'
+  if (n.includes('PRC')) return 'PRC'
+  if (n.includes('LICENSURE')) return 'RA 1080'
+  
+  return n.length > 20 ? n.substring(0, 18) + '..' : n
+}
+
+const calculateTotalTrainingHours = (trainings) => {
+  return (trainings || [])
+    .filter(t => t.isRelevant !== false && t.hours)
+    .reduce((sum, t) => sum + (Number(t.hours) || 0), 0)
+}
+
+const calculateTotalExperience = (experiences) => {
+  const relevant = (experiences || []).filter(e => e.isRelevant !== false && e.periodFrom)
+  if (relevant.length === 0) return '0 mos'
+
+  let totalMonths = 0
+  relevant.forEach(e => {
+    const start = new Date(e.periodFrom)
+    const end = e.isPresent ? new Date() : (e.periodTo ? new Date(e.periodTo) : new Date())
+    
+    let years = end.getFullYear() - start.getFullYear()
+    let months = end.getMonth() - start.getMonth()
+    totalMonths += (years * 12) + months
+  })
+
+  const yrs = Math.floor(totalMonths / 12)
+  const mos = totalMonths % 12
+  
+  const yStr = yrs > 0 ? `${yrs} yr${yrs > 1 ? 's' : ''}` : ''
+  const mStr = mos > 0 ? `${mos} mo${mos > 1 ? 's' : ''}` : ''
+  
+  return [yStr, mStr].filter(Boolean).join(' ') || '0 mos'
+}
+
 onMounted(fetchJobs)
 
 // ── Export ────────────────────────────────────────────────────────────────────
 const showReport = ref(false)
+const showIerReport = ref(false)
+
 const reportCols = [
-  { label: 'Applicant Name', value: (a) => fullName(a) },
-  { label: 'Email', value: (a) => a.submittedBy?.email ?? '—' },
+  { label: 'Name of Applicant', value: (a) => fullName(a) },
+  { label: 'Email', value: (a) => a.applicantData?.personalInfo?.emails?.[0] || a.submittedBy?.email || '—' },
   { label: 'App Code', key: 'applicationCode' },
   { label: 'Date Applied', value: (a) => formatDate(a.createdAt) },
   { label: 'Status', key: 'status' },
-  { label: 'Qualified', value: (a) => a.isQualified ? 'Yes' : a.isVerified ? 'No' : '—' },
+  { label: 'Qualified', value: (a) => a.isQualified ? 'YES' : a.isVerified ? 'NO' : 'PENDING' },
+]
+
+const ierReportCols = [
+  { label: 'App Code', key: 'applicationCode', width: '45px' },
+  { label: 'Name of Applicant', value: (a) => fullName(a), width: '110px' },
+  { 
+    label: 'Address', 
+    width: '90px',
+    value: (a) => {
+      const addr = a.applicantData?.personalInfo?.address || {}
+      return `${addr.barangay || ''}, ${addr.municipality || ''}, ${addr.province || ''}`.toUpperCase()
+    }
+  },
+  { label: 'Age', value: (a) => calculateAge(a.applicantData?.personalInfo?.birthDate), width: '25px' },
+  { label: 'Sex', value: (a) => a.applicantData?.personalInfo?.sex?.toUpperCase()?.charAt(0) || '—', width: '25px' },
+  { label: 'Status', value: (a) => a.applicantData?.personalInfo?.civilStatus?.toUpperCase() || '—', width: '40px' },
+  { label: 'Religion', value: (a) => a.applicantData?.personalInfo?.religion?.toUpperCase() || 'NONE', width: '40px' },
+  { label: 'Disability', value: (a) => a.applicantData?.personalInfo?.disability?.toUpperCase() || 'NONE', width: '40px' },
+  { label: 'Ethnic Group', value: (a) => a.applicantData?.personalInfo?.ethnicGroup?.toUpperCase() || 'NONE', width: '40px' },
+  { label: 'Email Address', value: (a) => (a.applicantData?.personalInfo?.emails || []).join('\n\n') || '—', width: '75px' },
+  { label: 'Contact No.', value: (a) => (a.applicantData?.personalInfo?.phones || []).join('\n\n') || '—', width: '55px' },
+  { 
+    label: 'Education', 
+    width: '110px',
+    value: (a) => (a.applicantData?.education || [])
+      .filter(e => e.isRelevant !== false)
+      .map(e => extractString(e.degree).toUpperCase())
+      .filter(Boolean)
+      .join('\n\n')
+  },
+  { 
+    label: 'Training', 
+    width: '90px',
+    value: (a) => (a.applicantData?.training || [])
+      .filter(t => t.isRelevant !== false)
+      .map(t => extractString(t.title).toUpperCase())
+      .filter(Boolean)
+      .join('\n\n')
+  },
+  { 
+    label: 'Hours', 
+    width: '30px',
+    value: (a) => calculateTotalTrainingHours(a.applicantData?.training) 
+  },
+  { 
+    label: 'Experience', 
+    width: '110px',
+    value: (a) => (a.applicantData?.experience || [])
+      .filter(e => e.isRelevant !== false)
+      .map(e => extractString(e.position).toUpperCase())
+      .filter(Boolean)
+      .join('\n\n')
+  },
+  { 
+    label: 'Total Experience', 
+    width: '60px',
+    value: (a) => calculateTotalExperience(a.applicantData?.experience) 
+  },
+  { 
+    label: 'Eligibility', 
+    width: '90px',
+    value: (a) => {
+      const items = (a.applicantData?.eligibility || []).filter(e => e.isRelevant !== false)
+      if (items.length === 0) return '—'
+      
+      return items.map(e => {
+        const raw = e.name || e.type || e.category || e
+        const val = extractString(raw)
+        return shortenEligibility(val)
+      })
+      .filter(Boolean)
+      .join('\n\n')
+    }
+  },
+  { 
+    label: 'Remarks', 
+    width: '70px',
+    value: (a) => a.isQualified ? 'QUALIFIED' : (a.isVerified ? 'DISQUALIFIED' : 'PENDING') 
+  },
 ]
 
 const filterTabs = [
@@ -704,6 +843,14 @@ const filterTabs = [
       :columns="reportCols"
       :rows="filtered"
       filename="Applicants" />
+
+    <AppTableReport
+      v-model="showIerReport"
+      title="Initial Evaluation Results (IER)"
+      :subtitle="selectedJob ? selectedJob.positionTitle : ''"
+      :columns="ierReportCols"
+      :rows="applications"
+      filename="IER" />
 
     <!-- ── JOB PICKER MODAL (Refined) ────────────────────────────────────────── -->
     <AppModal v-model="showJobPicker" title="Select Recruitment Vacancy" icon="pi-briefcase" width="max-w-2xl">

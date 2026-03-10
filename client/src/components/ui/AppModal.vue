@@ -15,6 +15,7 @@ const props = defineProps({
   hideHeader: { type: Boolean, default: false },
   scrollable: { type: Boolean, default: true },
   align:      { type: String, default: 'center', validator: (v) => ['center', 'top'].includes(v) },
+  bodyClass:  { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'close'])
 
@@ -154,6 +155,7 @@ const sizeMap = {
           <div :class="[
             'flex-1 px-6 py-5 text-sm text-[var(--text-sub)] leading-relaxed',
             scrollable ? 'overflow-y-auto custom-scrollbar' : '',
+            bodyClass
           ]">
             <slot />
           </div>

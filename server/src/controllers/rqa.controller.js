@@ -110,9 +110,14 @@ export const exportIER = catchAsync(async (req, res, next) => {
   const job = await Job.findById(jobId);
   if (!job) return next(new AppError("Job not found", 404));
 
-  const applicants = await Application.find({ submittedTo: jobId })
+  // Only include verified applicants in the official IER document
+  const applicants = await Application.find({ submittedTo: jobId, isVerified: true })
     .populate("submittedBy", "username email avatarUrl")
     .sort("-createdAt");
+
+  if (applicants.length === 0) {
+    return next(new AppError("No verified applicants found. Please audit records before exporting IER.", 400));
+  }
 
   const pdfDoc = generateIERDoc({ job, applicants });
   
