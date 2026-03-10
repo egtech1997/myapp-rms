@@ -205,6 +205,33 @@ watch(showPreview, (val) => {
   if (val) setPreview(activePdsTab.value)
 })
 
+// ── Refresh Snapshot ─────────────────────────────────────────────────────────
+const syncLoading = ref(false)
+const syncFromProfile = async () => {
+  const result = await swal.fire({
+    title: 'Sync Latest Profile?',
+    text: 'This will overwrite the current application snapshot with the candidate\'s latest profile data.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Sync Now',
+  })
+  if (!result.isConfirmed) return
+
+  syncLoading.value = true
+  try {
+    const { data } = await apiClient.post(`/v1/applications/${selected.value._id}/sync-profile`)
+    selected.value = data.data
+    const idx = applications.value.findIndex(a => a._id === selected.value._id)
+    if (idx !== -1) applications.value[idx] = data.data
+    toast.fire({ icon: 'success', title: 'Snapshot Synchronized' })
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Sync Failed', text: err.response?.data?.message })
+  } finally {
+    syncLoading.value = false
+  }
+}
+
+
 
 const openReview = (app) => {
   selected.value = app
@@ -841,8 +868,8 @@ const filterTabs = [
               <!-- Preview Frame -->
               <div v-if="showPreview" class="w-1/2 border-l border-[var(--border-main)] bg-[#1a1a1a] flex flex-col relative">
                 <div v-if="selected?.attachments?.length" class="p-2 bg-black/40 flex gap-2 overflow-x-auto border-b border-white/10 no-scrollbar">
-                  <button v-for="file in selected.attachments" :key="file._id" @click="selectedDocUrl = file.fileUrl"
-                    :class="[selectedDocUrl === file.fileUrl ? 'bg-[var(--color-primary)] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60']"
+                  <button v-for="file in selected.attachments" :key="file._id" @click="jumpToProof(file)"
+                    :class="[selectedDocUrl === resolveUrl(file.fileUrl) ? 'bg-[var(--color-primary)] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60']"
                     class="px-3 py-1.5 rounded text-[9px] font-bold uppercase transition-all whitespace-nowrap">{{ file.type }}</button>
                 </div>
                 
