@@ -1,6 +1,7 @@
 import express from "express";
 import * as appController from "../controllers/application.controller.js";
 import { protect, requirePermission } from "../middlewares/auth.middleware.js";
+import { uploadDocument } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -10,6 +11,8 @@ router.use(protect);
 router.post("/apply", appController.applyToJob);
 router.get("/my-applications", appController.getMyApplications);
 router.patch("/:id/applicant-data", appController.updateApplicantData);
+router.post("/:id/attachments", uploadDocument.single("file"), appController.uploadApplicationAttachment);
+router.post("/:id/sync-profile", appController.syncApplicationWithProfile);
 
 // Admin routes
 router.get("/job/:jobId", requirePermission("app_view"), appController.getJobApplications);

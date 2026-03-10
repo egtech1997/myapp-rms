@@ -70,10 +70,10 @@ const handleGoogleLogin = () => {
 
                 <form @submit.prevent="handleLogin" class="space-y-5">
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                             Email
                         </label>
-                        <input v-model="form.email" type="email" placeholder="name@deped.gov.ph"
+                        <input v-model="form.email" type="email" name="email" id="email" autocomplete="email" placeholder="name@deped.gov.ph"
                             class="w-full h-11 px-3.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
                             required />
                     </div>

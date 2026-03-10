@@ -12,6 +12,11 @@ if (!fs.existsSync(systemUploadDir)) {
   fs.mkdirSync(systemUploadDir, { recursive: true });
 }
 
+const docUploadDir = "public/uploads/documents";
+if (!fs.existsSync(docUploadDir)) {
+  fs.mkdirSync(docUploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -32,6 +37,21 @@ const storage = multer.diskStorage({
   },
 });
 
+const docStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, docUploadDir),
+  filename: (req, file, cb) => {
+    const userId = req.user?._id || "user";
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!ext) {
+      if (file.mimetype === "application/pdf") ext = ".pdf";
+      else if (file.mimetype === "image/png") ext = ".png";
+      else ext = ".jpg";
+    }
+    cb(null, `doc-${userId}-${uniqueSuffix}${ext}`);
+  },
+});
+
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
@@ -43,12 +63,26 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const docFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/") || file.mimetype === "application/pdf") {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only images and PDFs are allowed!"), false);
+  }
+};
+
 export const uploadAvatar = multer({
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024,
   },
   fileFilter: fileFilter,
+});
+
+export const uploadDocument = multer({
+  storage: docStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: docFilter,
 });
 
 const systemStorage = multer.diskStorage({

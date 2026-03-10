@@ -126,6 +126,86 @@ watch(selectedJobId, () => {
   loadApplications()
 })
 
+// ── Preview Logic ────────────────────────────────────────────────────────────
+const resolveUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  const base = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000'
+  return `${base}${path}`
+}
+
+const isImage = computed(() => {
+  if (!selectedDocUrl.value) return false
+  const url = selectedDocUrl.value.split('?')[0]
+  const ext = url.split('.').pop()?.toLowerCase()
+  return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext || '')
+})
+
+const isPdf = computed(() => {
+  if (!selectedDocUrl.value) return false
+  const url = selectedDocUrl.value.split('?')[0]
+  return url.toLowerCase().endsWith('.pdf')
+})
+
+const setPreview = (tab) => {
+  if (!selected.value) return
+
+  const mapping = {
+    personal:    ['id_proof', 'pds_signed'],
+    education:   ['transcript', 'diploma'],
+    eligibility: ['eligibility'],
+    experience:  ['experience', 'service_record'],
+    training:    ['training', 'training_cert'],
+  }
+
+  const targets = mapping[tab] || []
+  const found = selected.value.attachments?.find(a => targets.includes(a.type))
+  
+  if (found) {
+    selectedDocUrl.value = resolveUrl(found.fileUrl)
+  } else if (tab === 'personal' && selected.value.submittedBy?.avatarUrl) {
+    selectedDocUrl.value = resolveUrl(selected.value.submittedBy.avatarUrl)
+  } else {
+    selectedDocUrl.value = ''
+  }
+}
+
+const jumpToProof = (file) => {
+  if (!file) return
+  
+  // 1. Update Preview URL first
+  selectedDocUrl.value = resolveUrl(file.fileUrl)
+  
+  // 2. Identify corresponding tab
+  const typeMap = {
+    id_proof: 'personal', pds_signed: 'personal',
+    transcript: 'education', diploma: 'education',
+    eligibility: 'eligibility',
+    experience: 'experience', service_record: 'experience',
+    training: 'training', training_cert: 'training'
+  }
+  
+  const target = typeMap[file.type]
+  if (target && activePdsTab.value !== target) {
+    // 3. Temporarily disable watcher or just set tab 
+    // (We set selectedDocUrl AFTER tab if we want to ensure it sticks, 
+    // but the watcher usually runs after this tick)
+    activePdsTab.value = target
+    // Re-assert URL after tab change to ensure watcher doesn't pick first-match instead of this specific file
+    nextTick(() => { selectedDocUrl.value = resolveUrl(file.fileUrl) })
+  }
+}
+
+// ── Watchers ─────────────────────────────────────────────────────────────────
+watch(activePdsTab, (newTab) => {
+  if (showPreview.value) setPreview(newTab)
+})
+
+watch(showPreview, (val) => {
+  if (val) setPreview(activePdsTab.value)
+})
+
+
 const openReview = (app) => {
   selected.value = app
   activePdsTab.value = 'personal'
@@ -201,6 +281,25 @@ const fullName = (app) => {
   const p = app.applicantData?.personalInfo
   if (!p) return 'Unknown Candidate'
   return [p.firstName, p.middleName, p.lastName, p.suffix].filter(Boolean).join(' ')
+}
+
+const calculateDuration = (from, to, isPresent) => {
+  if (!from) return '—'
+  const start = new Date(from)
+  const end = isPresent ? new Date() : (to ? new Date(to) : new Date())
+  
+  let years = end.getFullYear() - start.getFullYear()
+  let months = end.getMonth() - start.getMonth()
+  
+  if (months < 0) {
+    years--
+    months += 12
+  }
+  
+  const yStr = years > 0 ? `${years} yr${years > 1 ? 's' : ''}` : ''
+  const mStr = months > 0 ? `${months} mo${months > 1 ? 's' : ''}` : ''
+  
+  return [yStr, mStr].filter(Boolean).join(' ') || '0 mos'
 }
 
 onMounted(fetchJobs)
@@ -537,6 +636,9 @@ const filterTabs = [
             </div>
           </div>
           <div class="flex items-center gap-3">
+             <AppButton v-if="!selected.isVerified" variant="secondary" size="sm" icon="pi-sync" :loading="syncLoading" @click="syncFromProfile">
+               Sync Latest Profile
+             </AppButton>
              <AppButton variant="ghost" icon="pi-times" @click="closeAudit" />
           </div>
         </header>
@@ -579,6 +681,12 @@ const filterTabs = [
                         ['Ethnic Group', selected.applicantData?.personalInfo?.ethnicGroup],
                         ['Religion',     selected.applicantData?.personalInfo?.religion],
                         ['Disability',   selected.applicantData?.personalInfo?.disability],
+                        ['GSIS NO.',     selected.applicantData?.personalInfo?.gsisNo],
+                        ['PAG-IBIG NO.', selected.applicantData?.personalInfo?.pagibigNo],
+                        ['PHILHEALTH',   selected.applicantData?.personalInfo?.philhealthNo],
+                        ['SSS NO.',      selected.applicantData?.personalInfo?.sssNo],
+                        ['TIN NO.',      selected.applicantData?.personalInfo?.tinNo],
+                        ['Agency No.',   selected.applicantData?.personalInfo?.agencyEmployeeNo],
                         ['Contact',      selected.applicantData?.personalInfo?.phones?.[0] || selected.applicantData?.personalInfo?.contact?.phone],
                         ['Email',        selected.applicantData?.personalInfo?.emails?.[0] || selected.applicantData?.personalInfo?.contact?.email],
                         ['Address',      selected.applicantData?.personalInfo?.address ? 
@@ -600,12 +708,16 @@ const filterTabs = [
                     <div v-else class="space-y-4">
                       <div v-for="(edu, i) in selected.applicantData.education" :key="i"
                         class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] group hover:border-[var(--color-primary)] transition-colors">
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
                           <div v-for="[l, v] in [
-                            ['Degree / Level', edu.degree || edu.level],
+                            ['Level', edu.level],
+                            ['Degree / Diploma', edu.degree],
                             ['School', edu.school],
                             ['Period', `${edu.periodFrom || '—'} to ${edu.periodTo || '—'}`],
-                            ['Course', edu.course],
+                            ['Status', edu.status],
+                            ['Units Earned', edu.unitsEarned],
+                            ['Year Graduated', edu.yearGraduated],
+                            ['Honors Received', edu.honorsReceived],
                           ]" :key="l">
                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
@@ -656,12 +768,20 @@ const filterTabs = [
                              <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.position }}</p>
                           </div>
                           <div>
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Period</p>
-                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase whitespace-nowrap">{{ formatDate(exp.periodFrom) }} - {{ exp.isPresent ? 'Present' : formatDate(exp.periodTo) }}</p>
+                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Duration</p>
+                             <p class="text-xs font-bold text-[var(--color-primary)] mt-1 uppercase">{{ calculateDuration(exp.periodFrom, exp.periodTo, exp.isPresent) }}</p>
                           </div>
-                          <div class="col-span-3 pt-2 border-t border-[var(--border-main)]/50 mt-2">
+                          <div class="col-span-2">
                              <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Agency / Company</p>
                              <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.company }}</p>
+                          </div>
+                          <div>
+                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">SG / Gov't</p>
+                             <p class="text-[10px] font-bold text-[var(--text-main)] mt-1 uppercase">SG-{{ exp.salaryGrade || '—' }} &bull; {{ exp.isGov ? 'Yes' : 'No' }}</p>
+                          </div>
+                          <div>
+                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Period</p>
+                             <p class="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase whitespace-nowrap">{{ formatDate(exp.periodFrom) }} - {{ exp.isPresent ? 'Present' : formatDate(exp.periodTo) }}</p>
                           </div>
                         </div>
                       </div>
@@ -725,11 +845,21 @@ const filterTabs = [
                     :class="[selectedDocUrl === file.fileUrl ? 'bg-[var(--color-primary)] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60']"
                     class="px-3 py-1.5 rounded text-[9px] font-bold uppercase transition-all whitespace-nowrap">{{ file.type }}</button>
                 </div>
+                
                 <div v-if="!selectedDocUrl" class="flex-1 flex flex-col items-center justify-center text-white/20 gap-3">
                    <i class="pi pi-file-pdf text-4xl"></i>
                    <p class="text-xs font-bold uppercase tracking-widest">Select a document to preview</p>
                 </div>
-                <iframe v-else :src="selectedDocUrl" class="w-full h-full border-none"></iframe>
+
+                <div v-else class="flex-1 overflow-hidden flex flex-col bg-slate-900">
+                   <img v-if="isImage" :src="selectedDocUrl" class="w-full h-full object-contain" />
+                   <iframe v-else-if="isPdf" :src="selectedDocUrl" class="w-full h-full border-none bg-white"></iframe>
+                   <div v-else class="flex-1 flex flex-col items-center justify-center text-white/40 p-10 text-center gap-4">
+                      <i class="pi pi-info-circle text-3xl"></i>
+                      <p class="text-xs font-bold uppercase leading-relaxed">Preview not supported for this file type.<br/>You can download it to view.</p>
+                      <a :href="selectedDocUrl" target="_blank" class="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Download File</a>
+                   </div>
+                </div>
               </div>
             </div>
           </div>

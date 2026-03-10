@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings';
 
 const router = useRouter();
 const settingsStore = useSettingsStore();
-const form = ref({ username: '', email: '', password: '' });
+const form = ref({ email: '', password: '' });
 const loading = ref(false);
 const error = ref('');
 const showPassword = ref(false);
@@ -62,29 +62,20 @@ const handleRegister = async () => {
 
                 <form @submit.prevent="handleRegister" class="space-y-5">
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                            Full Name
-                        </label>
-                        <input v-model="form.username" type="text" placeholder="Juan Dela Cruz"
-                            class="w-full h-11 px-3.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
-                            required />
-                    </div>
-
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                             Email
                         </label>
-                        <input v-model="form.email" type="email" placeholder="name@example.com"
+                        <input v-model="form.email" type="email" name="email" id="email" autocomplete="email" placeholder="name@example.com"
                             class="w-full h-11 px-3.5 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
                             required />
                     </div>
 
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                             Password
                         </label>
                         <div class="relative">
-                            <input v-model="form.password" :type="showPassword ? 'text' : 'password'"
+                            <input v-model="form.password" type="password" name="password" id="password" autocomplete="new-password"
                                 placeholder="••••••••"
                                 class="w-full h-11 pl-3.5 pr-10 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-[var(--text-main)] text-sm placeholder:text-[var(--text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--text-main)]/10 focus:border-[var(--text-main)] transition-shadow"
                                 required />

@@ -19,7 +19,11 @@ const fullName = computed(() => {
 })
 
 const position  = computed(() => props.app.job?.positionTitle     || 'N/A')
-const station   = computed(() => props.app.job?.placeOfAssignment || '')
+const station   = computed(() => {
+  const val = props.app.job?.placeOfAssignment
+  if (Array.isArray(val)) return val.join(', ')
+  return val || ''
+})
 const trackMap  = { teaching: 'Teaching', teaching_related: 'Teaching-Related', non_teaching: 'Non-Teaching' }
 const track     = computed(() => trackMap[props.app.category || props.app.job?.hiringTrack] || '')
 const printDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })

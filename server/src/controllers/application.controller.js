@@ -235,3 +235,95 @@ export const evaluateApplication = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ status: "success", data: application });
 });
+
+export const uploadApplicationAttachment = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { type } = req.body;
+
+  if (!req.file) {
+    return next(new AppError('No file uploaded.', 400));
+  }
+
+  const application = await Application.findById(id);
+  if (!application) {
+    return next(new AppError('Application not found.', 404));
+  }
+
+  if (application.submittedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    return next(new AppError('You are not authorized to update this application.', 403));
+  }
+
+  if (application.isVerified) {
+    return next(new AppError('Application is already verified and locked.', 400));
+  }
+
+  const fileUrl = '/uploads/documents/' + req.file.filename;
+  const fileName = req.file.originalname;
+
+  const existingIdx = application.attachments.findIndex(a => a.type === type);
+  if (existingIdx !== -1) {
+    application.attachments[existingIdx] = { type, fileUrl, fileName, uploadedAt: Date.now() };
+  } else {
+    application.attachments.push({ type, fileUrl, fileName });
+  }
+
+  await application.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: application
+  });
+});
+
+export const syncApplicationWithProfile = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const application = await Application.findById(id).populate('submittedBy');
+  if (!application) return next(new AppError('Application not found.', 404));
+
+  if (application.isVerified) {
+    return next(new AppError('Application is already verified and locked. Cannot sync.', 400));
+  }
+
+  const Profile = (await import('../models/Profile.js')).default;
+  const profile = await Profile.findOne({ user: application.submittedBy._id });
+  if (!profile) return next(new AppError('Profile not found for this user.', 404));
+
+  application.applicantData = {
+    personalInfo: {
+      firstName: profile.name?.firstName,
+      middleName: profile.name?.middleName,
+      lastName: profile.name?.lastName,
+      suffix: profile.name?.suffix,
+      sex: profile.sex,
+      birthDate: profile.birthDate,
+      ethnicGroup: profile.ethnicGroup,
+      religion: profile.religion,
+      disability: profile.disability,
+      civilStatus: profile.civilStatus,
+      gsisNo: profile.gsisNo,
+      pagibigNo: profile.pagibigNo,
+      philhealthNo: profile.philhealthNo,
+      sssNo: profile.sssNo,
+      tinNo: profile.tinNo,
+      agencyEmployeeNo: profile.agencyEmployeeNo,
+      phones: profile.contact?.phones || [],
+      emails: profile.contact?.emails || [],
+      address: profile.address,
+    },
+    education: profile.education || [],
+    eligibility: profile.eligibility || [],
+    experience: profile.experience || [],
+    training: profile.training || [],
+    voluntaryWork: profile.voluntaryWork || [],
+    performanceRating: profile.performanceRating || {},
+    competencies: profile.competencies || [],
+    specialSkills: profile.specialSkills || [],
+    nonAcademicDistinctions: profile.nonAcademicDistinctions || [],
+    memberships: profile.memberships || [],
+  };
+
+  await application.save();
+
+  res.status(200).json({ status: 'success', data: application });
+});
