@@ -223,10 +223,24 @@ watch(showPreview, (val) => {
 const sanitizeApplicantData = (app) => {
   if (!app?.applicantData) return
   
+  // Helper to extract a field from a string that looks like an object (Mongoose/inspect format)
+  const extractField = (str, field) => {
+    if (!str || typeof str !== 'string') return null
+    // Try quoted: field: 'value' or field: "value"
+    let match = str.match(new RegExp(`${field}:\\s*['"]([^'"]+)['"]`))
+    if (match) return match[1]
+    // Try unquoted (for dates/numbers): field: 2023-10-26T...
+    match = str.match(new RegExp(`${field}:\\s*([^,\\s}]+)`))
+    if (match) return match[1]
+    return null
+  }
+
   // Helper to extract a string from a potentially nested object or array
   const extractString = (val) => {
     if (!val) return '—'
     
+    if (val instanceof Date) return val.toISOString()
+
     if (typeof val === 'string') {
       const trimmed = val.trim()
       
@@ -237,14 +251,8 @@ const sanitizeApplicantData = (app) => {
           return extractString(parsed)
         } catch (e) {
           // If not valid JSON, try to extract 'name', 'label', or 'type' using regex (handles Mongoose/inspect format)
-          const nameMatch = trimmed.match(/name:\s*['"]([^'"]+)['"]/) || trimmed.match(/label:\s*['"]([^'"]+)['"]/)
-          if (nameMatch) return nameMatch[1]
-          
-          const typeMatch = trimmed.match(/type:\s*['"]([^'"]+)['"]/)
-          if (typeMatch) return typeMatch[1]
-          
-          const valueMatch = trimmed.match(/value:\s*['"]([^'"]+)['"]/)
-          if (valueMatch) return valueMatch[1]
+          const name = extractField(trimmed, 'name') || extractField(trimmed, 'label') || extractField(trimmed, 'type') || extractField(trimmed, 'title')
+          if (name) return name
         }
       }
       return val
@@ -268,16 +276,30 @@ const sanitizeApplicantData = (app) => {
     if (Array.isArray(app.applicantData[key])) {
       app.applicantData[key] = app.applicantData[key].map(item => {
         let normalized = item
-        if (typeof item === 'string') {
+        if (typeof item === 'string' && (item.trim().startsWith('{') || item.trim().startsWith('['))) {
           try {
             const parsed = JSON.parse(item)
             normalized = (parsed && typeof parsed === 'object') ? parsed : { name: item, isRelevant: true }
           } catch (e) {
-            normalized = { 
-              name: item, 
-              isRelevant: true, 
-              _isCorrupt: true,
-              auditRemarks: 'Stored as plain string'
+            // It's a non-JSON object string (likely Mongoose inspect output)
+            // Extract all likely fields to prevent data loss in UI
+            normalized = {
+              name:          extractField(item, 'name') || extractField(item, 'type') || item,
+              type:          extractField(item, 'type'),
+              rating:        extractField(item, 'rating'),
+              dateOfExam:    extractField(item, 'dateOfExam'),
+              placeOfExam:   extractField(item, 'placeOfExam'),
+              licenseNumber: extractField(item, 'licenseNumber'),
+              licenseValidity: extractField(item, 'licenseValidity'),
+              // Also handle other sections
+              school:        extractField(item, 'school'),
+              degree:        extractField(item, 'degree'),
+              position:      extractField(item, 'position'),
+              company:       extractField(item, 'company'),
+              title:         extractField(item, 'title'),
+              isRelevant:    true,
+              _isCorrupt:    true,
+              auditRemarks:  'Extracted from object-string'
             }
           }
         }
@@ -292,10 +314,14 @@ const sanitizeApplicantData = (app) => {
             normalized.name = extractString(normalized.type)
           }
 
-          // 2. Normalize all fields to strings for simple template display
+          // 2. Normalize ONLY object/array fields to strings for simple template display
+          // Primitives (strings, numbers) and Dates are left alone to preserve formatting
           Object.keys(normalized).forEach(field => {
+            const val = normalized[field]
             if (field !== 'isRelevant' && field !== 'auditRemarks' && field !== '_isCorrupt') {
-              normalized[field] = extractString(normalized[field])
+              if (val && typeof val === 'object' && !(val instanceof Date)) {
+                normalized[field] = extractString(val)
+              }
             }
           })
         }
