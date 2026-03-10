@@ -3,6 +3,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import dotenv from "dotenv";
+import { generateUniqueUsername } from "../utils/username.js";
 
 dotenv.config();
 
@@ -47,11 +48,10 @@ passport.use(
           return done(null, updatedUser);
         }
 
-        const baseName = profile.name?.givenName?.toLowerCase() || "user";
-        const randomId = Math.floor(1000 + Math.random() * 9000);
+        const username = await generateUniqueUsername(email);
 
         const newUser = new User({
-          username: `${baseName}${randomId}`,
+          username,
           email: email,
           googleId: profile.id,
           avatar: profile.photos[0]?.value,

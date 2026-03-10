@@ -2,9 +2,10 @@ import User from "../models/User.js";
 import Role from "../models/Role.js";
 import bcrypt from "bcryptjs";
 import * as otpService from "./otp.service.js";
+import { generateUniqueUsername } from "../utils/username.js";
 
 export const registerUserLogic = async (userData) => {
-  const { email, password, username } = userData;
+  const { email, password, username: providedUsername } = userData;
   const { otp, expiresAt } = otpService.generateOTP();
   const hashedOtp = otpService.hashOTP(otp);
 
@@ -27,6 +28,9 @@ export const registerUserLogic = async (userData) => {
     user.otp = { code: hashedOtp, expiresAt };
     await user.save({ validateBeforeSave: false });
   } else {
+    // Generate unique username from email if not provided
+    const username = providedUsername || await generateUniqueUsername(email);
+
     // Only pass whitelisted fields to prevent mass assignment
     user = await User.create({
       username,
