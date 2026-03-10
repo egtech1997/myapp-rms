@@ -226,19 +226,40 @@ const sanitizeApplicantData = (app) => {
   // Helper to extract a string from a potentially nested object or array
   const extractString = (val) => {
     if (!val) return '—'
+    
     if (typeof val === 'string') {
-      if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+      const trimmed = val.trim()
+      
+      // Handle JSON strings
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
         try {
-          const parsed = JSON.parse(val)
+          const parsed = JSON.parse(trimmed)
           return extractString(parsed)
-        } catch (e) { return val }
+        } catch (e) {
+          // If not valid JSON, try to extract 'name', 'label', or 'type' using regex (handles Mongoose/inspect format)
+          const nameMatch = trimmed.match(/name:\s*['"]([^'"]+)['"]/) || trimmed.match(/label:\s*['"]([^'"]+)['"]/)
+          if (nameMatch) return nameMatch[1]
+          
+          const typeMatch = trimmed.match(/type:\s*['"]([^'"]+)['"]/)
+          if (typeMatch) return typeMatch[1]
+          
+          const valueMatch = trimmed.match(/value:\s*['"]([^'"]+)['"]/)
+          if (valueMatch) return valueMatch[1]
+        }
       }
       return val
     }
-    if (Array.isArray(val)) return val.map(v => extractString(v)).filter(v => v !== '—').join(', ')
-    if (typeof val === 'object') {
-      return val.label || val.name || val.type || val.value || val.title || JSON.stringify(val)
+    
+    if (Array.isArray(val)) {
+      if (val.length === 0) return '—'
+      return val.map(v => extractString(v)).filter(v => v && v !== '—').join(', ')
     }
+    
+    if (typeof val === 'object') {
+      // Prioritize most descriptive fields
+      return val.label || val.name || val.type || val.title || val.value || JSON.stringify(val)
+    }
+    
     return String(val)
   }
 
@@ -773,7 +794,7 @@ const filterTabs = [
             </div>
           </div>
           <div class="flex items-center gap-3">
-             <AppButton variant="secondary" size="sm" icon="pi-sync" :loading="syncLoading" @click="syncFromProfile">
+             <AppButton v-if="!selected.isVerified" variant="secondary" size="sm" icon="pi-sync" :loading="syncLoading" @click="syncFromProfile">
                Sync Latest Profile
              </AppButton>
              <AppButton variant="ghost" icon="pi-times" @click="closeAudit" />
@@ -1190,7 +1211,7 @@ const filterTabs = [
             </div>
 
             <!-- Final Determination -->
-            <div class="p-6 bg-[var(--surface)] border-t border-[var(--border-main)] space-y-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+            <div v-if="!selected.isVerified" class="p-6 bg-[var(--surface)] border-t border-[var(--border-main)] space-y-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
               <div class="flex p-1 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl gap-1">
                 <button v-for="opt in [{ v: true, l: 'Qualified', c: 'text-emerald-600', bg: 'bg-emerald-500 shadow-emerald-500/20' },
                                        { v: false, l: 'Disqualify', c: 'text-red-600', bg: 'bg-red-500 shadow-red-500/20' }]" :key="opt.l"
@@ -1207,8 +1228,14 @@ const filterTabs = [
               <AppButton variant="primary" block size="lg" :loading="saving"
                 :disabled="verifyQualified && checksCompleted < 5" @click="submitVerification"
                 class="h-12 font-bold uppercase tracking-widest text-[10px]">
-                {{ selected.isVerified ? 'Update Qualification' : (verifyQualified ? 'Confirm Qualification' : 'Submit Rejection') }}
+                {{ verifyQualified ? 'Confirm Qualification' : 'Submit Rejection' }}
               </AppButton>
+            </div>
+            
+            <!-- Read-only footer if verified -->
+            <div v-else class="p-6 bg-[var(--bg-app)] border-t border-[var(--border-main)] text-center">
+               <p class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Snapshot Locked</p>
+               <p class="text-[9px] text-[var(--text-faint)] mt-1 italic">This record is a permanent historical archive.</p>
             </div>
           </aside>
         </div>
