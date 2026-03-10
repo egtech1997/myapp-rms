@@ -226,15 +226,13 @@ const sanitizeApplicantData = (app) => {
   sections.forEach(key => {
     if (Array.isArray(app.applicantData[key])) {
       app.applicantData[key] = app.applicantData[key].map(item => {
+        let normalized = item
         if (typeof item === 'string') {
           try {
             const parsed = JSON.parse(item)
-            return (parsed && typeof parsed === 'object') ? parsed : { name: item, isRelevant: true }
+            normalized = (parsed && typeof parsed === 'object') ? parsed : { name: item, isRelevant: true }
           } catch (e) {
-            // If it's the Mongoose string format, it's not JSON. 
-            // We'll return an object with a name property to at least show something in the UI
-            // and allow the isRelevant property to be set.
-            return { 
+            normalized = { 
               name: item.length > 50 ? item.substring(0, 50) + '...' : item, 
               isRelevant: true, 
               _isCorrupt: true,
@@ -242,7 +240,27 @@ const sanitizeApplicantData = (app) => {
             }
           }
         }
-        return item
+        
+        // Handle nested objects in name/title fields (common in dropdown selections)
+        if (normalized && typeof normalized === 'object') {
+          const nameKey = key === 'training' ? 'title' : (key === 'experience' ? 'position' : 'name')
+          
+          // If the primary field itself is an object, extract a string from it
+          if (normalized[nameKey] && typeof normalized[nameKey] === 'object') {
+            normalized[nameKey] = normalized[nameKey].name || 
+                                  normalized[nameKey].label || 
+                                  normalized[nameKey].type || 
+                                  normalized[nameKey].title ||
+                                  JSON.stringify(normalized[nameKey])
+          }
+          
+          // Fallback: If 'name' is missing but 'type' exists (specific to some eligibility records)
+          if (key === 'eligibility' && !normalized.name && normalized.type) {
+            normalized.name = typeof normalized.type === 'object' ? (normalized.type.name || normalized.type.label || JSON.stringify(normalized.type)) : normalized.type
+          }
+        }
+        
+        return normalized
       })
     }
   })
