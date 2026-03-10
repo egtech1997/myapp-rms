@@ -1207,7 +1207,7 @@ const filterTabs = [
               <AppButton variant="primary" block size="lg" :loading="saving"
                 :disabled="verifyQualified && checksCompleted < 5" @click="submitVerification"
                 class="h-12 font-bold uppercase tracking-widest text-[10px]">
-                {{ verifyQualified ? 'Confirm Qualification' : 'Submit Rejection' }}
+                {{ selected.isVerified ? 'Update Qualification' : (verifyQualified ? 'Confirm Qualification' : 'Submit Rejection') }}
               </AppButton>
             </div>
           </aside>

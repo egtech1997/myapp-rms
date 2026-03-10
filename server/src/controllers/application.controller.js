@@ -318,7 +318,9 @@ export const syncApplicationWithProfile = catchAsync(async (req, res, next) => {
   const application = await Application.findById(id).populate('submittedBy');
   if (!application) return next(new AppError('Application not found.', 404));
 
-  if (application.isVerified) {
+  // Allow sync only if not verified OR if the user is an admin/hr
+  const isAdmin = ['admin', 'hr', 'Super Admin'].includes(req.user.role);
+  if (application.isVerified && !isAdmin) {
     return next(new AppError('Application is already verified and locked. Cannot sync.', 400));
   }
 
