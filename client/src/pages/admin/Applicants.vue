@@ -222,6 +222,18 @@ watch(showPreview, (val) => {
 // ── Refresh Snapshot ─────────────────────────────────────────────────────────
 const sanitizeApplicantData = (app) => {
   if (!app?.applicantData) return
+  
+  // Helper to extract a string from a potentially nested object or array
+  const extractString = (val) => {
+    if (!val) return '—'
+    if (typeof val === 'string') return val
+    if (Array.isArray(val)) return val.map(v => extractString(v)).filter(v => v !== '—').join(', ')
+    if (typeof val === 'object') {
+      return val.label || val.name || val.type || val.value || val.title || JSON.stringify(val)
+    }
+    return String(val)
+  }
+
   const sections = ['education', 'eligibility', 'experience', 'training']
   sections.forEach(key => {
     if (Array.isArray(app.applicantData[key])) {
@@ -241,22 +253,15 @@ const sanitizeApplicantData = (app) => {
           }
         }
         
-        // Handle nested objects in name/title fields (common in dropdown selections)
+        // Comprehensive string extraction for main fields
         if (normalized && typeof normalized === 'object') {
           const nameKey = key === 'training' ? 'title' : (key === 'experience' ? 'position' : 'name')
           
-          // If the primary field itself is an object, extract a string from it
-          if (normalized[nameKey] && typeof normalized[nameKey] === 'object') {
-            normalized[nameKey] = normalized[nameKey].name || 
-                                  normalized[nameKey].label || 
-                                  normalized[nameKey].type || 
-                                  normalized[nameKey].title ||
-                                  JSON.stringify(normalized[nameKey])
-          }
-          
-          // Fallback: If 'name' is missing but 'type' exists (specific to some eligibility records)
+          // Fix: If it's eligibility and 'name' is missing, check 'type' first
           if (key === 'eligibility' && !normalized.name && normalized.type) {
-            normalized.name = typeof normalized.type === 'object' ? (normalized.type.name || normalized.type.label || JSON.stringify(normalized.type)) : normalized.type
+            normalized.name = extractString(normalized.type)
+          } else {
+            normalized[nameKey] = extractString(normalized[nameKey])
           }
         }
         
@@ -754,7 +759,7 @@ const filterTabs = [
             </div>
           </div>
           <div class="flex items-center gap-3">
-             <AppButton v-if="!selected.isVerified" variant="secondary" size="sm" icon="pi-sync" :loading="syncLoading" @click="syncFromProfile">
+             <AppButton variant="secondary" size="sm" icon="pi-sync" :loading="syncLoading" @click="syncFromProfile">
                Sync Latest Profile
              </AppButton>
              <AppButton variant="ghost" icon="pi-times" @click="closeAudit" />
