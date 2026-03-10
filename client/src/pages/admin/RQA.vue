@@ -108,6 +108,27 @@ const openDecisionStation = (item) => {
   showDecisionModal.value = true
 }
 
+const exportOfficialRQA = async () => {
+  if (!selectedJobId.value) return
+  exporting.value = true
+  try {
+    const response = await apiClient.get(`/v1/rqa/${selectedJobId.value}/export`, {
+      responseType: 'blob'
+    })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `CAR-RQA-${selectedJob.value.positionCode}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Export Failed', text: 'Could not generate official CAR-RQA PDF.' })
+  } finally {
+    exporting.value = false
+  }
+}
+
 watch(selectedJobId, () => {
   loadRQA()
 })
@@ -121,7 +142,10 @@ onMounted(fetchJobs)
       <template #actions>
         <template v-if="selectedJobId">
           <AppButton variant="secondary" icon="pi-sync" @click="generateRanking" :loading="generating" size="sm">Generate/Update Rank</AppButton>
-          <AppButton v-if="rqaData" variant="primary" icon="pi-file-pdf" @click="showReportModal = true" size="sm">Export CAR-RQA</AppButton>
+          <div v-if="rqaData" class="flex items-center gap-2">
+            <AppButton variant="secondary" icon="pi-table" @click="showReportModal = true" size="sm">Export Table</AppButton>
+            <AppButton variant="primary" icon="pi-file-pdf" @click="exportOfficialRQA" :loading="exporting" size="sm">Export Official CAR-RQA</AppButton>
+          </div>
         </template>
       </template>
     </AppPageHeader>

@@ -4,7 +4,7 @@ import Application from "../models/Application.js";
 import Job from "../models/Job.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/AppError.js";
-import { generateRQADoc } from "../services/report.service.js";
+import { generateRQADoc, generateIERDoc } from "../services/report.service.js";
 
 export const getRQA = catchAsync(async (req, res, next) => {
   const { jobId } = req.params;
@@ -103,4 +103,22 @@ export const generateRanking = catchAsync(async (req, res, next) => {
   await cal.save();
 
   res.status(200).json({ status: "success", data: cal });
+});
+
+export const exportIER = catchAsync(async (req, res, next) => {
+  const { jobId } = req.params;
+  const job = await Job.findById(jobId);
+  if (!job) return next(new AppError("Job not found", 404));
+
+  const applicants = await Application.find({ submittedTo: jobId })
+    .populate("submittedBy", "username email avatarUrl")
+    .sort("-createdAt");
+
+  const pdfDoc = generateIERDoc({ job, applicants });
+  
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename=IER-${job.positionCode}.pdf`);
+  
+  pdfDoc.pipe(res);
+  pdfDoc.end();
 });

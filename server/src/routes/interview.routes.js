@@ -21,6 +21,8 @@ router.route("/:id")
   .patch(interviewController.updateInterview)
   .delete(interviewController.deleteInterview);
 
+router.get("/application/:appId/export-consolidated", interviewController.exportConsolidatedIES);
+router.get("/:id/export", interviewController.exportIES);
 router.patch("/:id/submit", interviewController.submitInterview);
 
 export default router;

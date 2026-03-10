@@ -151,7 +151,14 @@ export const updateHrRating = catchAsync(async (req, res, next) => {
 
 // ── 7. Update Application Status (Admin) ───────────────────────────────────
 export const updateApplicationStatus = catchAsync(async (req, res, next) => {
-  const { status, isQualified, disqualificationReason, isVerified, verificationChecklist } = req.body;
+  const { 
+    status, 
+    isQualified, 
+    disqualificationReason, 
+    isVerified, 
+    verificationChecklist,
+    applicantData
+  } = req.body;
 
   const application = await Application.findById(req.params.id)
     .populate("submittedBy")
@@ -166,6 +173,13 @@ export const updateApplicationStatus = catchAsync(async (req, res, next) => {
   if (isQualified !== undefined) application.isQualified = isQualified;
   if (disqualificationReason !== undefined) application.disqualificationReason = disqualificationReason;
   if (verificationChecklist !== undefined) application.verificationChecklist = verificationChecklist;
+  
+  // Handle relevance audit data
+  if (applicantData !== undefined) {
+    // We only want to allow HR to update relevance fields during status update
+    // But for simplicity, we'll allow updating the whole applicantData if provided
+    application.applicantData = applicantData;
+  }
 
   if (isVerified === true && !application.isVerified) {
     application.isVerified = true;
@@ -189,12 +203,35 @@ export const updateApplicationStatus = catchAsync(async (req, res, next) => {
   });
 
   if (application.status !== oldStatus) {
+    let auditSummary = application.disqualificationReason || "";
+
+    // If disqualified, append specific irrelevant item remarks for transparency
+    if (application.status === 'disqualified' && application.applicantData) {
+      const irrelevantItems = [];
+      ['education', 'experience', 'training', 'eligibility'].forEach(key => {
+        const items = application.applicantData[key] || [];
+        items.forEach(item => {
+          if (item.isRelevant === false && item.auditRemarks) {
+            irrelevantItems.push(`<strong>${key.toUpperCase()}</strong>: ${item.auditRemarks}`);
+          }
+        });
+      });
+
+      if (irrelevantItems.length > 0) {
+        auditSummary += (auditSummary ? "<br/><br/>" : "") + 
+          "<strong>Specific Audit Findings:</strong><br/><ul>" + 
+          irrelevantItems.map(i => `<li>${i}</li>`).join("") + 
+          "</ul>";
+      }
+    }
+
     notifyStatusUpdate({
       user: application.submittedBy,
       application: application,
       oldStatus: oldStatus,
       newStatus: application.status,
-      jobTitle: application.submittedTo.positionTitle
+      jobTitle: application.submittedTo.positionTitle,
+      reason: auditSummary
     });
   }
 

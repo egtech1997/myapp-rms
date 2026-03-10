@@ -17,6 +17,7 @@ const applications = ref([])
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('all')
+const isIerPosted = ref(false)
 
 // ── PICKER STATE ─────────────────────────────────────────────────────────────
 const showJobPicker = ref(false)
@@ -102,8 +103,21 @@ const onJobChange = () => {
   if (selectedJobId.value) {
     statusFilter.value = 'review'
     loadApplications()
+    checkIerStatus()
   } else {
     applications.value = []
+    isIerPosted.value = false
+  }
+}
+
+const checkIerStatus = async () => {
+  if (!selectedJobId.value) return
+  try {
+    const { data } = await apiClient.get('/v1/announcements/admin')
+    const ier = data.data.find(a => a.job === selectedJobId.value && a.type === 'ier_release')
+    isIerPosted.value = !!ier
+  } catch (err) {
+    console.error('Failed to check IER status', err)
   }
 }
 
@@ -206,6 +220,34 @@ watch(showPreview, (val) => {
 })
 
 // ── Refresh Snapshot ─────────────────────────────────────────────────────────
+const sanitizeApplicantData = (app) => {
+  if (!app?.applicantData) return
+  const sections = ['education', 'eligibility', 'experience', 'training']
+  sections.forEach(key => {
+    if (Array.isArray(app.applicantData[key])) {
+      app.applicantData[key] = app.applicantData[key].map(item => {
+        if (typeof item === 'string') {
+          try {
+            const parsed = JSON.parse(item)
+            return (parsed && typeof parsed === 'object') ? parsed : { name: item, isRelevant: true }
+          } catch (e) {
+            // If it's the Mongoose string format, it's not JSON. 
+            // We'll return an object with a name property to at least show something in the UI
+            // and allow the isRelevant property to be set.
+            return { 
+              name: item.length > 50 ? item.substring(0, 50) + '...' : item, 
+              isRelevant: true, 
+              _isCorrupt: true,
+              auditRemarks: 'Data format error: This record was stored as a string.'
+            }
+          }
+        }
+        return item
+      })
+    }
+  })
+}
+
 const syncLoading = ref(false)
 const syncFromProfile = async () => {
   const result = await swal.fire({
@@ -220,9 +262,11 @@ const syncFromProfile = async () => {
   syncLoading.value = true
   try {
     const { data } = await apiClient.post(`/v1/applications/${selected.value._id}/sync-profile`)
-    selected.value = data.data
+    const sanitized = data.data
+    sanitizeApplicantData(sanitized)
+    selected.value = sanitized
     const idx = applications.value.findIndex(a => a._id === selected.value._id)
-    if (idx !== -1) applications.value[idx] = data.data
+    if (idx !== -1) applications.value[idx] = sanitized
     toast.fire({ icon: 'success', title: 'Snapshot Synchronized' })
   } catch (err) {
     toast.fire({ icon: 'error', title: 'Sync Failed', text: err.response?.data?.message })
@@ -234,6 +278,7 @@ const syncFromProfile = async () => {
 
 
 const openReview = (app) => {
+  sanitizeApplicantData(app)
   selected.value = app
   activePdsTab.value = 'personal'
   showPreview.value = false
@@ -258,8 +303,10 @@ const closeAudit = () => {
 
 const postIER = async () => {
   const result = await swal.fire({
-    title: 'Post Initial Evaluation Results?',
-    text: 'This will publish the IER to the public bulletin.',
+    title: isIerPosted.value ? 'Re-post Initial Evaluation Results?' : 'Post Initial Evaluation Results?',
+    text: isIerPosted.value 
+      ? 'This will update the existing IER announcement on the public bulletin.' 
+      : 'This will publish the IER to the public bulletin.',
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Yes, Publish Now',
@@ -268,8 +315,27 @@ const postIER = async () => {
   try {
     await apiClient.post('/v1/announcements/ier', { jobId: selectedJobId.value })
     toast.fire({ icon: 'success', title: 'IER Posted Successfully' })
+    isIerPosted.value = true
   } catch {
     toast.fire({ icon: 'error', title: 'Failed to post IER' })
+  }
+}
+
+const exportIER = async () => {
+  if (!selectedJobId.value) return
+  try {
+    const response = await apiClient.get(`/v1/rqa/${selectedJobId.value}/export-ier`, {
+      responseType: 'blob'
+    })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `IER-${selectedJob.value.positionCode}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Export Failed' })
   }
 }
 
@@ -282,6 +348,7 @@ const submitVerification = async () => {
       disqualificationReason: verifyQualified.value ? '' : verifyReason.value,
       isVerified: true,
       status: verifyQualified.value ? 'comparative_assessment' : 'disqualified',
+      applicantData: selected.value.applicantData
     }
     const { data } = await apiClient.patch(`/v1/applications/${selected.value._id}/status`, payload)
     const idx = applications.value.findIndex(a => a._id === selected.value._id)
@@ -362,7 +429,13 @@ const filterTabs = [
             <i class="pi pi-users text-[11px]"></i>
             <span>{{ applications.length }} applicant{{ applications.length !== 1 ? 's' : '' }}</span>
           </div>
-          <AppButton variant="secondary" icon="pi-megaphone" @click="postIER">Post IER</AppButton>
+          <AppButton variant="secondary" icon="pi-download" @click="exportIER" :disabled="loading">Export IER</AppButton>
+          <AppButton 
+            :variant="isIerPosted ? 'success' : 'secondary'" 
+            :icon="isIerPosted ? 'pi-check-circle' : 'pi-megaphone'" 
+            @click="postIER">
+            {{ isIerPosted ? 'IER Posted' : 'Post IER' }}
+          </AppButton>
         </div>
       </template>
     </AppPageHeader>
@@ -734,21 +807,56 @@ const filterTabs = [
                     <div v-if="!selected.applicantData?.education?.length" class="py-12 text-center text-[var(--text-muted)] text-sm">No education records found.</div>
                     <div v-else class="space-y-4">
                       <div v-for="(edu, i) in selected.applicantData.education" :key="i"
-                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] group hover:border-[var(--color-primary)] transition-colors">
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                          <div v-for="[l, v] in [
-                            ['Level', edu.level],
-                            ['Degree / Diploma', edu.degree],
-                            ['School', edu.school],
-                            ['Period', `${edu.periodFrom || '—'} to ${edu.periodTo || '—'}`],
-                            ['Status', edu.status],
-                            ['Units Earned', edu.unitsEarned],
-                            ['Year Graduated', edu.yearGraduated],
-                            ['Honors Received', edu.honorsReceived],
-                          ]" :key="l">
-                            <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
-                            <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
+                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] group hover:border-[var(--color-primary)] transition-all duration-300"
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': edu.isRelevant === false }">
+                        <div class="flex justify-between items-start gap-4">
+                          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4 flex-1">
+                            <div v-for="[l, v] in [
+                              ['Level', edu.level],
+                              ['Degree / Diploma', edu.degree],
+                              ['School', edu.school],
+                              ['Period', `${edu.periodFrom || '—'} to ${edu.periodTo || '—'}`],
+                              ['Status', edu.status],
+                              ['Units Earned', edu.unitsEarned],
+                              ['Year Graduated', edu.yearGraduated],
+                              ['Honors Received', edu.honorsReceived],
+                            ]" :key="l">
+                              <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
+                              <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
+                            </div>
                           </div>
+
+                          <!-- Relevance Toggle -->
+                          <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
+                              <button 
+                                @click="edu.isRelevant = true"
+                                :class="[edu.isRelevant !== false ? 'bg-emerald-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-check-circle text-[10px]"></i>
+                              </button>
+                              <button 
+                                @click="edu.isRelevant = false"
+                                :class="[edu.isRelevant === false ? 'bg-red-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-times-circle text-[10px]"></i>
+                              </button>
+                            </div>
+                            <span v-if="edu.isRelevant === false" class="text-[8px] font-black text-red-500 uppercase tracking-widest px-1.5 py-0.5 bg-red-50 rounded border border-red-100">Irrelevant</span>
+                          </div>
+                        </div>
+
+                        <!-- Remarks if Irrelevant -->
+                        <div v-if="edu.isRelevant === false" class="mt-4 pt-4 border-t border-dashed border-red-200 animate-fade-in">
+                          <p class="text-[9px] font-bold text-red-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <i class="pi pi-info-circle text-[10px]"></i> Audit Remarks
+                          </p>
+                          <input 
+                            v-model="edu.auditRemarks" 
+                            type="text" 
+                            placeholder="Reason for irrelevance (e.g. 'Not related to field of position')"
+                            class="w-full bg-[var(--surface)] border border-red-200 rounded-lg px-3 py-2 text-[10px] font-medium focus:ring-1 focus:ring-red-300 outline-none transition-all placeholder:italic"
+                          />
                         </div>
                       </div>
                     </div>
@@ -763,17 +871,52 @@ const filterTabs = [
                     <div v-if="!selected.applicantData?.eligibility?.length" class="py-12 text-center text-[var(--text-muted)] text-sm">No eligibility records found.</div>
                     <div v-else class="space-y-4">
                       <div v-for="(elig, i) in selected.applicantData.eligibility" :key="i"
-                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-colors">
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-4">
-                          <div v-for="[l, v] in [
-                            ['Eligibility', elig.name],
-                            ['Rating', elig.rating],
-                            ['Date of Exam', formatDate(elig.dateOfExam)],
-                            ['License No.', elig.licenseNumber],
-                          ]" :key="l">
-                            <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
-                            <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
+                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-all duration-300"
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': elig.isRelevant === false }">
+                        <div class="flex justify-between items-start gap-4">
+                          <div class="grid grid-cols-2 gap-x-8 gap-y-4 flex-1">
+                            <div v-for="[l, v] in [
+                              ['Eligibility', elig.name],
+                              ['Rating', elig.rating],
+                              ['Date of Exam', formatDate(elig.dateOfExam)],
+                              ['License No.', elig.licenseNumber],
+                            ]" :key="l">
+                              <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
+                              <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
+                            </div>
                           </div>
+
+                          <!-- Relevance Toggle -->
+                          <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
+                              <button 
+                                @click="elig.isRelevant = true"
+                                :class="[elig.isRelevant !== false ? 'bg-emerald-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-check-circle text-[10px]"></i>
+                              </button>
+                              <button 
+                                @click="elig.isRelevant = false"
+                                :class="[elig.isRelevant === false ? 'bg-red-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-times-circle text-[10px]"></i>
+                              </button>
+                            </div>
+                            <span v-if="elig.isRelevant === false" class="text-[8px] font-black text-red-500 uppercase tracking-widest px-1.5 py-0.5 bg-red-50 rounded border border-red-100">Irrelevant</span>
+                          </div>
+                        </div>
+
+                        <!-- Remarks if Irrelevant -->
+                        <div v-if="elig.isRelevant === false" class="mt-4 pt-4 border-t border-dashed border-red-200 animate-fade-in">
+                          <p class="text-[9px] font-bold text-red-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <i class="pi pi-info-circle text-[10px]"></i> Audit Remarks
+                          </p>
+                          <input 
+                            v-model="elig.auditRemarks" 
+                            type="text" 
+                            placeholder="Reason for irrelevance (e.g. 'Not required for this level')"
+                            class="w-full bg-[var(--surface)] border border-red-200 rounded-lg px-3 py-2 text-[10px] font-medium focus:ring-1 focus:ring-red-300 outline-none transition-all placeholder:italic"
+                          />
                         </div>
                       </div>
                     </div>
@@ -788,28 +931,63 @@ const filterTabs = [
                     <div v-if="!selected.applicantData?.experience?.length" class="py-12 text-center text-[var(--text-muted)] text-sm">No experience records found.</div>
                     <div v-else class="space-y-4">
                       <div v-for="(exp, i) in selected.applicantData.experience" :key="i"
-                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-colors">
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                          <div class="col-span-2">
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Position</p>
-                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.position }}</p>
+                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-all duration-300"
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': exp.isRelevant === false }">
+                        <div class="flex justify-between items-start gap-4">
+                          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4 flex-1">
+                            <div class="col-span-2">
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Position</p>
+                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.position }}</p>
+                            </div>
+                            <div>
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Duration</p>
+                               <p class="text-xs font-bold text-[var(--color-primary)] mt-1 uppercase">{{ calculateDuration(exp.periodFrom, exp.periodTo, exp.isPresent) }}</p>
+                            </div>
+                            <div class="col-span-2">
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Agency / Company</p>
+                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.company }}</p>
+                            </div>
+                            <div>
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">SG / Gov't</p>
+                               <p class="text-[10px] font-bold text-[var(--text-main)] mt-1 uppercase">SG-{{ exp.salaryGrade || '—' }} &bull; {{ exp.isGov ? 'Yes' : 'No' }}</p>
+                            </div>
+                            <div>
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Period</p>
+                               <p class="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase whitespace-nowrap">{{ formatDate(exp.periodFrom) }} - {{ exp.isPresent ? 'Present' : formatDate(exp.periodTo) }}</p>
+                            </div>
                           </div>
-                          <div>
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Duration</p>
-                             <p class="text-xs font-bold text-[var(--color-primary)] mt-1 uppercase">{{ calculateDuration(exp.periodFrom, exp.periodTo, exp.isPresent) }}</p>
+
+                          <!-- Relevance Toggle -->
+                          <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
+                              <button 
+                                @click="exp.isRelevant = true"
+                                :class="[exp.isRelevant !== false ? 'bg-emerald-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-check-circle text-[10px]"></i>
+                              </button>
+                              <button 
+                                @click="exp.isRelevant = false"
+                                :class="[exp.isRelevant === false ? 'bg-red-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-times-circle text-[10px]"></i>
+                              </button>
+                            </div>
+                            <span v-if="exp.isRelevant === false" class="text-[8px] font-black text-red-500 uppercase tracking-widest px-1.5 py-0.5 bg-red-50 rounded border border-red-100">Irrelevant</span>
                           </div>
-                          <div class="col-span-2">
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Agency / Company</p>
-                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.company }}</p>
-                          </div>
-                          <div>
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">SG / Gov't</p>
-                             <p class="text-[10px] font-bold text-[var(--text-main)] mt-1 uppercase">SG-{{ exp.salaryGrade || '—' }} &bull; {{ exp.isGov ? 'Yes' : 'No' }}</p>
-                          </div>
-                          <div>
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Period</p>
-                             <p class="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase whitespace-nowrap">{{ formatDate(exp.periodFrom) }} - {{ exp.isPresent ? 'Present' : formatDate(exp.periodTo) }}</p>
-                          </div>
+                        </div>
+
+                        <!-- Remarks if Irrelevant -->
+                        <div v-if="exp.isRelevant === false" class="mt-4 pt-4 border-t border-dashed border-red-200 animate-fade-in">
+                          <p class="text-[9px] font-bold text-red-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <i class="pi pi-info-circle text-[10px]"></i> Audit Remarks
+                          </p>
+                          <input 
+                            v-model="exp.auditRemarks" 
+                            type="text" 
+                            placeholder="Reason for irrelevance (e.g. 'Not related to teaching duties')"
+                            class="w-full bg-[var(--surface)] border border-red-200 rounded-lg px-3 py-2 text-[10px] font-medium focus:ring-1 focus:ring-red-300 outline-none transition-all placeholder:italic"
+                          />
                         </div>
                       </div>
                     </div>
@@ -824,20 +1002,55 @@ const filterTabs = [
                     <div v-if="!selected.applicantData?.training?.length" class="py-12 text-center text-[var(--text-muted)] text-sm">No training records found.</div>
                     <div v-else class="space-y-4">
                       <div v-for="(trn, i) in selected.applicantData.training" :key="i"
-                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-colors">
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-4">
-                           <div class="col-span-2">
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Title of Training</p>
-                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.title }}</p>
+                        class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-all duration-300"
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': trn.isRelevant === false }">
+                        <div class="flex justify-between items-start gap-4">
+                          <div class="grid grid-cols-2 gap-x-8 gap-y-4 flex-1">
+                             <div class="col-span-2">
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Title of Training</p>
+                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.title }}</p>
+                            </div>
+                            <div>
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Hours</p>
+                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.hours }}</p>
+                            </div>
+                            <div>
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Type of LD</p>
+                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.typeOfLD }}</p>
+                            </div>
                           </div>
-                          <div>
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Hours</p>
-                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.hours }}</p>
+
+                          <!-- Relevance Toggle -->
+                          <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
+                              <button 
+                                @click="trn.isRelevant = true"
+                                :class="[trn.isRelevant !== false ? 'bg-emerald-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-check-circle text-[10px]"></i>
+                              </button>
+                              <button 
+                                @click="trn.isRelevant = false"
+                                :class="[trn.isRelevant === false ? 'bg-red-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-app)]']"
+                                class="p-1.5 rounded-md transition-all group/btn relative">
+                                <i class="pi pi-times-circle text-[10px]"></i>
+                              </button>
+                            </div>
+                            <span v-if="trn.isRelevant === false" class="text-[8px] font-black text-red-500 uppercase tracking-widest px-1.5 py-0.5 bg-red-50 rounded border border-red-100">Irrelevant</span>
                           </div>
-                          <div>
-                             <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Type of LD</p>
-                             <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.typeOfLD }}</p>
-                          </div>
+                        </div>
+
+                        <!-- Remarks if Irrelevant -->
+                        <div v-if="trn.isRelevant === false" class="mt-4 pt-4 border-t border-dashed border-red-200 animate-fade-in">
+                          <p class="text-[9px] font-bold text-red-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <i class="pi pi-info-circle text-[10px]"></i> Audit Remarks
+                          </p>
+                          <input 
+                            v-model="trn.auditRemarks" 
+                            type="text" 
+                            placeholder="Reason for irrelevance (e.g. 'Below required hours')"
+                            class="w-full bg-[var(--surface)] border border-red-200 rounded-lg px-3 py-2 text-[10px] font-medium focus:ring-1 focus:ring-red-300 outline-none transition-all placeholder:italic"
+                          />
                         </div>
                       </div>
                     </div>

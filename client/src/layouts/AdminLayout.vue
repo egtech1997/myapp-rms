@@ -18,6 +18,10 @@ const isHovered = ref(false)
 
 // ── Account settings ──────────────────────────────────────────
 const showDropdown = ref(false)
+
+const avatarSrc = computed(() => {
+    return authStore.user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'Admin')}&background=random`
+})
 const showSettings = ref(false)
 const settingsTab = ref('profile')
 const uploading = ref(false)
