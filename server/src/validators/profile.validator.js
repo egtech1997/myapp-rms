@@ -41,9 +41,10 @@ const familyMemberSchema = Joi.object({
 
 export const profileValidator = Joi.object({
   name: nameSchema,
-  sex: Joi.string().valid("male", "female", "prefer_not_to_say").allow("", null),
+  sex: Joi.string().valid("male", "female", "prefer_not_to_say", "LGBTQ+").allow("", null),
   birthDate: Joi.date().allow(null),
-  ethnicGroup: Joi.string().allow("", null),
+  isIndigenous: Joi.boolean().default(false),
+  isSoloParent: Joi.boolean().default(false),
   religion:    Joi.string().allow("", null),
   disability:  Joi.string().allow("", null),
   civilStatus: Joi.string().valid("Single", "Married", "Widowed", "Separated", "Other").allow("", null),
@@ -51,12 +52,15 @@ export const profileValidator = Joi.object({
   gsisNo: Joi.string().allow("", null),
   pagibigNo: Joi.string().allow("", null),
   philhealthNo: Joi.string().allow("", null),
-  sssNo: Joi.string().allow("", null),
   tinNo: Joi.string().allow("", null),
+  philSysNo: Joi.string().allow("", null),
   agencyEmployeeNo: Joi.string().allow("", null),
 
   contact: contactSchema,
-  address: addressSchema,
+  currentAddress: addressSchema,
+  comelecAddress: addressSchema.append({
+    document: Joi.string().allow("", null),
+  }),
 
   family: Joi.object({
     spouse: familyMemberSchema,
@@ -80,6 +84,7 @@ export const profileValidator = Joi.object({
     placeOfExam: Joi.string().allow("", null),
     licenseNumber: Joi.string().allow("", null),
     licenseValidity: Joi.date().allow(null, ""),
+    document: Joi.string().allow("", null),
   })),
 
   education: Joi.array().items(Joi.object({
@@ -100,6 +105,7 @@ export const profileValidator = Joi.object({
     hours: Joi.number().min(0).allow(null),
     typeOfLD: Joi.string().allow("", null),
     provider: Joi.string().allow("", null),
+    document: Joi.string().allow("", null),
   })),
 
   experience: Joi.array().items(Joi.object({
@@ -110,8 +116,11 @@ export const profileValidator = Joi.object({
     monthlySalary: Joi.number().allow(null),
     salaryGrade: Joi.string().allow("", null),
     statusOfAppointment: Joi.string().allow("", null),
-    isGovernment: Joi.boolean().default(false),
+    serviceType: Joi.string().valid("Government", "Private", "Self-Employed").allow("", null),
+    companyEmail: Joi.string().email().allow("", null),
+    companyPhone: Joi.string().allow("", null),
     keyResponsibilities: Joi.array().items(Joi.string().allow("", null)),
+    document: Joi.string().allow("", null),
   })),
 
   voluntaryWork: Joi.array().items(Joi.object({
@@ -126,6 +135,29 @@ export const profileValidator = Joi.object({
   specialSkills: Joi.array().items(Joi.string().allow("", null)),
   nonAcademicDistinctions: Joi.array().items(Joi.string().allow("", null)),
   memberships: Joi.array().items(Joi.string().allow("", null)),
+
+  pdsQuestions: Joi.object({
+    q34a: Joi.boolean(), q34b: Joi.boolean(),
+    q35a: Joi.boolean(), q35b: Joi.boolean(),
+    q36:  Joi.boolean(),
+    q37:  Joi.boolean(),
+    q38a: Joi.boolean(), q38b: Joi.boolean(),
+    q39:  Joi.boolean(),
+    q40a: Joi.boolean(), q40b: Joi.boolean(), q40c: Joi.boolean(),
+    q34_details: Joi.string().allow("", null),
+    q35_details: Joi.string().allow("", null),
+    q36_details: Joi.string().allow("", null),
+    q37_details: Joi.string().allow("", null),
+    q38_details: Joi.string().allow("", null),
+    q39_details: Joi.string().allow("", null),
+    q40_details: Joi.string().allow("", null),
+  }),
+
+  references: Joi.array().items(Joi.object({
+    name: Joi.string().allow("", null),
+    address: Joi.string().allow("", null),
+    phone: Joi.string().allow("", null),
+  })),
   
   performanceRating: Joi.object({
     score: Joi.number().allow(null),

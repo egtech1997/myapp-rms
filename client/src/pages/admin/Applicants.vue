@@ -494,19 +494,23 @@ const shortenEligibility = (name) => {
   
   // Remove "TYPE:" prefix if it exists (handles Mongoose object-to-string quirks)
   n = n.replace(/^TYPE:\s*/, '').replace(/['"]/g, '')
-  
   if (n === '—' || n === '') return ''
   
-  if (n.includes('RA 1080')) return 'RA 1080'
-  if (n.includes('2ND LEVEL') || n.includes('SECOND LEVEL')) return '2nd LEVEL'
-  if (n.includes('1ST LEVEL') || n.includes('FIRST LEVEL')) return '1st LEVEL'
-  if (n.includes('PROFESSIONAL') && (n.includes('SERVICE') || n.includes('CSC'))) return 'CSC PROF'
-  if (n.includes('SUBPROFESSIONAL') || n.includes('SUB-PROFESSIONAL')) return 'CSC SUBPROF'
+  // ── 2nd Level (LPT, BAR, RA1080, 2ND LEVEL) ──
+  if (n.includes('TEACHER') || n.includes('LET') || n.includes('LPT')) return 'LPT'
   if (n.includes('BAR') && n.includes('PHILIPPINES')) return 'BAR'
-  if (n.includes('PRC')) return 'PRC'
-  if (n.includes('LICENSURE')) return 'RA 1080'
+  if (n.includes('RA 1080') || n.includes('RA1080') || n.includes('PRC') || n.includes('LICENSURE')) return 'RA1080'
+  if (n.includes('2ND LEVEL') || n.includes('SECOND LEVEL') || (n.includes('PROFESSIONAL') && !n.includes('SUB'))) return '2ND LEVEL'
   
-  return n.length > 20 ? n.substring(0, 18) + '..' : n
+  // ── 1st Level (1ST LEVEL, BRGY OFF, BHW) ──
+  if (n.includes('1ST LEVEL') || n.includes('FIRST LEVEL') || n.includes('SUBPROFESSIONAL')) return '1ST LEVEL'
+  if (n.includes('BARANGAY OFFICIAL') || n.includes('MC 11')) return 'BRGY OFF'
+  if (n.includes('BARANGAY HEALTH WORKER') || n.includes('RA 7883')) return 'BHW'
+  
+  // ── General / Catch-all ──
+  if (n.includes('CSC') || n.includes('CIVIL SERVICE')) return 'CSC'
+  
+  return n.length > 15 ? n.substring(0, 13) + '..' : n
 }
 
 const calculateTotalTrainingHours = (trainings) => {
@@ -561,15 +565,18 @@ const ierReportCols = [
     width: '90px',
     value: (a) => {
       const addr = a.applicantData?.personalInfo?.address || {}
-      return `${addr.barangay || ''}, ${addr.municipality || ''}, ${addr.province || ''}`.toUpperCase()
+      const bgy = extractString(addr.barangay)
+      const mun = extractString(addr.municipality)
+      const prv = extractString(addr.province)
+      return `${bgy !== '—' ? bgy : ''}, ${mun !== '—' ? mun : ''}, ${prv !== '—' ? prv : ''}`.replace(/^, |, $/, '').toUpperCase()
     }
   },
   { label: 'Age', value: (a) => calculateAge(a.applicantData?.personalInfo?.birthDate), width: '25px' },
   { label: 'Sex', value: (a) => a.applicantData?.personalInfo?.sex?.toUpperCase()?.charAt(0) || '—', width: '25px' },
   { label: 'Status', value: (a) => a.applicantData?.personalInfo?.civilStatus?.toUpperCase() || '—', width: '40px' },
-  { label: 'Religion', value: (a) => a.applicantData?.personalInfo?.religion?.toUpperCase() || 'NONE', width: '40px' },
-  { label: 'Disability', value: (a) => a.applicantData?.personalInfo?.disability?.toUpperCase() || 'NONE', width: '40px' },
-  { label: 'Ethnic Group', value: (a) => a.applicantData?.personalInfo?.ethnicGroup?.toUpperCase() || 'NONE', width: '40px' },
+  { label: 'Religion', value: (a) => extractString(a.applicantData?.personalInfo?.religion).toUpperCase(), width: '40px' },
+  { label: 'Disability', value: (a) => extractString(a.applicantData?.personalInfo?.disability).toUpperCase(), width: '40px' },
+  { label: 'Ethnic Group', value: (a) => extractString(a.applicantData?.personalInfo?.ethnicGroup).toUpperCase(), width: '40px' },
   { label: 'Email Address', value: (a) => (a.applicantData?.personalInfo?.emails || []).join('\n\n') || '—', width: '75px' },
   { label: 'Contact No.', value: (a) => (a.applicantData?.personalInfo?.phones || []).join('\n\n') || '—', width: '55px' },
   { 
@@ -1009,19 +1016,21 @@ const filterTabs = [
                         ['Birth Date',   formatDate(selected.applicantData?.personalInfo?.birthDate)],
                         ['Sex',          selected.applicantData?.personalInfo?.sex],
                         ['Civil Status', selected.applicantData?.personalInfo?.civilStatus],
-                        ['Ethnic Group', selected.applicantData?.personalInfo?.ethnicGroup],
+                        ['Indigenous',   selected.applicantData?.personalInfo?.isIndigenous ? 'YES' : 'NO'],
                         ['Religion',     selected.applicantData?.personalInfo?.religion],
                         ['Disability',   selected.applicantData?.personalInfo?.disability],
                         ['GSIS NO.',     selected.applicantData?.personalInfo?.gsisNo],
                         ['PAG-IBIG NO.', selected.applicantData?.personalInfo?.pagibigNo],
                         ['PHILHEALTH',   selected.applicantData?.personalInfo?.philhealthNo],
-                        ['SSS NO.',      selected.applicantData?.personalInfo?.sssNo],
                         ['TIN NO.',      selected.applicantData?.personalInfo?.tinNo],
+                        ['PhilSys NO.',  selected.applicantData?.personalInfo?.philSysNo],
                         ['Agency No.',   selected.applicantData?.personalInfo?.agencyEmployeeNo],
-                        ['Contact',      selected.applicantData?.personalInfo?.phones?.[0] || selected.applicantData?.personalInfo?.contact?.phone],
-                        ['Email',        selected.applicantData?.personalInfo?.emails?.[0] || selected.applicantData?.personalInfo?.contact?.email],
-                        ['Address',      selected.applicantData?.personalInfo?.address ? 
-                          [selected.applicantData.personalInfo.address.sitio, selected.applicantData.personalInfo.address.barangay, selected.applicantData.personalInfo.address.municipality, selected.applicantData.personalInfo.address.province].filter(Boolean).join(', ') : '—'],
+                        ['Contact',      selected.applicantData?.personalInfo?.phones?.[0]],
+                        ['Email',        selected.applicantData?.personalInfo?.emails?.[0]],
+                        ['Current Address', selected.applicantData?.personalInfo?.currentAddress ? 
+                          [selected.applicantData.personalInfo.currentAddress.sitio, selected.applicantData.personalInfo.currentAddress.barangay, selected.applicantData.personalInfo.currentAddress.municipality, selected.applicantData.personalInfo.currentAddress.province].filter(Boolean).join(', ') : '—'],
+                        ['Comelec Address', selected.applicantData?.personalInfo?.comelecAddress ? 
+                          [selected.applicantData.personalInfo.comelecAddress.sitio, selected.applicantData.personalInfo.comelecAddress.barangay, selected.applicantData.personalInfo.comelecAddress.municipality, selected.applicantData.personalInfo.comelecAddress.province].filter(Boolean).join(', ') : '—'],
                       ]" :key="l">
                         <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
                         <p class="text-sm font-bold text-[var(--text-main)] mt-1.5 uppercase leading-tight">{{ v || '—' }}</p>

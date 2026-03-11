@@ -118,14 +118,27 @@ const extractString = (val) => {
 const shortenEligibility = (name) => {
   const raw = extractString(name);
   if (!raw || raw === '—') return '';
-  const n = raw.toUpperCase();
-  if (n.includes('RA 1080')) return 'RA 1080';
-  if (n.includes('PROFESSIONAL') && n.includes('SERVICE')) return 'CSC PROF';
-  if (n.includes('SUBPROFESSIONAL') || n.includes('SUB-PROFESSIONAL')) return 'CSC SUBPROF';
+  let n = raw.toUpperCase().trim();
+  
+  // Remove "TYPE:" prefix if it exists (handles Mongoose object-to-string quirks)
+  n = n.replace(/^TYPE:\s*/, '').replace(/['"]/g, '');
+  if (n === '—' || n === '') return '';
+  
+  // ── 2nd Level (LPT, BAR, RA1080, 2ND LEVEL) ──
+  if (n.includes('TEACHER') || n.includes('LET') || n.includes('LPT')) return 'LPT';
   if (n.includes('BAR') && n.includes('PHILIPPINES')) return 'BAR';
-  if (n.includes('PRC')) return 'PRC';
-  if (n.includes('LICENSURE')) return 'RA 1080';
-  return n.length > 15 ? n.substring(0, 15) + '...' : n;
+  if (n.includes('RA 1080') || n.includes('RA1080') || n.includes('PRC') || n.includes('LICENSURE')) return 'RA1080';
+  if (n.includes('2ND LEVEL') || n.includes('SECOND LEVEL') || (n.includes('PROFESSIONAL') && !n.includes('SUB'))) return '2ND LEVEL';
+  
+  // ── 1st Level (1ST LEVEL, BRGY OFF, BHW) ──
+  if (n.includes('1ST LEVEL') || n.includes('FIRST LEVEL') || n.includes('SUBPROFESSIONAL')) return '1ST LEVEL';
+  if (n.includes('BARANGAY OFFICIAL') || n.includes('MC 11')) return 'BRGY OFF';
+  if (n.includes('BARANGAY HEALTH WORKER') || n.includes('RA 7883')) return 'BHW';
+  
+  // ── General / Catch-all ──
+  if (n.includes('CSC') || n.includes('CIVIL SERVICE')) return 'CSC';
+  
+  return n.length > 15 ? n.substring(0, 13) + '..' : n;
 };
 
 /**
@@ -289,17 +302,22 @@ export const generateIERDoc = (data) => {
               const exp = a.applicantData?.experience || [];
               const elig = a.applicantData?.eligibility || [];
               
+              const bgy = extractString(addr.barangay);
+              const mun = extractString(addr.municipality);
+              const prv = extractString(addr.province);
+              const cleanAddr = `${bgy !== '—' ? bgy : ''}, ${mun !== '—' ? mun : ''}, ${prv !== '—' ? prv : ''}`.replace(/^, |, $/, '').toUpperCase();
+
               return [
                 { text: i + 1, alignment: 'center', fontSize: 6 },
                 { text: a.applicationCode, alignment: 'center', fontSize: 6, font: 'Courier' },
                 { text: fullName(a), fontSize: 7, bold: true },
-                { text: `${addr.sitio ? addr.sitio + ', ' : ''}${addr.barangay || ''}, ${addr.municipality || ''}, ${addr.province || ''}`.toUpperCase(), fontSize: 5 },
+                { text: cleanAddr, fontSize: 5 },
                 { text: calculateAge(p.birthDate), alignment: 'center', fontSize: 6 },
                 { text: p.sex?.toUpperCase()?.charAt(0) || '—', alignment: 'center', fontSize: 6 },
                 { text: p.civilStatus?.toUpperCase() || '—', alignment: 'center', fontSize: 6 },
-                { text: p.religion?.toUpperCase() || 'NONE', alignment: 'center', fontSize: 5 },
-                { text: p.disability?.toUpperCase() || 'NONE', alignment: 'center', fontSize: 5 },
-                { text: p.ethnicGroup?.toUpperCase() || 'NONE', alignment: 'center', fontSize: 5 },
+                { text: extractString(p.religion).toUpperCase(), alignment: 'center', fontSize: 5 },
+                { text: extractString(p.disability).toUpperCase(), alignment: 'center', fontSize: 5 },
+                { text: extractString(p.ethnicGroup).toUpperCase(), alignment: 'center', fontSize: 5 },
                 { text: p.emails?.join('\n\n') || p.contact?.email || '—', fontSize: 5 },
                 { text: p.phones?.join('\n\n') || p.contact?.phone || '—', fontSize: 5 },
                 { 

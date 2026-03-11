@@ -19,10 +19,11 @@ const profileSchema = new mongoose.Schema(
     },
     sex: {
       type: String,
-      enum: ["male", "female", "prefer_not_to_say"],
+      enum: ["male", "female", "prefer_not_to_say", "LGBTQ+"],
     },
     birthDate: Date,
-    ethnicGroup: String,
+    isIndigenous: { type: Boolean, default: false },
+    isSoloParent: { type: Boolean, default: false },
     religion: String,
     disability: String,
     civilStatus: {
@@ -34,8 +35,8 @@ const profileSchema = new mongoose.Schema(
     gsisNo: String,
     pagibigNo: String,
     philhealthNo: String,
-    sssNo: String,
     tinNo: String,
+    philSysNo: String,
     agencyEmployeeNo: String,
 
     // --- Contact & Address ---
@@ -43,7 +44,7 @@ const profileSchema = new mongoose.Schema(
       phones: [{ type: String, trim: true }],
       emails: [{ type: String, trim: true, lowercase: true }],
     },
-    address: {
+    currentAddress: {
       sitio: String,
       barangay: String,
       municipality: String,
@@ -51,6 +52,16 @@ const profileSchema = new mongoose.Schema(
       province: String,
       zipCode: String,
       country: { type: String, default: "Philippines" },
+    },
+    comelecAddress: {
+      sitio: String,
+      barangay: String,
+      municipality: String,
+      city: String,
+      province: String,
+      zipCode: String,
+      country: { type: String, default: "Philippines" },
+      document: String, // Path to uploaded Comelec ID or Certificate
     },
 
     // --- Family Background ---
@@ -77,6 +88,7 @@ const profileSchema = new mongoose.Schema(
         placeOfExam:    { type: String, trim: true },
         licenseNumber:  String,
         licenseValidity: Date,
+        document:       String, // Path to uploaded license/rating certificate
       },
     ],
 
@@ -110,6 +122,7 @@ const profileSchema = new mongoose.Schema(
         hours: { type: Number, required: true },
         typeOfLD: { type: String, enum: ["Technical", "Managerial", "Supervisory", "Academic", "Foundation", "Other"] },
         provider: String,
+        document: String, // Path to uploaded training certificate
       },
     ],
 
@@ -123,8 +136,11 @@ const profileSchema = new mongoose.Schema(
         monthlySalary: Number,
         salaryGrade: String, // e.g., "11-1"
         statusOfAppointment: { type: String, enum: ["Permanent", "Temporary", "Coterminous", "Contractual", "Casual", "Job Order"] },
-        isGovernment: { type: Boolean, default: false },
+        serviceType: { type: String, enum: ["Government", "Private", "Self-Employed"], default: "Private" },
+        companyEmail: String,
+        companyPhone: String,
         keyResponsibilities: [{ type: String }],
+        document: String, // Path to uploaded Certificate of Employment
       },
     ],
 
@@ -144,6 +160,37 @@ const profileSchema = new mongoose.Schema(
     specialSkills: [{ type: String }],
     nonAcademicDistinctions: [{ type: String }],
     memberships: [{ type: String }],
+
+    // --- PDS Questions (Queries) ---
+    pdsQuestions: {
+      q34a: { type: Boolean, default: false },
+      q34b: { type: Boolean, default: false },
+      q35a: { type: Boolean, default: false },
+      q35b: { type: Boolean, default: false },
+      q36:  { type: Boolean, default: false },
+      q37:  { type: Boolean, default: false },
+      q38a: { type: Boolean, default: false },
+      q38b: { type: Boolean, default: false },
+      q39:  { type: Boolean, default: false },
+      q40a: { type: Boolean, default: false },
+      q40b: { type: Boolean, default: false },
+      q40c: { type: Boolean, default: false },
+      // details for 'Yes' answers
+      q34_details: String,
+      q35_details: String,
+      q36_details: String,
+      q37_details: String,
+      q38_details: String,
+      q39_details: String,
+      q40_details: String,
+    },
+
+    // --- References ---
+    references: [{
+      name: String,
+      address: String,
+      phone: String,
+    }],
 
     performanceRating: {
       score: Number,

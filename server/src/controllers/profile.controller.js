@@ -22,3 +22,16 @@ export const upsertMyProfile = catchAsync(async (req, res) => {
 
   res.status(200).json({ status: "success", data: profile });
 });
+
+export const uploadProfileDocument = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    return next(new AppError("Please upload a file", 400));
+  }
+
+  const fileUrl = `/uploads/documents/${req.file.filename}`;
+
+  res.status(200).json({
+    status: "success",
+    fileUrl,
+  });
+});

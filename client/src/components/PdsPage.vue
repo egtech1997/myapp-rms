@@ -130,30 +130,70 @@ const A_CELL = 'col-span-4 p-2 border-b border-r border-black flex flex-col just
           <div class="col-span-3" :class="L_BG">3. DATE OF BIRTH</div>
           <div class="col-span-3" :class="CELL"><span :class="VAL">{{ formatDate(profile.birthDate) }}</span></div>
           <div class="col-span-3" :class="L_BG">16. RESIDENTIAL ADDRESS</div>
-          <div class="col-span-3" :class="CELL"><span class="text-[7px] leading-tight">{{ profile.address.sitio }}</span></div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] leading-tight">{{ profile.currentAddress?.sitio || '—' }}</span></div>
 
           <div class="col-span-3" :class="L_BG">4. PLACE OF BIRTH</div>
           <div class="col-span-3" :class="CELL"><span class="text-[7px]">{{ profile.birthPlace || '—' }}</span></div>
           <div class="col-span-3 bg-[#EAEAEA] border-b border-r border-black"></div>
-          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.address.barangay }}, {{ profile.address.municipality }}</span></div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.currentAddress?.barangay }}, {{ profile.currentAddress?.municipality }}</span></div>
 
           <div class="col-span-3" :class="L_BG">5. SEX</div>
           <div class="col-span-3" :class="CELL">
-            <span class="mr-4">{{ profile.sex === 'male' ? '■' : '□' }} Male</span>
-            <span>{{ profile.sex === 'female' ? '■' : '□' }} Female</span>
+            <span class="mr-2">{{ profile.sex === 'male' ? '■' : '□' }} Male</span>
+            <span class="mr-2">{{ profile.sex === 'female' ? '■' : '□' }} Female</span>
+            <span class="text-[6px]">{{ profile.sex === 'LGBTQ+' ? '■' : '□' }} LGBTQ.</span>
           </div>
           <div class="col-span-3 bg-[#EAEAEA] border-b border-r border-black"></div>
-          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.address.province }} / {{ profile.address.zipCode }}</span></div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.currentAddress?.province }} / {{ profile.currentAddress?.zipCode }}</span></div>
+
+          <div class="col-span-3" :class="L_BG">6. CIVIL STATUS</div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase font-bold">{{ profile.civilStatus }}</span></div>
+          <div class="col-span-3" :class="L_BG">17. PERMANENT ADDRESS</div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] leading-tight">{{ profile.comelecAddress?.sitio || '—' }}</span></div>
+
+          <div class="col-span-3" :class="L_BG">7. CITIZENSHIP / INDIGENOUS</div>
+          <div class="col-span-3" :class="CELL">
+            <div class="flex flex-col gap-0.5">
+              <span class="text-[7px]">{{ profile.isIndigenous ? '■' : '□' }} INDIGENOUS GROUP</span>
+            </div>
+          </div>
+          <div class="col-span-3 bg-[#EAEAEA] border-b border-r border-black"></div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.comelecAddress?.barangay }}, {{ profile.comelecAddress?.municipality }}</span></div>
+
+          <div class="col-span-3" :class="L_BG">8. DISABILITY</div>
+          <div class="col-span-3" :class="CELL">
+            <span class="text-[6px] font-black uppercase tracking-tight leading-none">{{ profile.disability || 'NONE' }}</span>
+          </div>
+          <div class="col-span-3 bg-[#EAEAEA] border-b border-r border-black"></div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.comelecAddress?.province }} / {{ profile.comelecAddress?.zipCode }}</span></div>
+
+          <div class="col-span-3" :class="L_BG">9. RELIGION</div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px] uppercase">{{ profile.religion }}</span></div>
+          <div class="col-span-3" :class="L_BG">18. E-MAIL / TEL NO.</div>
+          <div class="col-span-3" :class="CELL"><span class="text-[7px]">{{ profile.contact.emails[0] }} / {{ profile.contact.phones[0] }}</span></div>
 
           <div class="col-span-3" :class="L_BG">10. GSIS ID NO.</div>
           <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.gsisNo || '—' }}</span></div>
-          <div class="col-span-3" :class="L_BG">19. MOBILE NO.</div>
-          <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.contact.phones[0] || '—' }}</span></div>
+          <div class="col-span-3" :class="L_BG">PHILSYS NO.</div>
+          <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.philSysNo || '—' }}</span></div>
 
           <div class="col-span-3" :class="L_BG">11. PAG-IBIG ID NO.</div>
           <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.pagibigNo || '—' }}</span></div>
+          <div class="col-span-3" :class="L_BG">19. MOBILE NO.</div>
+          <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.contact.phones[0] || '—' }}</span></div>
+
+          <div class="col-span-3" :class="L_BG">12. PHILHEALTH NO.</div>
+          <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.philhealthNo || '—' }}</span></div>
           <div class="col-span-3" :class="L_BG">20. E-MAIL ADDRESS</div>
           <div class="col-span-3" :class="CELL"><span class="text-[8px] lowercase">{{ profile.contact.emails[0] }}</span></div>
+
+          <div class="col-span-3" :class="L_BG">13. TIN NO.</div>
+          <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.tinNo || '—' }}</span></div>
+          <div class="col-span-6 bg-[#EAEAEA] border-b border-r border-black"></div>
+
+          <div class="col-span-3" :class="L_BG">14. AGENCY EMPLOYEE NO.</div>
+          <div class="col-span-3" :class="CELL"><span :class="VAL">{{ profile.agencyEmployeeNo || '—' }}</span></div>
+          <div class="col-span-6 bg-[#EAEAEA] border-b border-r border-black"></div>
 
           <div class="col-span-12" :class="H_BG">II. FAMILY BACKGROUND</div>
           <div class="col-span-3" :class="L_BG">22. SPOUSE'S SURNAME</div>

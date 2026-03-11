@@ -177,7 +177,6 @@ const saveEdit = async () => {
         gsisNo:           p.gsisNo,
         pagibigNo:        p.pagibigNo,
         philhealthNo:     p.philhealthNo,
-        sssNo:            p.sssNo,
         tinNo:            p.tinNo,
         agencyEmployeeNo: p.agencyEmployeeNo,
         phones:           p.contact?.phones || [],
