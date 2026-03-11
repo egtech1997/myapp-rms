@@ -101,7 +101,7 @@ const sizeMap = {
   color: var(--color-primary);
   font-weight: 600;
   letter-spacing: -0.01em;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   border: 1.5px solid var(--color-primary);
   cursor: pointer;
   overflow: hidden;

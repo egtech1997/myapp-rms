@@ -101,14 +101,14 @@ function printReport() {
         style="background:rgba(15,23,42,0.6);backdrop-filter:blur(3px);"
         @click.self="close">
 
-        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl shadow-2xl
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] shadow-2xl
                     w-full max-w-[1360px] flex flex-col overflow-hidden max-h-[95vh] animate-zoom-in">
 
           <!-- Toolbar -->
           <div class="px-5 py-3.5 border-b border-[var(--border-main)] flex items-center
                       justify-between gap-3 flex-shrink-0 bg-[var(--bg-app)]">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center flex-shrink-0">
+              <div class="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--color-primary)] flex items-center justify-center flex-shrink-0">
                 <i class="pi pi-file-pdf text-white text-sm"></i>
               </div>
               <div>
@@ -119,28 +119,28 @@ function printReport() {
             <div class="flex items-center gap-2">
               <slot name="extra-actions"></slot>
               <button @click="downloadCsv"
-                class="h-9 px-3.5 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
+                class="h-9 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-main)] bg-[var(--surface)]
                        hover:bg-[var(--bg-app)] text-sm font-semibold text-[var(--text-main)]
                        transition-colors flex items-center gap-1.5">
                 <i class="pi pi-file-excel text-green-600 text-xs"></i>
                 <span class="hidden sm:inline">Excel</span>
               </button>
               <button @click="printReport"
-                class="h-9 px-3.5 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
+                class="h-9 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-main)] bg-[var(--surface)]
                        hover:bg-[var(--bg-app)] text-sm font-semibold text-[var(--text-main)]
                        transition-colors flex items-center gap-1.5">
                 <i class="pi pi-print text-xs"></i>
                 <span class="hidden sm:inline">Print</span>
               </button>
               <button @click="downloadPdf" :disabled="generating"
-                class="h-9 px-4 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)]
+                class="h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)]
                        disabled:opacity-60 text-white text-sm font-semibold transition-colors
                        flex items-center gap-1.5">
                 <i :class="['pi text-xs', generating ? 'pi-spin pi-spinner' : 'pi-download']"></i>
                 {{ generating ? 'Generating...' : 'Download PDF' }}
               </button>
               <button @click="close"
-                class="h-9 w-9 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
+                class="h-9 w-9 rounded-[var(--radius-md)] border border-[var(--border-main)] bg-[var(--surface)]
                        hover:bg-[var(--bg-app)] flex items-center justify-center
                        text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                 <i class="pi pi-times text-sm"></i>

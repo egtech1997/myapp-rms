@@ -32,11 +32,11 @@ const modalAdjustment = reactive({
         modal 
         dismissableMask 
         :showHeader="false" 
-        contentClass="p-0 rounded-2xl overflow-hidden shadow-[0_32px_100px_-20px_rgba(0,0,0,0.6)] border border-slate-800" 
+        contentClass="p-0 rounded-[var(--radius-2xl)] overflow-hidden shadow-[0_32px_100px_-20px_rgba(0,0,0,0.6)] border border-slate-800" 
         class="max-w-sm w-full mx-4" 
         style="font-family: 'Avenir', sans-serif;"
     >
-        <div class="bg-slate-900 text-slate-100 text-center flex flex-col rounded-2xl">
+        <div class="bg-slate-900 text-slate-100 text-center flex flex-col rounded-[var(--radius-2xl)]">
             <div 
                 class="w-full flex items-end justify-center relative bg-gradient-to-b from-slate-800/50 to-transparent"
                 :style="{ height: modalAdjustment.headerHeight + 'px' }"

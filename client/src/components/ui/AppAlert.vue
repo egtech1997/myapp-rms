@@ -30,7 +30,7 @@ const config = {
       v-if="visible"
       role="alert"
       :class="[
-        'flex items-start gap-3 px-4 py-3.5 rounded-xl text-sm',
+        'flex items-start gap-3 px-4 py-3.5 rounded-[var(--radius-xl)] text-sm',
         config[variant].bg,
         config[variant].text,
         bordered ? `border ${config[variant].border}` : '',
@@ -49,7 +49,7 @@ const config = {
       <button
         v-if="dismissible"
         type="button"
-        class="shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-black/5 transition-colors"
+        class="shrink-0 w-6 h-6 flex items-center justify-center rounded-[var(--radius-md)] hover:bg-black/5 transition-colors"
         aria-label="Dismiss alert"
         @click="dismiss">
         <i class="pi pi-times text-xs" aria-hidden="true"></i>

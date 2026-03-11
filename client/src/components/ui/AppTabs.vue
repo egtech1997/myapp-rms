@@ -44,14 +44,14 @@ const tabBtnClass = computed(() => (tab) => {
     ]
   }
   if (props.variant === 'pills') {
-    return [base, sizeC, 'rounded-lg',
+    return [base, sizeC, 'rounded-[var(--radius-md)]',
       active   ? 'bg-[var(--color-primary)] text-white shadow-sm'
                : disabled ? 'text-[var(--text-faint)] cursor-not-allowed'
                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-2)]',
     ]
   }
   // boxed
-  return [base, sizeC, 'rounded-t-lg border border-b-0',
+  return [base, sizeC, 'rounded-t-[var(--radius-md)] border border-b-0',
     active   ? 'bg-[var(--surface)] border-[var(--border-main)] text-[var(--text-main)] -mb-px'
              : disabled ? 'border-transparent text-[var(--text-faint)] cursor-not-allowed'
              : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]',
@@ -69,7 +69,7 @@ const tabBtnClass = computed(() => (tab) => {
         'flex gap-1',
         variant === 'underline' ? 'border-b border-[var(--border-main)]' : '',
         variant === 'boxed'     ? 'border-b border-[var(--border-main)]' : '',
-        variant === 'pills'     ? 'p-1 bg-[var(--surface-2)] rounded-xl gap-1 w-fit' : '',
+        variant === 'pills'     ? 'p-1 bg-[var(--surface-2)] rounded-[var(--radius-xl)] gap-1 w-fit' : '',
       ]">
       <button
         v-for="(tab, idx) in tabs"

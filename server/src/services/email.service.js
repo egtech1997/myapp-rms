@@ -1,8 +1,25 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import Notification from "../models/Notification.js";
 
-// ── Resend Setup ─────────────────────────────────────────────────────────
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ── Nodemailer / SMTP Setup (cPanel) ─────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT, // 465 for SSL or 587 for TLS
+  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// Verify connection configuration
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ SMTP Connection Error:", error.message);
+  } else {
+    console.log("✅ SMTP Server is ready for emails");
+  }
+});
 
 /**
  * 🔹 DEPED FORMAL LETTER WRAPPER
@@ -52,26 +69,22 @@ export const sendEmail = async ({ email, subject, html, notificationId, isFormal
   try {
     const finalHtml = isFormal ? formalLetterWrapper(html) : html;
     
-    const { data, error } = await resend.emails.send({
-      from: 'DepEd Recruitment <onboarding@resend.dev>', // Replace with your verified domain in production
+    const info = await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'DepEd Recruitment'}" <${process.env.SMTP_USER}>`,
       to: email,
       subject,
       html: finalHtml,
     });
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
     if (notificationId) {
       await Notification.findByIdAndUpdate(notificationId, { emailSent: true });
     }
-    return data;
+    return info;
   } catch (error) {
     if (notificationId) {
       await Notification.findByIdAndUpdate(notificationId, { emailError: error.message });
     }
-    console.error("❌ Resend Email Error:", error.message);
+    console.error("❌ SMTP Email Error:", error.message);
     throw error;
   }
 };

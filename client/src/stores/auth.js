@@ -64,6 +64,7 @@ export const useAuthStore = defineStore('auth', {
 
     async login(credentials) {
       this.loading = true
+      this.error = null
       try {
         const { data } = await apiClient.post('/auth/login', credentials)
         this.user = data.user
@@ -71,6 +72,36 @@ export const useAuthStore = defineStore('auth', {
         return data
       } catch (err) {
         this.error = err.response?.data?.message || 'Login failed'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async register(userData) {
+      this.loading = true
+      this.error = null
+      try {
+        const { data } = await apiClient.post('/auth/register', userData)
+        return data
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Registration failed'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async verifyOtp(email, otp) {
+      this.loading = true
+      this.error = null
+      try {
+        const { data } = await apiClient.post('/auth/verify-otp', { email, otp })
+        this.user = data.user
+        this.initialized = true
+        return data
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Verification failed'
         throw err
       } finally {
         this.loading = false

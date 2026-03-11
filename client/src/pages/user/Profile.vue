@@ -254,12 +254,12 @@ const saveProfile = async () => {
 onMounted(loadProfile)
 
 // ── UI CONSTANTS ──────────────────────────────────────────────
-const F = 'w-full h-11 px-4 text-sm bg-[var(--bg-app)] border border-[var(--border-main)] rounded-lg outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] text-[var(--text-main)] transition-all shadow-sm'
+const F = 'w-full h-11 px-4 text-sm bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-md)] outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] text-[var(--text-main)] transition-all shadow-sm'
 const LABEL = 'text-[10px] font-bold text-[var(--text-muted)]'
-const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-6 shadow-sm relative'
+const SECTION = 'bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-6 shadow-sm relative'
 const H3 = 'text-sm font-bold text-[var(--text-main)] mb-4'
-const ADD_BTN = 'text-[9px] font-black text-[var(--color-primary)] hover:text-white bg-[var(--color-primary-light)]/20 hover:bg-[var(--color-primary)] hover:shadow-[0_0_15px_rgba(var(--color-primary-rgb),0.4)] px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 uppercase tracking-widest active:scale-95'
-const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hover:text-white bg-transparent hover:bg-red-500 hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] rounded-lg transition-all shrink-0 active:scale-95'
+const ADD_BTN = 'text-[9px] font-black text-[var(--color-primary)] hover:text-white bg-[var(--color-primary-light)]/20 hover:bg-[var(--color-primary)] hover:shadow-[0_0_15px_rgba(var(--color-primary-rgb),0.4)] px-3 py-1.5 rounded-[var(--radius-md)] transition-all flex items-center gap-1.5 uppercase tracking-widest active:scale-95'
+const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hover:text-white bg-transparent hover:bg-red-500 hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] rounded-[var(--radius-md)] transition-all shrink-0 active:scale-95'
 </script>
 
 <template>

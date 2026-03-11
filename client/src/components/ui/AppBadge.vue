@@ -87,7 +87,7 @@ const sizes = {
       'inline-flex items-center border whitespace-nowrap leading-none',
       variants[variant] ?? variants.neutral,
       sizes[size],
-      pill ? 'rounded-full' : 'rounded-md',
+      pill ? 'rounded-full' : 'rounded-[var(--radius-md)]',
       interactive ? 'cursor-pointer transition-all hover:brightness-95 active:scale-95' : '',
     ]"
     style="letter-spacing: 0.01em;">

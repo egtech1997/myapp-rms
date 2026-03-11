@@ -12,7 +12,7 @@ defineEmits(['update:visible']);
 </script>
 
 <template>
-    <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :focusTrap="false" modal dismissableMask :showHeader="false" contentClass="p-0 rounded-[24px] overflow-hidden shadow-[0_24px_60px_-15px_rgba(0,0,0,0.2)]" class="max-w-lg w-full mx-4" style="font-family: 'Avenir', sans-serif;">
+    <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :focusTrap="false" modal dismissableMask :showHeader="false" contentClass="p-0 rounded-[var(--radius-3xl)] overflow-hidden shadow-[0_24px_60px_-15px_rgba(0,0,0,0.2)]" class="max-w-lg w-full mx-4" style="font-family: 'Avenir', sans-serif;">
         <div class="bg-white text-left flex flex-col">
             <div class="p-8">
                 <div class="flex justify-between items-start mb-6">
@@ -40,8 +40,8 @@ defineEmits(['update:visible']);
                 </div>
             </div>
             <div class="bg-gray-50/50 p-6 flex gap-4 justify-end items-center border-t border-gray-100">
-                <Button label="Cancel" text severity="secondary" class="font-bold px-6 py-3 rounded-xl text-gray-500 hover:text-gray-800 hover:bg-gray-200 transition-all duration-300" @click="$emit('update:visible', false)" />
-                <Button label="Apply Now" class="bg-violet-600 border-none px-8 py-3 rounded-xl font-bold text-white shadow-[0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:bg-violet-500 hover:shadow-[0_12px_25px_-6px_rgba(124,58,237,0.6)] hover:-translate-y-1 transition-all duration-300" />
+                <Button label="Cancel" text severity="secondary" class="font-bold px-6 py-3 rounded-[var(--radius-xl)] text-gray-500 hover:text-gray-800 hover:bg-gray-200 transition-all duration-300" @click="$emit('update:visible', false)" />
+                <Button label="Apply Now" class="bg-violet-600 border-none px-8 py-3 rounded-[var(--radius-xl)] font-bold text-white shadow-[0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:bg-violet-500 hover:shadow-[0_12px_25px_-6px_rgba(124,58,237,0.6)] hover:-translate-y-1 transition-all duration-300" />
             </div>
         </div>
     </Dialog>

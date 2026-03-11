@@ -76,7 +76,7 @@ onMounted(fetchPool)
 <template>
   <div class="flex flex-col gap-6 animate-fade-in">
     <!-- Selection Pool Table -->
-    <div class="bg-white border border-[var(--border-main)] rounded-2xl overflow-hidden shadow-sm">
+    <div class="bg-white border border-[var(--border-main)] rounded-[var(--radius-2xl)] overflow-hidden shadow-sm">
       <div class="p-6 border-b border-[var(--border-main)] bg-[var(--surface-2)]">
         <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">Selection Pool (RQA Top Candidates)</h3>
         <p class="text-[10px] text-[var(--text-muted)] font-bold uppercase mt-1">Candidates are sorted by final RQA rank</p>
@@ -97,7 +97,7 @@ onMounted(fetchPool)
               class="hover:bg-[var(--bg-app)] transition-colors group"
               :class="{ 'opacity-50': item.application?.status === 'appointed' }">
             <td class="p-4">
-              <div :class="['w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black border', 
+              <div :class="['w-7 h-7 rounded-[var(--radius-md)] flex items-center justify-center text-[10px] font-black border', 
                 item.rank <= 5 ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-slate-100 border-slate-200 text-slate-700']">
                 {{ item.rank }}
               </div>
@@ -134,7 +134,7 @@ onMounted(fetchPool)
     <!-- Appointment Modal -->
     <Teleport to="body">
       <div v-if="selectedCandidate" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" @click.self="selectedCandidate = null">
-        <div class="bg-white rounded-2xl shadow-2xl border border-[var(--border-main)] w-full max-w-xl overflow-hidden animate-zoom-in">
+        <div class="bg-white rounded-[var(--radius-2xl)] shadow-2xl border border-[var(--border-main)] w-full max-w-xl overflow-hidden animate-zoom-in">
           <div class="p-6 border-b border-[var(--border-main)] bg-[var(--surface-2)]">
             <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">Prepare Appointment (CS Form 33-A)</h3>
             <p class="text-xs text-[var(--text-muted)] mt-1">Appointing: <span class="font-bold text-[var(--text-main)]">{{ selectedCandidate.applicantName }}</span></p>
@@ -173,7 +173,7 @@ onMounted(fetchPool)
               </div>
             </div>
 
-            <div class="p-4 bg-[var(--surface-2)] rounded-xl border border-[var(--border-main)] space-y-3">
+            <div class="p-4 bg-[var(--surface-2)] rounded-[var(--radius-xl)] border border-[var(--border-main)] space-y-3">
               <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Form Metadata</p>
               <div class="flex flex-col gap-1.5">
                 <label class="text-[9px] font-bold text-[var(--text-muted)] uppercase">Station / Office</label>

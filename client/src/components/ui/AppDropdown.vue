@@ -50,7 +50,7 @@ const alignClass = computed(() => props.align === 'right' ? 'right-0' : 'left-0'
       <slot name="trigger">
         <button
           type="button"
-          class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)]
+          class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-md)] text-[var(--text-muted)]
                  hover:bg-[var(--surface-2)] hover:text-[var(--text-main)] transition-colors"
           :aria-expanded="open"
           :aria-haspopup="true"
@@ -68,7 +68,7 @@ const alignClass = computed(() => props.align === 'right' ? 'right-0' : 'left-0'
         :style="{ width: props.width }"
         :class="[
           'absolute top-full mt-1.5 z-[100] bg-[var(--surface)] border border-[var(--border-main)]',
-          'rounded-xl shadow-[var(--shadow-xl)] overflow-hidden py-1',
+          'rounded-[var(--radius-xl)] shadow-[var(--shadow-xl)] overflow-hidden py-1',
           alignClass,
         ]">
         <template v-for="(item, idx) in items" :key="idx">

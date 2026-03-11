@@ -49,7 +49,7 @@ const rangeStart = computed(() => (props.modelValue - 1) * props.perPage + 1)
 const rangeEnd   = computed(() => Math.min(props.modelValue * props.perPage, props.total))
 
 const btnClass = (active, disabled) => [
-  'min-w-[2rem] h-8 flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-150',
+  'min-w-[2rem] h-8 flex items-center justify-center rounded-[var(--radius-md)] text-sm font-semibold transition-all duration-150',
   active   ? 'bg-[var(--color-primary)] text-white shadow-sm' : '',
   !active && !disabled ? 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-main)]' : '',
   disabled ? 'text-[var(--text-faint)] cursor-not-allowed' : 'cursor-pointer',

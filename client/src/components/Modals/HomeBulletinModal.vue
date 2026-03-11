@@ -11,7 +11,7 @@ defineEmits(['update:visible']);
 </script>
 
 <template>
-    <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :focusTrap="false" modal dismissableMask :showHeader="false" contentClass="p-0 rounded-[32px] overflow-hidden shadow-[0_32px_80px_-20px_rgba(0,0,0,0.25)]" class="max-w-2xl w-full mx-4" style="font-family: 'Avenir', sans-serif;">
+    <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :focusTrap="false" modal dismissableMask :showHeader="false" contentClass="p-0 rounded-[var(--radius-3xl)] overflow-hidden shadow-[0_32px_80px_-20px_rgba(0,0,0,0.25)]" class="max-w-2xl w-full mx-4" style="font-family: 'Avenir', sans-serif;">
         <div class="bg-white flex flex-col">
             
             <div class="relative w-full h-64 bg-slate-100 group">
@@ -22,7 +22,7 @@ defineEmits(['update:visible']);
                 
                 <div class="absolute bottom-6 left-8 right-8">
                     <div class="flex items-center gap-3 mb-3">
-                        <span :class="[announcement?.bg, announcement?.color, 'w-10 h-10 rounded-xl flex items-center justify-center shadow-inner text-lg']">
+                        <span :class="[announcement?.bg, announcement?.color, 'w-10 h-10 rounded-[var(--radius-xl)] flex items-center justify-center shadow-inner text-lg']">
                             <i :class="announcement?.icon"></i>
                         </span>
                         <span class="text-xs font-bold text-white uppercase tracking-widest bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-sm">
@@ -34,7 +34,7 @@ defineEmits(['update:visible']);
             </div>
 
             <div class="p-8">
-                <div class="flex flex-col sm:flex-row gap-5 sm:gap-8 mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner">
+                <div class="flex flex-col sm:flex-row gap-5 sm:gap-8 mb-8 bg-slate-50 p-5 rounded-[var(--radius-2xl)] border border-slate-100 shadow-inner">
                     <div class="flex items-center gap-3">
                         <img :src="announcement?.publisherImage" class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover" />
                         <div class="flex flex-col leading-tight">
@@ -69,7 +69,7 @@ defineEmits(['update:visible']);
                 </div>
                 
                 <div class="mt-10 flex justify-end border-t border-slate-100 pt-6">
-                    <Button label="Close" class="bg-indigo-600 border-none px-8 py-3 rounded-xl font-bold text-white shadow-md hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300" @click="$emit('update:visible', false)" />
+                    <Button label="Close" class="bg-indigo-600 border-none px-8 py-3 rounded-[var(--radius-xl)] font-bold text-white shadow-md hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300" @click="$emit('update:visible', false)" />
                 </div>
             </div>
             

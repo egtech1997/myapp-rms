@@ -63,7 +63,7 @@ const presenceColor = computed(() => {
 })
 
 const shapeClass = computed(() =>
-  props.shape === 'square' ? 'rounded-xl' : 'rounded-full'
+  props.shape === 'square' ? 'rounded-[var(--radius-xl)]' : 'rounded-full'
 )
 </script>
 

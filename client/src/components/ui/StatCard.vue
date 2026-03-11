@@ -39,11 +39,11 @@ const ICON_COLORS = {
         <div v-if="loading" class="flex flex-col gap-4">
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-2 flex-1">
-                    <div class="h-3 w-20 bg-[var(--bg-app)] rounded animate-pulse"></div>
-                    <div class="h-7 w-14 bg-[var(--bg-app)] rounded-lg animate-pulse"></div>
-                    <div class="h-3 w-28 bg-[var(--bg-app)] rounded animate-pulse"></div>
+                    <div class="h-3 w-20 bg-[var(--bg-app)] rounded-[var(--radius-sm)] animate-pulse"></div>
+                    <div class="h-7 w-14 bg-[var(--bg-app)] rounded-[var(--radius-md)] animate-pulse"></div>
+                    <div class="h-3 w-28 bg-[var(--bg-app)] rounded-[var(--radius-sm)] animate-pulse"></div>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-[var(--bg-app)] animate-pulse flex-shrink-0"></div>
+                <div class="w-10 h-10 rounded-[var(--radius-xl)] bg-[var(--bg-app)] animate-pulse flex-shrink-0"></div>
             </div>
         </div>
 
@@ -86,7 +86,7 @@ const ICON_COLORS = {
             <div
                 v-if="icon"
                 :class="[
-                    'w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 shadow-sm transition-colors',
+                    'w-10 h-10 rounded-[var(--radius-xl)] border flex items-center justify-center flex-shrink-0 shadow-sm transition-colors',
                     ICON_COLORS[iconColor] ?? ICON_COLORS.blue,
                 ]">
                 <i :class="['pi text-base', `pi-${icon}`]"></i>

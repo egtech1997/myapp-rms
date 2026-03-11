@@ -1,10 +1,11 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import apiClient from '@/api/axios';
+import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
 const form = ref({ email: '', password: '' });
 const loading = ref(false);
@@ -17,14 +18,14 @@ const handleRegister = async () => {
 
     try {
         const targetEmail = form.value.email;
-        await apiClient.post('/auth/register', form.value);
+        await authStore.register(form.value);
 
         router.push({
             path: '/auth/verify-otp',
             query: { email: targetEmail }
         });
     } catch (err) {
-        error.value = err.response?.data?.message || 'Registration failed';
+        error.value = authStore.error || 'Registration failed';
     } finally {
         loading.value = false;
     }

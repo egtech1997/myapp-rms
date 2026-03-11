@@ -203,7 +203,7 @@ onMounted(async () => {
       <aside class="w-80 border-r border-[var(--border-main)] bg-[var(--bg-app)]/30 overflow-y-auto custom-scrollbar p-6 space-y-8">
         <div>
           <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] mb-4">Background Summary</h3>
-          <div v-if="totalFiltered > 0" class="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+          <div v-if="totalFiltered > 0" class="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-[var(--radius-xl)]">
              <p class="text-[10px] font-bold text-amber-700 leading-tight">
                <i class="pi pi-filter text-[9px] mr-1"></i>
                Showing relevant records only. {{ totalFiltered }} items were filtered out by HR.
@@ -216,7 +216,7 @@ onMounted(async () => {
           <h4 class="text-[9px] font-bold uppercase text-[var(--text-muted)] flex justify-between">
             Education <span>{{ relevantEducation.length }}</span>
           </h4>
-          <div v-for="edu in relevantEducation" :key="edu._id" class="p-3 bg-white border border-[var(--border-main)] rounded-lg shadow-sm">
+          <div v-for="edu in relevantEducation" :key="edu._id" class="p-3 bg-white border border-[var(--border-main)] rounded-[var(--radius-md)] shadow-sm">
             <p class="text-[10px] font-black uppercase text-[var(--text-main)] leading-tight">{{ edu.degree }}</p>
             <p class="text-[9px] font-medium text-[var(--text-muted)] mt-1">{{ edu.school }}</p>
           </div>
@@ -227,7 +227,7 @@ onMounted(async () => {
           <h4 class="text-[9px] font-bold uppercase text-[var(--text-muted)] flex justify-between">
             Experience <span>{{ relevantExperience.length }}</span>
           </h4>
-          <div v-for="exp in relevantExperience" :key="exp._id" class="p-3 bg-white border border-[var(--border-main)] rounded-lg shadow-sm">
+          <div v-for="exp in relevantExperience" :key="exp._id" class="p-3 bg-white border border-[var(--border-main)] rounded-[var(--radius-md)] shadow-sm">
             <p class="text-[10px] font-black uppercase text-[var(--text-main)] leading-tight">{{ exp.position }}</p>
             <p class="text-[9px] font-medium text-[var(--text-muted)] mt-1">{{ exp.company }}</p>
             <p class="text-[8px] font-bold text-[var(--color-primary)] mt-1">{{ formatDate(exp.periodFrom) }} - {{ exp.isPresent ? 'Present' : formatDate(exp.periodTo) }}</p>
@@ -239,7 +239,7 @@ onMounted(async () => {
           <h4 class="text-[9px] font-bold uppercase text-[var(--text-muted)] flex justify-between">
             Training <span>{{ relevantTraining.length }}</span>
           </h4>
-          <div v-for="trn in relevantTraining" :key="trn._id" class="p-3 bg-white border border-[var(--border-main)] rounded-lg shadow-sm">
+          <div v-for="trn in relevantTraining" :key="trn._id" class="p-3 bg-white border border-[var(--border-main)] rounded-[var(--radius-md)] shadow-sm">
             <p class="text-[10px] font-black uppercase text-[var(--text-main)] leading-tight">{{ trn.title }}</p>
             <p class="text-[9px] font-medium text-[var(--text-muted)] mt-1">{{ trn.hours }} Hours</p>
           </div>
@@ -251,7 +251,7 @@ onMounted(async () => {
         <div class="max-w-2xl mx-auto space-y-8">
           
           <!-- Instruction -->
-          <div class="p-5 bg-[var(--color-primary-light)]/30 rounded-2xl border border-[var(--color-primary-ring)]/20 shadow-sm">
+          <div class="p-5 bg-[var(--color-primary-light)]/30 rounded-[var(--radius-2xl)] border border-[var(--color-primary-ring)]/20 shadow-sm">
             <p class="text-[11px] font-semibold text-[var(--color-primary-dark)] flex items-start gap-3 leading-relaxed">
               <i class="pi pi-info-circle mt-0.5 text-sm"></i>
               <span>Evaluate the candidate based on the Behavioral Event Interview (BEI) method. Provide scores and concise evidence-based remarks for each criterion below.</span>
@@ -261,14 +261,14 @@ onMounted(async () => {
           <!-- Criteria List -->
           <div class="space-y-6">
             <div v-for="(item, index) in criteria" :key="index" 
-                 class="group relative p-6 border border-[var(--border-main)] rounded-2xl hover:border-[var(--color-primary-ring)] transition-all bg-white shadow-sm hover:shadow-md"
+                 class="group relative p-6 border border-[var(--border-main)] rounded-[var(--radius-2xl)] hover:border-[var(--color-primary-ring)] transition-all bg-white shadow-sm hover:shadow-md"
                  :class="{ 'opacity-60 pointer-events-none': status === 'submitted' }">
               
               <div class="flex justify-between items-start mb-5">
                 <label class="text-sm font-black text-[var(--text-main)] group-hover:text-[var(--color-primary)] transition-colors uppercase tracking-tight">
                   {{ item.label }}
                 </label>
-                <div class="flex items-center gap-2 bg-[var(--bg-app)] px-3 py-1.5 rounded-xl border border-[var(--border-main)]">
+                <div class="flex items-center gap-2 bg-[var(--bg-app)] px-3 py-1.5 rounded-[var(--radius-xl)] border border-[var(--border-main)]">
                   <input 
                     type="number" 
                     v-model="item.score" 
@@ -385,7 +385,7 @@ onMounted(async () => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--border-main);
-  border-radius: 10px;
+  border-radius: var(--radius-full);
 }
 
 input[type=number]::-webkit-inner-spin-button, 

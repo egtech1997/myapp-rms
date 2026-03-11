@@ -9,19 +9,28 @@ import { updateLoginTimestamp, formatUserResponse } from "../utils/user.js";
 import catchAsync from "../utils/catchAsync.js";
 
 export const register = catchAsync(async (req, res, next) => {
+  console.log(`📩 Attempting registration for: ${req.body.email}`);
   const { user, rawOtp } = await authService.registerUserLogic(req.body);
+  
   await sendEmail({
     email: user.email,
     subject: "Verify Your Account",
     html: `<h2>Your OTP is: ${rawOtp}</h2><p>Valid for 10 minutes.</p>`,
   });
+  
+  console.log(`✅ OTP sent to ${user.email}: ${rawOtp}`);
   res.status(201).json({ message: "OTP sent to email" });
 });
 
 export const verifyOTP = catchAsync(async (req, res, next) => {
-  const user = await authService.verifyOTPLogic(req.body.email, req.body.otp);
+  const { email, otp } = req.body;
+  console.log(`🔍 Verification attempt for ${email} with OTP: ${otp}`);
+  
+  const user = await authService.verifyOTPLogic(email, otp);
   const populatedUser = await User.findById(user._id).populate("roles");
 
+  console.log(`✅ Verification successful for ${email}`);
+  
   await updateLoginTimestamp(populatedUser);
   sendTokenCookie(res, populatedUser);
 

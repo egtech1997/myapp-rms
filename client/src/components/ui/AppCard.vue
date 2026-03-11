@@ -29,7 +29,7 @@ const paddingClass = { none: '', sm: 'p-4', md: 'p-5', lg: 'p-6' }
     :is="as"
     :data-hoverable="hoverable || undefined"
     :class="[
-      'rounded-xl overflow-hidden',
+      'rounded-[var(--radius-xl)] overflow-hidden',
       /* Variant base */
       variant === 'default'  ? 'bg-[var(--surface)] border border-[var(--border-main)]' : '',
       variant === 'flat'     ? 'bg-[var(--surface)] border border-[var(--border-main)]' : '',
@@ -60,7 +60,7 @@ const paddingClass = { none: '', sm: 'p-4', md: 'p-5', lg: 'p-6' }
       class="px-5 py-4 flex items-center justify-between gap-4"
       style="background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 6%, white) 0%, white 80%); border-bottom: 1px solid var(--border-main);">
       <div class="flex items-center gap-3">
-        <div v-if="icon" :class="['w-9 h-9 rounded-xl flex items-center justify-center shrink-0', iconColorMap[iconColor]]">
+        <div v-if="icon" :class="['w-9 h-9 rounded-[var(--radius-xl)] flex items-center justify-center shrink-0', iconColorMap[iconColor]]">
           <i :class="['pi text-sm', icon]" aria-hidden="true"></i>
         </div>
         <div>
@@ -75,7 +75,7 @@ const paddingClass = { none: '', sm: 'p-4', md: 'p-5', lg: 'p-6' }
     <div v-else-if="title || subtitle || icon || $slots.actions"
       class="flex items-start justify-between gap-4 px-5 pt-5 pb-0">
       <div class="flex items-center gap-3">
-        <div v-if="icon" :class="['w-9 h-9 rounded-xl flex items-center justify-center shrink-0', iconColorMap[iconColor]]">
+        <div v-if="icon" :class="['w-9 h-9 rounded-[var(--radius-xl)] flex items-center justify-center shrink-0', iconColorMap[iconColor]]">
           <i :class="['pi text-sm', icon]" aria-hidden="true"></i>
         </div>
         <div>

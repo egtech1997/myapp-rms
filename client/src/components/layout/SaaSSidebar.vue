@@ -68,7 +68,7 @@ const isActive = (path) => route.path.startsWith(path)
         <!-- Brand Header -->
         <div class="h-16 flex items-center px-4 shrink-0 gap-3"
              style="border-bottom: 1px solid rgba(255,255,255,0.07);">
-            <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center shadow-lg overflow-hidden"
+            <div class="w-9 h-9 rounded-[var(--radius-xl)] shrink-0 flex items-center justify-center shadow-lg overflow-hidden"
                  :style="settingsStore.resolvedLogoUrl ? '' : 'background: linear-gradient(135deg, #5B84BA 0%, #4A4D8F 100%); box-shadow: 0 4px 12px rgba(91,132,186,0.35);'">
                 <img v-if="settingsStore.resolvedLogoUrl"
                      :src="settingsStore.resolvedLogoUrl"
@@ -99,14 +99,14 @@ const isActive = (path) => route.path.startsWith(path)
                     <router-link
                         v-for="item in group.items" :key="item.to" :to="item.to"
                         :title="isCollapsed && !isHovered ? item.label : undefined"
-                        class="group relative flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-all duration-200"
+                        class="group relative flex items-center gap-3 px-2.5 py-2.5 rounded-[var(--radius-xl)] transition-all duration-200"
                         :style="isActive(item.to)
                             ? 'background: rgba(91,132,186,0.18); color: #7AADDA;'
                             : 'color: rgba(255,255,255,0.45);'">
 
                         <!-- Hover bg (CSS can't do this cleanly in inline, handled via group class) -->
                         <div v-if="!isActive(item.to)"
-                             class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                             class="absolute inset-0 rounded-[var(--radius-xl)] opacity-0 group-hover:opacity-100 transition-opacity duration-150"
                              style="background: rgba(255,255,255,0.05);"></div>
 
                         <i :class="['pi text-[14px] shrink-0 relative z-[1]', item.icon]"
@@ -135,7 +135,7 @@ const isActive = (path) => route.path.startsWith(path)
 
         <!-- Footer — User identity -->
         <div class="p-3 shrink-0" style="border-top: 1px solid rgba(255,255,255,0.07);">
-            <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-default
+            <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-xl)] cursor-default
                         hover:bg-white/5 transition-colors duration-150">
                 <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white"
                      style="background: linear-gradient(135deg, #4A4D8F, #3B3E75);">

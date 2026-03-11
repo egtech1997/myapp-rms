@@ -108,7 +108,7 @@ const sizeMap = {
           tabindex="-1"
           :class="[
             'modal-panel relative w-full flex flex-col overflow-hidden outline-none',
-            'bg-[var(--surface)] rounded-2xl',
+            'bg-[var(--surface)] rounded-[var(--radius-2xl)]',
             sizeMap[size],
             scrollable ? 'max-h-[90vh]' : '',
           ]"
@@ -121,14 +121,14 @@ const sizeMap = {
           }">
 
           <!-- Blue accent strip -->
-          <div style="height: 3px; background: var(--color-primary); border-radius: 1rem 1rem 0 0; flex-shrink: 0;"></div>
+          <div style="height: 3px; background: var(--color-primary); border-radius: var(--radius-xl) var(--radius-xl) 0 0; flex-shrink: 0;"></div>
 
           <!-- Header -->
           <slot name="header">
             <div v-if="!hideHeader"
               class="flex items-center justify-between px-6 py-4 border-b border-[var(--border-main)] shrink-0 bg-[var(--surface)]">
               <div class="flex items-center gap-3 min-w-0">
-                <div v-if="icon" class="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center flex-shrink-0">
+                <div v-if="icon" class="w-9 h-9 rounded-[var(--radius-xl)] bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center flex-shrink-0">
                   <i :class="['pi text-sm', icon]" aria-hidden="true"></i>
                 </div>
                 <div class="min-w-0">
@@ -141,7 +141,7 @@ const sizeMap = {
               </div>
               <button
                 type="button"
-                class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)]
+                class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-md)] text-[var(--text-muted)]
                        hover:bg-[var(--bg-app)] hover:text-[var(--text-main)]
                        transition-colors flex-shrink-0 ml-4"
                 aria-label="Close dialog"

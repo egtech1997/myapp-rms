@@ -238,13 +238,13 @@ onMounted(() => {
 
         <div class="relative w-full max-w-6xl h-[650px] mx-auto perspective-book emerge-hidden" style="transition-delay: 200ms;">
             
-            <div class="relative w-full h-full transform-3d border border-slate-300 shadow-lg rounded-md bg-[#fcf5e5] flex overflow-visible notebook-lines"
+            <div class="relative w-full h-full transform-3d border border-slate-300 shadow-lg rounded-[var(--radius-md)] bg-[#fcf5e5] flex overflow-visible notebook-lines"
                  :class="{ 'pointer-events-none': isFlipping }">
                 
-                <div class="w-1/2 h-full border-r border-slate-300 p-12 bg-[#fcf5e5] rounded-l-md overflow-hidden relative z-10 cursor-pointer hover:bg-[#f3e9d2] transition-colors duration-300 flex flex-col" @click="turnPage('prev')" @mouseleave="expandedId = null">
+                <div class="w-1/2 h-full border-r border-slate-300 p-12 bg-[#fcf5e5] rounded-l-[var(--radius-md)] overflow-hidden relative z-10 cursor-pointer hover:bg-[#f3e9d2] transition-colors duration-300 flex flex-col" @click="turnPage('prev')" @mouseleave="expandedId = null">
                     <div v-if="renderedLeft" class="flex flex-col h-full relative">
                         <div class="flex items-center gap-3 mb-8">
-                            <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded flex items-center justify-center shadow-inner">
+                            <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
                                 <i :class="[renderedLeft.icon, 'text-slate-700 text-lg']"></i>
                             </div>
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ renderedLeft.date }}</span>
@@ -252,18 +252,18 @@ onMounted(() => {
                         
                         <h3 @mouseenter="!isFlipping && (expandedId = renderedLeft.id)" @click.stop class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-default group flex items-start justify-between hover:text-slate-700 transition-colors">
                             <span class="pr-4">{{ renderedLeft.title }}</span>
-                            <div class="w-8 h-8 rounded border border-slate-200 bg-[#fffbf2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                            <div class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 bg-[#fffbf2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                 <i class="pi pi-arrow-up-right text-slate-700 text-xs"></i>
                             </div>
                         </h3>
                         <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ renderedLeft.overview }}</p>
                         
                         <div class="mt-auto flex flex-col">
-                            <img :src="renderedLeft.image" class="w-full h-64 object-cover rounded border border-slate-300 mb-6 grayscale-[25%]" />
+                            <img :src="renderedLeft.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
                             
                             <div class="flex justify-between items-end pt-2">
                                 <div class="flex items-center gap-2 relative z-20">
-                                    <button v-if="getSpreadIndex(renderedLeft) > 0" @click.stop="turnPage('prev', 0)" class="w-8 h-8 rounded border border-slate-300 bg-[#fffbf2] text-slate-700 hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-sm" title="First Page">
+                                    <button v-if="getSpreadIndex(renderedLeft) > 0" @click.stop="turnPage('prev', 0)" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-sm" title="First Page">
                                         <i class="pi pi-angle-double-left text-xs"></i>
                                     </button>
                                 </div>
@@ -277,13 +277,13 @@ onMounted(() => {
                             </div>
                             <div class="flex flex-col gap-4 mb-8">
                                 <div class="flex items-center gap-3">
-                                    <img :src="renderedLeft.publisherImage" class="w-8 h-8 rounded border border-slate-200 object-cover" />
+                                    <img :src="renderedLeft.publisherImage" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 object-cover" />
                                     <div class="flex flex-col leading-none">
                                         <span class="text-xs font-bold text-slate-900">{{ renderedLeft.publisherName }}</span>
                                         <span class="text-[9px] text-slate-500 font-semibold uppercase tracking-widest mt-1">Publisher</span>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4 text-xs text-slate-600 font-medium bg-[#fffbf2] p-4 rounded border border-slate-200">
+                                <div class="grid grid-cols-2 gap-4 text-xs text-slate-600 font-medium bg-[#fffbf2] p-4 rounded-[var(--radius-sm)] border border-slate-200">
                                     <div class="flex items-center gap-2"><i class="pi pi-calendar text-slate-400"></i> {{ renderedLeft.date }}</div>
                                     <div class="flex items-center gap-2"><i class="pi pi-clock text-slate-400"></i> {{ renderedLeft.time }}</div>
                                     <div class="flex items-center gap-2 col-span-2"><i class="pi pi-map-marker text-slate-400"></i> {{ renderedLeft.location }}</div>
@@ -296,10 +296,10 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="w-1/2 h-full p-12 bg-[#fcf5e5] rounded-r-md overflow-hidden relative z-10 cursor-pointer hover:bg-[#f3e9d2] transition-colors duration-300 flex flex-col" @click="turnPage('next')" @mouseleave="expandedId = null">
+                <div class="w-1/2 h-full p-12 bg-[#fcf5e5] rounded-r-[var(--radius-md)] overflow-hidden relative z-10 cursor-pointer hover:bg-[#f3e9d2] transition-colors duration-300 flex flex-col" @click="turnPage('next')" @mouseleave="expandedId = null">
                     <div v-if="renderedRight" class="flex flex-col h-full relative">
                         <div class="flex items-center gap-3 mb-8">
-                            <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded flex items-center justify-center shadow-inner">
+                            <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
                                 <i :class="[renderedRight.icon, 'text-slate-700 text-lg']"></i>
                             </div>
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ renderedRight.date }}</span>
@@ -307,19 +307,19 @@ onMounted(() => {
                         
                         <h3 @mouseenter="!isFlipping && (expandedId = renderedRight.id)" @click.stop class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-default group flex items-start justify-between hover:text-slate-700 transition-colors">
                             <span class="pr-4">{{ renderedRight.title }}</span>
-                            <div class="w-8 h-8 rounded border border-slate-200 bg-[#fffbf2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                            <div class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 bg-[#fffbf2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                 <i class="pi pi-arrow-up-right text-slate-700 text-xs"></i>
                             </div>
                         </h3>
                         <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ renderedRight.overview }}</p>
                         
                         <div class="mt-auto flex flex-col">
-                            <img :src="renderedRight.image" class="w-full h-64 object-cover rounded border border-slate-300 mb-6 grayscale-[25%]" />
+                            <img :src="renderedRight.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
                             
                             <div class="flex justify-between items-end pt-2">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(renderedRight) }} of {{ announcements.length }}</span>
                                 <div class="flex items-center gap-2 relative z-20">
-                                    <button v-if="getSpreadIndex(renderedRight) < spreads.length - 1" @click.stop="turnPage('next', spreads.length - 1)" class="w-8 h-8 rounded border border-slate-300 bg-[#fffbf2] text-slate-700 hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-sm" title="Last Page">
+                                    <button v-if="getSpreadIndex(renderedRight) < spreads.length - 1" @click.stop="turnPage('next', spreads.length - 1)" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-sm" title="Last Page">
                                         <i class="pi pi-angle-double-right text-xs"></i>
                                     </button>
                                 </div>
@@ -332,13 +332,13 @@ onMounted(() => {
                             </div>
                             <div class="flex flex-col gap-4 mb-8">
                                 <div class="flex items-center gap-3">
-                                    <img :src="renderedRight.publisherImage" class="w-8 h-8 rounded border border-slate-200 object-cover" />
+                                    <img :src="renderedRight.publisherImage" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 object-cover" />
                                     <div class="flex flex-col leading-none">
                                         <span class="text-xs font-bold text-slate-900">{{ renderedRight.publisherName }}</span>
                                         <span class="text-[9px] text-slate-500 font-semibold uppercase tracking-widest mt-1">Publisher</span>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4 text-xs text-slate-600 font-medium bg-[#fffbf2] p-4 rounded border border-slate-200">
+                                <div class="grid grid-cols-2 gap-4 text-xs text-slate-600 font-medium bg-[#fffbf2] p-4 rounded-[var(--radius-sm)] border border-slate-200">
                                     <div class="flex items-center gap-2"><i class="pi pi-calendar text-slate-400"></i> {{ renderedRight.date }}</div>
                                     <div class="flex items-center gap-2"><i class="pi pi-clock text-slate-400"></i> {{ renderedRight.time }}</div>
                                     <div class="flex items-center gap-2 col-span-2"><i class="pi pi-map-marker text-slate-400"></i> {{ renderedRight.location }}</div>
@@ -356,50 +356,50 @@ onMounted(() => {
                 </div>
 
                 <div v-if="isFlipping && flipDirection === 'next'" class="flipper-next transform-3d z-50">
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-r-md border-y border-r border-slate-300 shadow-[-5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
+                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-r-[var(--radius-md)] border-y border-r border-slate-300 shadow-[-5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
                         <div v-if="flipperFrontItem" class="flex flex-col h-full relative">
                             <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded flex items-center justify-center shadow-inner">
+                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
                                     <i :class="[flipperFrontItem.icon, 'text-slate-700 text-lg']"></i>
                                 </div>
                                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperFrontItem.date }}</span>
                             </div>
                             <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
                                 <span class="pr-4">{{ flipperFrontItem.title }}</span>
-                                <div class="w-8 h-8 rounded bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
+                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
                             </h3>
                             <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperFrontItem.overview }}</p>
                             
                             <div class="mt-auto flex flex-col">
-                                <img :src="flipperFrontItem.image" class="w-full h-64 object-cover rounded border border-slate-300 mb-6 grayscale-[25%]" />
+                                <img :src="flipperFrontItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
                                 <div class="flex justify-between items-end pt-2">
                                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperFrontItem) }} of {{ announcements.length }}</span>
                                     <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperFrontItem) < spreads.length - 1" class="w-8 h-8 rounded border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-right text-xs"></i></div>
+                                        <div v-if="getSpreadIndex(flipperFrontItem) < spreads.length - 1" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-right text-xs"></i></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-l-md border-y border-l border-slate-300 rotate-y-180 shadow-[5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
+                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-l-[var(--radius-md)] border-y border-l border-slate-300 rotate-y-180 shadow-[5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
                         <div v-if="flipperBackItem" class="flex flex-col h-full relative">
                             <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded flex items-center justify-center shadow-inner">
+                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
                                     <i :class="[flipperBackItem.icon, 'text-slate-700 text-lg']"></i>
                                 </div>
                                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperBackItem.date }}</span>
                             </div>
                             <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
                                 <span class="pr-4">{{ flipperBackItem.title }}</span>
-                                <div class="w-8 h-8 rounded bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
+                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
                             </h3>
                             <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperBackItem.overview }}</p>
                             
                             <div class="mt-auto flex flex-col">
-                                <img :src="flipperBackItem.image" class="w-full h-64 object-cover rounded border border-slate-300 mb-6 grayscale-[25%]" />
+                                <img :src="flipperBackItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
                                 <div class="flex justify-between items-end pt-2">
                                     <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperBackItem) > 0" class="w-8 h-8 rounded border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-left text-xs"></i></div>
+                                        <div v-if="getSpreadIndex(flipperBackItem) > 0" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-left text-xs"></i></div>
                                     </div>
                                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperBackItem) }} of {{ announcements.length }}</span>
                                 </div>
@@ -409,51 +409,51 @@ onMounted(() => {
                 </div>
 
                 <div v-if="isFlipping && flipDirection === 'prev'" class="flipper-prev transform-3d z-50">
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-l-md border-y border-l border-slate-300 shadow-[5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
+                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-l-[var(--radius-md)] border-y border-l border-slate-300 shadow-[5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
                         <div v-if="flipperFrontItem" class="flex flex-col h-full relative">
                             <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded flex items-center justify-center shadow-inner">
+                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
                                     <i :class="[flipperFrontItem.icon, 'text-slate-700 text-lg']"></i>
                                 </div>
                                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperFrontItem.date }}</span>
                             </div>
                             <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
                                 <span class="pr-4">{{ flipperFrontItem.title }}</span>
-                                <div class="w-8 h-8 rounded bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
+                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
                             </h3>
                             <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperFrontItem.overview }}</p>
                             
                             <div class="mt-auto flex flex-col">
-                                <img :src="flipperFrontItem.image" class="w-full h-64 object-cover rounded border border-slate-300 mb-6 grayscale-[25%]" />
+                                <img :src="flipperFrontItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
                                 <div class="flex justify-between items-end pt-2">
                                     <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperFrontItem) > 0" class="w-8 h-8 rounded border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-left text-xs"></i></div>
+                                        <div v-if="getSpreadIndex(flipperFrontItem) > 0" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-left text-xs"></i></div>
                                     </div>
                                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperFrontItem) }} of {{ announcements.length }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-r-md border-y border-r border-slate-300 rotate-y-180 shadow-[-5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
+                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-r-[var(--radius-md)] border-y border-r border-slate-300 rotate-y-180 shadow-[-5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
                         <div v-if="flipperBackItem" class="flex flex-col h-full relative">
                             <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded flex items-center justify-center shadow-inner">
+                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
                                     <i :class="[flipperBackItem.icon, 'text-slate-700 text-lg']"></i>
                                 </div>
                                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperBackItem.date }}</span>
                             </div>
                             <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
                                 <span class="pr-4">{{ flipperBackItem.title }}</span>
-                                <div class="w-8 h-8 rounded bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
+                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
                             </h3>
                             <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperBackItem.overview }}</p>
                             
                             <div class="mt-auto flex flex-col">
-                                <img :src="flipperBackItem.image" class="w-full h-64 object-cover rounded border border-slate-300 mb-6 grayscale-[25%]" />
+                                <img :src="flipperBackItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
                                 <div class="flex justify-between items-end pt-2">
                                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperBackItem) }} of {{ announcements.length }}</span>
                                     <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperBackItem) < spreads.length - 1" class="w-8 h-8 rounded border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-right text-xs"></i></div>
+                                        <div v-if="getSpreadIndex(flipperBackItem) < spreads.length - 1" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-right text-xs"></i></div>
                                     </div>
                                 </div>
                             </div>
@@ -553,7 +553,7 @@ onMounted(() => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: #cbd5e1;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
 }
 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
     background-color: #94a3b8;

@@ -32,7 +32,7 @@ const sizeClasses = { sm: 'h-7 text-xs pl-2.5', md: 'h-9 text-sm pl-3', lg: 'h-1
 <template>
   <div class="flex flex-col gap-1.5 w-full">
     <div :class="[
-      'relative rounded-lg border transition-all duration-150',
+      'relative rounded-[var(--radius-md)] border transition-all duration-150',
       error
         ? 'border-[var(--color-danger)] shadow-[var(--shadow-focus-danger)]'
         : isFocused

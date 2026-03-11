@@ -275,19 +275,19 @@ const deadlineClass = (d) => {
 
       <!-- ── STATS ROW ────────────────────────────────────────────────────── -->
       <div v-if="!loading" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-4 flex flex-col gap-0.5">
           <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">Total Open</span>
           <span class="text-2xl font-black text-[var(--text-main)] tabular-nums">{{ jobs.length }}</span>
         </div>
-        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-4 flex flex-col gap-0.5">
           <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">Teaching</span>
           <span class="text-2xl font-black text-[var(--color-primary)] tabular-nums">{{ trackCounts.teaching }}</span>
         </div>
-        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-4 flex flex-col gap-0.5">
           <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">T-Related</span>
           <span class="text-2xl font-black text-purple-600 tabular-nums">{{ trackCounts.teaching_related }}</span>
         </div>
-        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col gap-0.5">
+        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-4 flex flex-col gap-0.5">
           <span class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest">Non-Teaching</span>
           <span class="text-2xl font-black text-amber-600 tabular-nums">{{ trackCounts.non_teaching }}</span>
         </div>
@@ -295,31 +295,31 @@ const deadlineClass = (d) => {
 
       <!-- Stats skeleton -->
       <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div v-for="i in 4" :key="i" class="h-[72px] bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl animate-pulse"></div>
+        <div v-for="i in 4" :key="i" class="h-[72px] bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] animate-pulse"></div>
       </div>
 
       <!-- ── SEARCH & FILTER PILLS ────────────────────────────────────────── -->
-      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-4 flex flex-col sm:flex-row gap-3">
         <div class="relative flex-1">
           <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm pointer-events-none"></i>
           <input v-model="searchQuery" @input="handleSearch" type="text" placeholder="Search positions or assignment..."
-            class="w-full h-11 pl-10 pr-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+            class="w-full h-11 pl-10 pr-4 rounded-[var(--radius-xl)] bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
         </div>
         <div class="flex items-center gap-2 flex-wrap">
           <button @click="filterTrack = ''"
-            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === '' ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+            :class="['h-11 px-4 rounded-[var(--radius-xl)] border text-xs font-black uppercase tracking-widest transition-all', filterTrack === '' ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
             All
           </button>
           <button @click="filterTrack = 'teaching'"
-            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'teaching' ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+            :class="['h-11 px-4 rounded-[var(--radius-xl)] border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'teaching' ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
             Teaching
           </button>
           <button @click="filterTrack = 'teaching_related'"
-            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'teaching_related' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-purple-300']">
+            :class="['h-11 px-4 rounded-[var(--radius-xl)] border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'teaching_related' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-purple-300']">
             T-Related
           </button>
           <button @click="filterTrack = 'non_teaching'"
-            :class="['h-11 px-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'non_teaching' ? 'bg-amber-500 text-white border-amber-500' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-amber-300']">
+            :class="['h-11 px-4 rounded-[var(--radius-xl)] border text-xs font-black uppercase tracking-widest transition-all', filterTrack === 'non_teaching' ? 'bg-amber-500 text-white border-amber-500' : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-amber-300']">
             Non-Teaching
           </button>
         </div>
@@ -327,7 +327,7 @@ const deadlineClass = (d) => {
 
       <!-- ── AUTH NUDGE ────────────────────────────────────────────────────── -->
       <div v-if="!authStore.isAuthenticated"
-        class="flex items-center gap-3 bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 rounded-2xl px-5 py-4">
+        class="flex items-center gap-3 bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 rounded-[var(--radius-2xl)] px-5 py-4">
         <i class="pi pi-info-circle text-[var(--color-primary)] text-lg flex-shrink-0"></i>
         <p class="text-sm text-[var(--color-primary)] font-medium">
           <router-link to="/auth/login" class="font-black underline underline-offset-2">Sign in</router-link>
@@ -337,13 +337,13 @@ const deadlineClass = (d) => {
 
       <!-- ── JOB CARDS SKELETON ────────────────────────────────────────────── -->
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div v-for="i in 6" :key="i" class="h-56 rounded-2xl bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
+        <div v-for="i in 6" :key="i" class="h-56 rounded-[var(--radius-2xl)] bg-[var(--surface)] border border-[var(--border-main)] animate-pulse"></div>
       </div>
 
       <!-- ── JOB CARDS ─────────────────────────────────────────────────────── -->
       <div v-else-if="filteredJobs.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div v-for="job in filteredJobs" :key="job._id"
-          :class="['relative bg-[var(--surface)] border border-l-4 border-[var(--border-main)] rounded-2xl p-5 hover:shadow-lg hover:border-[var(--color-primary-ring)] transition-all group cursor-pointer flex flex-col gap-4', trackBorderClass[job.hiringTrack]]"
+          :class="['relative bg-[var(--surface)] border border-l-4 border-[var(--border-main)] rounded-[var(--radius-2xl)] p-5 hover:shadow-lg hover:border-[var(--color-primary-ring)] transition-all group cursor-pointer flex flex-col gap-4', trackBorderClass[job.hiringTrack]]"
           @click="openJob(job)">
 
           <!-- Row 1: Track pill + QS badge -->
@@ -362,7 +362,7 @@ const deadlineClass = (d) => {
                 <i class="pi pi-info-circle text-[10px]"></i> QS Check
               </div>
               <!-- Tooltip -->
-              <div class="invisible group-hover/qs:visible absolute right-0 top-full mt-2 w-60 bg-[var(--color-navy)] text-white rounded-xl p-4 shadow-2xl z-50 text-[10px]">
+              <div class="invisible group-hover/qs:visible absolute right-0 top-full mt-2 w-60 bg-[var(--color-navy)] text-white rounded-[var(--radius-xl)] p-4 shadow-2xl z-50 text-[10px]">
                 <p class="font-black mb-3 uppercase tracking-widest text-white/50">Match Breakdown</p>
                 <div class="space-y-2">
                   <div v-for="c in getMatchStatus(job).criteria" :key="c.label" class="flex justify-between items-center gap-4">
@@ -416,7 +416,7 @@ const deadlineClass = (d) => {
       </div>
 
       <!-- ── EMPTY STATE ───────────────────────────────────────────────────── -->
-      <div v-else class="flex flex-col items-center justify-center gap-4 py-20 bg-[var(--surface)] border border-[var(--border-main)] rounded-2xl">
+      <div v-else class="flex flex-col items-center justify-center gap-4 py-20 bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-2xl)]">
         <div class="w-16 h-16 rounded-full bg-[var(--bg-app)] flex items-center justify-center">
           <i class="pi pi-inbox text-2xl text-[var(--text-faint)]"></i>
         </div>
@@ -436,7 +436,7 @@ const deadlineClass = (d) => {
     <div v-if="showModal && selectedJob"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-navy)]/50 backdrop-blur-sm p-4 animate-fade-in"
       @click.self="closeModal">
-      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden animate-zoom-in max-h-[92vh]">
+      <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-3xl)] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden animate-zoom-in max-h-[92vh]">
 
         <!-- ── STEP: detail ────────────────────────────────────────────────── -->
         <template v-if="modalStep === 'detail'">
@@ -458,20 +458,20 @@ const deadlineClass = (d) => {
           <div class="overflow-y-auto custom-scrollbar flex-1 p-8 space-y-8">
             <!-- Key info grid -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-xl)] p-3 text-center">
                 <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Salary Grade</p>
                 <p class="text-sm font-black text-[var(--text-sub)]">SG-{{ selectedJob.salaryGrade || '—' }}</p>
               </div>
-              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-xl)] p-3 text-center">
                 <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Monthly Pay</p>
                 <p class="text-sm font-black text-[var(--text-sub)]">&#8369;{{ Number(selectedJob.salary || 0).toLocaleString() }}</p>
               </div>
-              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-xl)] p-3 text-center">
                 <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Vacancies</p>
                 <p v-if="!selectedJob.hideVacancyCount" class="text-sm font-black text-emerald-600">{{ selectedJob.noOfVacancy || selectedJob.itemNumbers?.length || 1 }} slot{{ (selectedJob.noOfVacancy || 1) !== 1 ? 's' : '' }}</p>
                 <p v-else class="text-sm font-black text-[var(--text-faint)]">—</p>
               </div>
-              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl p-3 text-center">
+              <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-xl)] p-3 text-center">
                 <p class="text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Employment</p>
                 <p class="text-sm font-black text-[var(--text-sub)] capitalize">{{ selectedJob.employmentType || '—' }}</p>
               </div>
@@ -479,7 +479,7 @@ const deadlineClass = (d) => {
 
             <!-- Urgency banner -->
             <div v-if="selectedJob.deadline && daysLeft(selectedJob.deadline) !== null && daysLeft(selectedJob.deadline) >= 0 && daysLeft(selectedJob.deadline) <= 7"
-              class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-[var(--radius-xl)] px-4 py-3">
               <i class="pi pi-exclamation-triangle text-amber-500"></i>
               <p class="text-sm text-amber-700 font-bold">
                 Deadline {{ daysLeft(selectedJob.deadline) === 0 ? 'is today' : 'in ' + daysLeft(selectedJob.deadline) + ' days' }}
@@ -496,7 +496,7 @@ const deadlineClass = (d) => {
             <!-- Qualification Standards -->
             <div>
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Qualification Standards</h3>
-              <div class="space-y-0 rounded-xl border border-[var(--border-main)] overflow-hidden">
+              <div class="space-y-0 rounded-[var(--radius-xl)] border border-[var(--border-main)] overflow-hidden">
                 <div v-for="row in qualificationRows(selectedJob)" :key="row.label"
                   class="flex gap-4 px-4 py-3.5 border-b border-[var(--border-main)] last:border-0 hover:bg-[var(--bg-app)] transition-colors">
                   <div class="w-24 flex-shrink-0 text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest pt-0.5">{{ row.label }}</div>
@@ -525,7 +525,7 @@ const deadlineClass = (d) => {
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Plantilla Item Numbers</h3>
               <div class="flex flex-wrap gap-2">
                 <span v-for="item in selectedJob.itemNumbers" :key="item"
-                  class="font-mono text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-muted)]">
+                  class="font-mono text-[10px] font-bold px-2.5 py-1.5 rounded-[var(--radius-md)] bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-muted)]">
                   {{ item }}
                 </span>
               </div>
@@ -536,7 +536,7 @@ const deadlineClass = (d) => {
 
             <!-- QS Match breakdown (if authenticated) -->
             <div v-if="authStore.isAuthenticated && getMatchStatus(selectedJob)"
-              class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-5">
+              class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-5">
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Your QS Match</h3>
               <div class="space-y-3">
                 <div v-for="c in getMatchStatus(selectedJob).criteria" :key="c.label" class="flex items-center gap-3">
@@ -557,7 +557,7 @@ const deadlineClass = (d) => {
           <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-end gap-3 flex-shrink-0">
             <button @click="closeModal" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors px-4">Cancel</button>
             <button @click="startApply" :disabled="isExpired(selectedJob.deadline)"
-              class="btn-primary h-11 px-8 rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              class="btn-primary h-11 px-8 rounded-[var(--radius-xl)] shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {{ isExpired(selectedJob.deadline) ? 'Deadline Passed' : 'Apply for this Position' }}
               <i v-if="!isExpired(selectedJob.deadline)" class="pi pi-arrow-right text-xs"></i>
             </button>
@@ -572,7 +572,7 @@ const deadlineClass = (d) => {
             </button>
           </div>
           <div class="px-12 pb-12 flex flex-col items-center text-center gap-6">
-            <div class="w-20 h-20 rounded-3xl bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
+            <div class="w-20 h-20 rounded-[var(--radius-3xl)] bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
               <i class="pi pi-id-card text-3xl"></i>
             </div>
             <div>
@@ -580,10 +580,10 @@ const deadlineClass = (d) => {
               <p class="text-sm text-[var(--text-muted)] mt-2 max-w-sm mx-auto leading-relaxed">Ensure your PDS profile is up to date before submitting. You can update your records or proceed with your current data.</p>
             </div>
             <div class="flex gap-3 w-full max-w-xs">
-              <button @click="closeModal(); router.push('/user/profile')" class="flex-1 h-12 rounded-xl border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest hover:border-[var(--color-primary-ring)] transition-all">
+              <button @click="closeModal(); router.push('/user/profile')" class="flex-1 h-12 rounded-[var(--radius-xl)] border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest hover:border-[var(--color-primary-ring)] transition-all">
                 Update Profile
               </button>
-              <button @click="continueApply" :disabled="loadingProfile" class="flex-1 h-12 rounded-xl btn-primary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60">
+              <button @click="continueApply" :disabled="loadingProfile" class="flex-1 h-12 rounded-[var(--radius-xl)] btn-primary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60">
                 <i v-if="loadingProfile" class="pi pi-spin pi-spinner text-xs"></i>
                 {{ loadingProfile ? 'Loading...' : 'Continue' }}
               </button>
@@ -611,7 +611,7 @@ const deadlineClass = (d) => {
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Education</h3>
               <div class="space-y-2">
                 <label v-for="(edu, i) in profile.education" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selEdu.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selEdu.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
                   <input type="checkbox" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
                   <div>
                     <p class="text-xs font-black text-[var(--text-main)]">{{ edu.school }}</p>
@@ -626,7 +626,7 @@ const deadlineClass = (d) => {
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Civil Service Eligibility</h3>
               <div class="space-y-2">
                 <label v-for="(el, i) in profile.eligibility" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selElig.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selElig.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
                   <input type="checkbox" :checked="selElig.includes(i)" @change="toggle(selElig, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
                   <div>
                     <p class="text-xs font-black text-[var(--text-main)]">{{ el.name }}</p>
@@ -641,7 +641,7 @@ const deadlineClass = (d) => {
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Training &amp; L&amp;D</h3>
               <div class="space-y-2">
                 <label v-for="(tr, i) in profile.training" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selTrn.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selTrn.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
                   <input type="checkbox" :checked="selTrn.includes(i)" @change="toggle(selTrn, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
                   <div>
                     <p class="text-xs font-black text-[var(--text-main)]">{{ tr.title }}</p>
@@ -656,7 +656,7 @@ const deadlineClass = (d) => {
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Work Experience</h3>
               <div class="space-y-2">
                 <label v-for="(ex, i) in profile.experience" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all', selExp.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
+                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selExp.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
                   <input type="checkbox" :checked="selExp.includes(i)" @change="toggle(selExp, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
                   <div>
                     <p class="text-xs font-black text-[var(--text-main)]">{{ ex.position }}</p>
@@ -685,14 +685,14 @@ const deadlineClass = (d) => {
               </div>
             </div>
 
-            <p v-if="applyError" class="text-xs text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ applyError }}</p>
+            <p v-if="applyError" class="text-xs text-red-500 font-bold bg-red-50 border border-red-100 rounded-[var(--radius-xl)] px-4 py-3">{{ applyError }}</p>
           </div>
 
           <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-between items-center gap-3 flex-shrink-0">
             <button @click="modalStep = 'update_prompt'" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center gap-1.5 transition-colors">
               <i class="pi pi-arrow-left text-[10px]"></i> Back
             </button>
-            <button @click="submitApplication" :disabled="applying" class="btn-primary h-11 px-8 rounded-xl shadow-lg flex items-center gap-2 disabled:opacity-60">
+            <button @click="submitApplication" :disabled="applying" class="btn-primary h-11 px-8 rounded-[var(--radius-xl)] shadow-lg flex items-center gap-2 disabled:opacity-60">
               <i v-if="applying" class="pi pi-spin pi-spinner text-xs"></i>
               {{ applying ? 'Submitting...' : 'Submit Application' }}
               <i v-if="!applying" class="pi pi-send text-xs"></i>
@@ -712,17 +712,17 @@ const deadlineClass = (d) => {
                 You have applied for <span class="font-bold text-[var(--text-sub)]">{{ selectedJob.positionTitle }}</span>. Track your status in My Applications.
               </p>
             </div>
-            <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl px-6 py-4 text-center w-full max-w-xs">
+            <div class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] px-6 py-4 text-center w-full max-w-xs">
               <p class="text-[10px] font-black text-[var(--text-faint)] uppercase tracking-widest mb-1">Application Code</p>
               <p class="font-mono font-black text-[var(--color-primary)] text-lg tracking-widest">{{ submittedApp?.applicationCode }}</p>
             </div>
             <div class="flex flex-col gap-3 w-full max-w-xs mt-2">
               <button @click="showCoverPdf = true"
-                class="h-12 w-full rounded-xl bg-[var(--color-navy)] text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[var(--color-primary)] transition-colors">
+                class="h-12 w-full rounded-[var(--radius-xl)] bg-[var(--color-navy)] text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[var(--color-primary)] transition-colors">
                 <i class="pi pi-file-pdf"></i> Download Application Cover
               </button>
               <router-link to="/user/applications" @click="closeModal"
-                class="h-12 w-full rounded-xl border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:border-[var(--color-primary-ring)] transition-colors">
+                class="h-12 w-full rounded-[var(--radius-xl)] border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:border-[var(--color-primary-ring)] transition-colors">
                 <i class="pi pi-list"></i> View My Applications
               </router-link>
               <button @click="closeModal" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">

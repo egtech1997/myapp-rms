@@ -40,7 +40,7 @@ const sizeClasses = {
                 <p v-if="subtitle" class="text-xs text-[var(--text-muted)] mt-0.5">{{ subtitle }}</p>
               </div>
               <button @click="emit('close')"
-                class="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)] transition-colors ml-4">
+                class="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:text-[var(--text-main)] transition-colors ml-4">
                 <i class="pi pi-times text-sm"></i>
               </button>
             </div>

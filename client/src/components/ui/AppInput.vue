@@ -66,7 +66,7 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
     <div
       :style="{
         ...wrapperStyle,
-        borderRadius: '0.5rem',
+        borderRadius: 'var(--radius-md)',
         display: 'flex',
         alignItems: 'center',
         transition: `border-color var(--dur-fast) var(--ease-smooth), box-shadow var(--dur-fast) var(--ease-smooth), background var(--dur-fast) var(--ease-smooth)`,

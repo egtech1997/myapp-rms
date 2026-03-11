@@ -13,7 +13,7 @@ defineProps({
   <div class="flex items-start justify-between gap-4 mb-6">
     <div class="flex items-center gap-3.5 min-w-0">
       <div v-if="icon"
-        class="w-10 h-10 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)]
+        class="w-10 h-10 rounded-[var(--radius-xl)] bg-[var(--color-primary-light)] text-[var(--color-primary)]
                flex items-center justify-center shrink-0 shadow-sm">
         <i :class="['pi text-[15px]', icon]" aria-hidden="true"></i>
       </div>

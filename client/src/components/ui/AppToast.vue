@@ -90,7 +90,7 @@ const config = computed(() => ({
     role="alert"
     aria-live="polite"
     :aria-atomic="true"
-    class="relative flex items-start gap-3 w-full max-w-sm rounded-xl overflow-hidden
+    class="relative flex items-start gap-3 w-full max-w-sm rounded-[var(--radius-xl)] overflow-hidden
            bg-[var(--surface)] select-none cursor-default
            ring-1 transition-all duration-200"
     :class="config.ring"
@@ -105,7 +105,7 @@ const config = computed(() => ({
     @mouseleave="paused = false">
 
     <!-- Icon -->
-    <div :class="['w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-px', config.iconBg]">
+    <div :class="['w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0 mt-px', config.iconBg]">
       <i :class="['pi text-sm', config.icon, config.iconClr]" aria-hidden="true"></i>
     </div>
 
@@ -128,7 +128,7 @@ const config = computed(() => ({
     <button
       v-if="closable"
       type="button"
-      class="shrink-0 w-6 h-6 flex items-center justify-center rounded-md mt-px
+      class="shrink-0 w-6 h-6 flex items-center justify-center rounded-[var(--radius-md)] mt-px
              text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-2)]
              transition-colors"
       aria-label="Dismiss notification"

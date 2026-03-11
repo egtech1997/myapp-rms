@@ -51,7 +51,7 @@ const arrowClass = {
         role="tooltip"
         :style="{ maxWidth: props.maxWidth }"
         :class="[
-          'absolute z-[600] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white',
+          'absolute z-[600] px-2.5 py-1.5 rounded-[var(--radius-md)] text-xs font-semibold text-white',
           'bg-[var(--text-main)] shadow-lg whitespace-normal text-center leading-snug',
           'pointer-events-none',
           positionClass[placement],

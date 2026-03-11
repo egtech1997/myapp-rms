@@ -33,7 +33,7 @@ watch(() => props.modelValue, () => nextTick(resize))
 <template>
   <div class="flex flex-col gap-1.5 w-full">
     <div :class="[
-      'relative rounded-lg border transition-all duration-150',
+      'relative rounded-[var(--radius-md)] border transition-all duration-150',
       error
         ? 'border-[var(--color-danger)] shadow-[var(--shadow-focus-danger)]'
         : isFocused

@@ -80,7 +80,7 @@ const boardMembers = ref({
             </p>
 
             <div class="mt-16 w-full emerge-hidden">
-                <div class="border border-slate-700 rounded bg-slate-800/50 overflow-hidden">
+                <div class="border border-slate-700 rounded-[var(--radius-sm)] bg-slate-800/50 overflow-hidden">
                     <button @click="isOrgChartOpen = !isOrgChartOpen" class="w-full text-left font-bold text-white py-5 px-6 hover:bg-slate-800 transition-colors text-sm tracking-widest uppercase flex justify-between items-center outline-none">
                         Human Resources Management Placement Selection Board
                         <i :class="isOrgChartOpen ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 chevron-slow"></i>
@@ -92,8 +92,8 @@ const boardMembers = ref({
                                 
                                 <div class="flex flex-col items-center w-full">
                                     
-                                    <div class="bg-slate-900 border border-slate-700 p-6 rounded shadow-lg flex flex-col sm:flex-row gap-6 items-center sm:items-start text-left max-w-2xl w-full relative z-10">
-                                        <img :src="boardMembers.chairperson.image" class="w-24 h-24 rounded object-cover grayscale-[20%] shrink-0" alt="Chairperson" />
+                                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-[var(--radius-sm)] shadow-lg flex flex-col sm:flex-row gap-6 items-center sm:items-start text-left max-w-2xl w-full relative z-10">
+                                        <img :src="boardMembers.chairperson.image" class="w-24 h-24 rounded-[var(--radius-sm)] object-cover grayscale-[20%] shrink-0" alt="Chairperson" />
                                         <div>
                                             <h4 class="text-white font-bold text-lg">{{ boardMembers.chairperson.name }}</h4>
                                             <span class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{{ boardMembers.chairperson.role }}</span>
@@ -108,8 +108,8 @@ const boardMembers = ref({
                                     </div>
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mt-8 md:mt-0 z-10">
-                                        <div v-for="(member, index) in boardMembers.members" :key="index" class="bg-slate-900 border border-slate-700 p-6 rounded shadow-md flex flex-col sm:flex-row gap-5 items-center sm:items-start text-left relative">
-                                            <img :src="member.image" class="w-20 h-20 rounded object-cover grayscale-[20%] shrink-0" alt="Board Member" />
+                                        <div v-for="(member, index) in boardMembers.members" :key="index" class="bg-slate-900 border border-slate-700 p-6 rounded-[var(--radius-sm)] shadow-md flex flex-col sm:flex-row gap-5 items-center sm:items-start text-left relative">
+                                            <img :src="member.image" class="w-20 h-20 rounded-[var(--radius-sm)] object-cover grayscale-[20%] shrink-0" alt="Board Member" />
                                             <div>
                                                 <h4 class="text-white font-bold text-base">{{ member.name }}</h4>
                                                 <span class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{{ member.role }}</span>

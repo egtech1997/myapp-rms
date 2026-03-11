@@ -77,7 +77,7 @@ onMounted(fetchLogs)
     </div>
 
     <!-- Filters -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white border border-[var(--border-main)] rounded-2xl">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white border border-[var(--border-main)] rounded-[var(--radius-2xl)]">
       <div class="flex flex-col gap-1.5">
         <label class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Action Type</label>
         <select v-model="filters.action" class="input text-xs">
@@ -113,7 +113,7 @@ onMounted(fetchLogs)
     </div>
 
     <!-- Logs Table -->
-    <div class="bg-white border border-[var(--border-main)] rounded-2xl overflow-hidden shadow-sm">
+    <div class="bg-white border border-[var(--border-main)] rounded-[var(--radius-2xl)] overflow-hidden shadow-sm">
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-[var(--surface-2)] border-b border-[var(--border-main)]">
@@ -126,7 +126,7 @@ onMounted(fetchLogs)
         </thead>
         <tbody class="divide-y divide-[var(--border-main)]">
           <tr v-if="loading" v-for="i in 5" :key="i" class="animate-pulse">
-            <td v-for="j in 5" :key="j" class="p-4"><div class="h-4 bg-[var(--surface-2)] rounded w-3/4"></div></td>
+            <td v-for="j in 5" :key="j" class="p-4"><div class="h-4 bg-[var(--surface-2)] rounded-[var(--radius-sm)] w-3/4"></div></td>
           </tr>
           <tr v-else v-for="log in logs" :key="log._id" class="hover:bg-[var(--bg-app)] transition-colors group">
             <td class="p-4">
@@ -174,7 +174,7 @@ onMounted(fetchLogs)
     <!-- Diff Modal (Simplified) -->
     <Teleport to="body">
       <div v-if="selectedLog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" @click.self="selectedLog = null">
-        <div class="bg-white rounded-2xl shadow-2xl border border-[var(--border-main)] w-full max-w-2xl overflow-hidden animate-zoom-in">
+        <div class="bg-white rounded-[var(--radius-2xl)] shadow-2xl border border-[var(--border-main)] w-full max-w-2xl overflow-hidden animate-zoom-in">
           <div class="p-6 border-b border-[var(--border-main)] bg-[var(--surface-2)] flex justify-between items-center">
             <div>
               <h3 class="text-sm font-black text-[var(--text-main)] uppercase tracking-widest">Transaction Audit</h3>
@@ -186,13 +186,13 @@ onMounted(fetchLogs)
             <div class="grid grid-cols-2 gap-6">
               <div>
                 <p class="text-[10px] font-black uppercase tracking-widest text-red-500 mb-3">Previous State</p>
-                <div class="p-4 bg-red-50/50 rounded-xl border border-red-100 text-[11px] font-mono whitespace-pre-wrap overflow-x-auto">
+                <div class="p-4 bg-red-50/50 rounded-[var(--radius-xl)] border border-red-100 text-[11px] font-mono whitespace-pre-wrap overflow-x-auto">
                   {{ JSON.stringify(selectedLog.diff.before, null, 2) }}
                 </div>
               </div>
               <div>
                 <p class="text-[10px] font-black uppercase tracking-widest text-green-500 mb-3">Updated State</p>
-                <div class="p-4 bg-green-50/50 rounded-xl border border-green-100 text-[11px] font-mono whitespace-pre-wrap overflow-x-auto">
+                <div class="p-4 bg-green-50/50 rounded-[var(--radius-xl)] border border-green-100 text-[11px] font-mono whitespace-pre-wrap overflow-x-auto">
                   {{ JSON.stringify(selectedLog.diff.after, null, 2) }}
                 </div>
               </div>
