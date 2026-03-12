@@ -3,10 +3,22 @@ import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 import { ELIGIBILITY_GROUPS } from '@/utils/eligibilityOptions'
-import { AppButton, AppCheckbox, AppRadio } from '@/components/ui'
+import { AppButton, AppCheckbox, AppRadio, AppFileViewer } from '@/components/ui'
 
 const authStore = useAuthStore()
 const toast = inject('$toast')
+
+// File Viewer State
+const showViewer = ref(false)
+const viewerUrl = ref('')
+const viewerTitle = ref('')
+
+const openViewer = (url, title = 'Document Preview') => {
+  if (!url) return
+  viewerUrl.value = url
+  viewerTitle.value = title
+  showViewer.value = true
+}
 
 const yesNoOptions = [
   { label: 'Yes', value: true },
@@ -104,6 +116,10 @@ const handleComelecUpload = async (e) => {
   if (!file) return
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('type', 'comelec')
+  if (form.comelecAddress.document) {
+    formData.append('oldUrl', form.comelecAddress.document)
+  }
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
     form.comelecAddress.document = data.fileUrl
@@ -118,6 +134,10 @@ const handleEligibilityUpload = async (e, index) => {
   if (!file) return
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('type', 'eligibility')
+  if (form.eligibility[index].document) {
+    formData.append('oldUrl', form.eligibility[index].document)
+  }
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
     form.eligibility[index].document = data.fileUrl
@@ -132,10 +152,32 @@ const handleTrainingUpload = async (e, index) => {
   if (!file) return
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('type', 'training')
+  if (form.training[index].document) {
+    formData.append('oldUrl', form.training[index].document)
+  }
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
     form.training[index].document = data.fileUrl
     toast.fire({ icon: 'success', title: 'Training Certificate Uploaded' })
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Upload Failed' })
+  }
+}
+
+const handleEducationUpload = async (e, index) => {
+  const file = e.target.files[0]
+  if (!file) return
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('type', 'education')
+  if (form.education[index].document) {
+    formData.append('oldUrl', form.education[index].document)
+  }
+  try {
+    const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
+    form.education[index].document = data.fileUrl
+    toast.fire({ icon: 'success', title: 'Education Document Uploaded' })
   } catch (err) {
     toast.fire({ icon: 'error', title: 'Upload Failed' })
   }
@@ -146,6 +188,10 @@ const handleExperienceUpload = async (e, index) => {
   if (!file) return
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('type', 'experience')
+  if (form.experience[index].document) {
+    formData.append('oldUrl', form.experience[index].document)
+  }
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
     form.experience[index].document = data.fileUrl
@@ -521,9 +567,15 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
             </label>
 
             <div v-if="form.comelecAddress.document"
-              class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
-              <i class="pi pi-check-circle text-[10px]"></i>
-              <span class="text-[10px] font-black uppercase tracking-tight">Certification Attached</span>
+              class="flex items-center gap-2">
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                <i class="pi pi-check-circle text-[10px]"></i>
+                <span class="text-[10px] font-black uppercase tracking-tight">Certification Attached</span>
+              </div>
+              <button @click="openViewer(form.comelecAddress.document, 'Comelec Certification')" type="button"
+                class="h-9 w-9 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all shadow-sm">
+                <i class="pi pi-eye text-xs"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -620,6 +672,35 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
               </div>
               <div v-else class="flex flex-col gap-1.5"><label :class="LABEL">Highest Units Earned</label><input
                   v-model="e.unitsEarned" :class="F" placeholder="e.g. 36 Units" /></div>
+
+              <!-- UPLOAD FOR EDUCATION -->
+              <div class="col-span-full pt-4 border-t border-[var(--border-main)] flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-[var(--color-primary-light)]/20 flex items-center justify-center text-[var(--color-primary)]">
+                    <i class="pi pi-file text-[10px]"></i>
+                  </div>
+                  <span class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Transcript of Records / Diploma</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div v-if="e.document" class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                      <i class="pi pi-check-circle text-[9px]"></i>
+                      <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                    </div>
+                    <button @click="openViewer(e.document, 'Education Proof')" type="button"
+                      class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all shadow-sm">
+                      <i class="pi pi-eye text-xs"></i>
+                    </button>
+                  </div>
+                  <label class="relative cursor-pointer">
+                    <div class="h-9 px-4 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center gap-2 text-[10px] font-bold text-[var(--text-sub)] transition-all hover:bg-[var(--bg-app)] shadow-sm">
+                      <i class="pi pi-cloud-upload text-[10px]"></i>
+                      {{ e.document ? 'Change' : 'Upload' }}
+                    </div>
+                    <input type="file" class="hidden" accept=".pdf,image/*" @change="handleEducationUpload($event, i)" />
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </transition-group>
@@ -690,9 +771,15 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
 
               <div class="flex items-center gap-3">
                 <div v-if="e.document"
-                  class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
-                  <i class="pi pi-check-circle text-[9px]"></i>
-                  <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                  class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                    <i class="pi pi-check-circle text-[9px]"></i>
+                    <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                  </div>
+                  <button @click="openViewer(e.document, 'Document Preview')" type="button"
+                    class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all">
+                    <i class="pi pi-eye text-xs"></i>
+                  </button>
                 </div>
                 <label class="relative cursor-pointer">
                   <div
@@ -823,9 +910,15 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
 
               <div class="flex items-center gap-3">
                 <div v-if="e.document"
-                  class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
-                  <i class="pi pi-check-circle text-[9px]"></i>
-                  <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                  class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                    <i class="pi pi-check-circle text-[9px]"></i>
+                    <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                  </div>
+                  <button @click="openViewer(e.document, 'Document Preview')" type="button"
+                    class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all">
+                    <i class="pi pi-eye text-xs"></i>
+                  </button>
                 </div>
                 <label class="relative cursor-pointer">
                   <div
@@ -901,9 +994,15 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
 
               <div class="flex items-center gap-3">
                 <div v-if="t.document"
-                  class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
-                  <i class="pi pi-check-circle text-[9px]"></i>
-                  <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                  class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                    <i class="pi pi-check-circle text-[9px]"></i>
+                    <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                  </div>
+                  <button @click="openViewer(t.document, 'Training Certificate')" type="button"
+                    class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all">
+                    <i class="pi pi-eye text-xs"></i>
+                  </button>
                 </div>
                 <label class="relative cursor-pointer">
                   <div
@@ -1136,6 +1235,13 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
       <AppButton size="xl" icon="pi-save" @click="saveProfile" :loading="saving" class="shadow-2xl font-bold px-10">Save
         PDS Profile</AppButton>
     </div>
+
+    <!-- Document Viewer Modal -->
+    <AppFileViewer
+      v-model="showViewer"
+      :url="viewerUrl"
+      :title="viewerTitle"
+    />
 
   </div>
 </template>

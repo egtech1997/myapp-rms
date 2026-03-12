@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onActivated, inject } from 'vue'
 import apiClient from '@/api/axios'
 import ApplicantCoverPagePdf from '@/components/ApplicantCoverPagePdf.vue'
-import { AppBadge, AppModal, AppTabs, AppButton } from '@/components/ui'
+import { AppBadge, AppModal, AppTabs, AppButton, AppFileViewer } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 
 const toast = inject('$toast')
@@ -23,6 +23,17 @@ const editSaving    = ref(false)
 const editError     = ref('')
 const editProfile   = ref(null)
 const uploadLoading = ref(false)
+
+// File Viewer State
+const showViewer = ref(false)
+const viewerUrl = ref('')
+const viewerTitle = ref('')
+
+const openViewer = (file) => {
+    viewerUrl.value = file.fileUrl
+    viewerTitle.value = `Document: ${file.type.replace('_', ' ').toUpperCase()}`
+    showViewer.value = true
+}
 
 const selEdu  = ref([])
 const selElig = ref([])
@@ -541,12 +552,12 @@ const saveEdit = async () => {
                                     </div>
                                     
                                     <div class="flex items-center gap-2">
-                                        <a v-if="selectedApp.attachments?.find(a => a.type === docType.id)" 
-                                           :href="selectedApp.attachments.find(a => a.type === docType.id).fileUrl" 
-                                           target="_blank"
+                                        <button v-if="selectedApp.attachments?.find(a => a.type === docType.id)" 
+                                           @click="openViewer(selectedApp.attachments.find(a => a.type === docType.id))"
+                                           type="button"
                                            class="w-10 h-10 rounded-xl bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--text-main)] hover:text-white transition-all">
-                                           <i class="pi pi-external-link text-xs"></i>
-                                        </a>
+                                           <i class="pi pi-eye text-xs"></i>
+                                        </button>
                                         <label v-if="!selectedApp.isVerified" class="h-10 px-5 rounded-xl bg-[var(--text-main)] text-white flex items-center justify-center text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-[var(--color-primary)] hover:shadow-lg transition-all active:scale-95">
                                             <input type="file" class="hidden" @change="e => handleFileUpload(e, docType.id)" accept=".pdf,image/*" />
                                             <i :class="['pi mr-2 text-[10px]', selectedApp.attachments?.find(a => a.type === docType.id) ? 'pi-sync' : 'pi-upload']"></i>
@@ -667,6 +678,13 @@ const saveEdit = async () => {
             v-if="showCoverPdf && selectedApp"
             :app="selectedApp"
             @close="showCoverPdf = false"
+        />
+
+        <!-- Document Viewer Modal -->
+        <AppFileViewer
+            v-model="showViewer"
+            :url="viewerUrl"
+            :title="viewerTitle"
         />
     </div>
 </template>

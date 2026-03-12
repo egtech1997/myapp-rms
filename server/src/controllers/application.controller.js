@@ -5,6 +5,8 @@ import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/AppError.js";
 import { notifyStatusUpdate } from "../services/email.service.js";
 import { logAction } from "../services/audit.service.js";
+import fs from "fs";
+import path from "path";
 
 // ── 1. Submit Application (User) ────────────────────────────────────────────
 export const applyToJob = catchAsync(async (req, res, next) => {
@@ -295,11 +297,56 @@ export const uploadApplicationAttachment = catchAsync(async (req, res, next) => 
     return next(new AppError('Application is already verified and locked.', 400));
   }
 
-  const fileUrl = '/uploads/documents/' + req.file.filename;
+  // ── Custom Naming Implementation ───────────────────────────────────────
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  
+  // Map internal types to user-friendly filename suffixes
+  const typeMap = {
+    'transcript': 'transcriptofrecords',
+    'diploma': 'diploma',
+    'eligibility': 'certificateofeligibility',
+    'service_record': 'servicerecord',
+    'training_cert': 'trainingcertificates',
+    'experience': 'experience-proof',
+    'pds_signed': 'signed-pds',
+    'id_proof': 'identity-proof'
+  };
+
+  const fileSuffix = typeMap[type] || type;
+  const newFileName = `${application.applicationCode}-${fileSuffix}${ext}`;
+  const newFilePath = path.join(process.cwd(), 'public/uploads/documents', newFileName);
+  const oldTempPath = req.file.path;
+
+  // If a file with the same name already exists, we overwrite it.
+  // Actually fs.rename will overwrite by default on most systems.
+  try {
+    // Ensure the new filename is used
+    if (fs.existsSync(newFilePath)) {
+      fs.unlinkSync(newFilePath); // Remove old one if exists to be safe
+    }
+    fs.renameSync(oldTempPath, newFilePath);
+  } catch (err) {
+    console.error("File Rename Error:", err);
+    return next(new AppError("Could not rename file.", 500));
+  }
+
+  const fileUrl = '/uploads/documents/' + newFileName;
   const fileName = req.file.originalname;
 
   const existingIdx = application.attachments.findIndex(a => a.type === type);
   if (existingIdx !== -1) {
+    // ── Delete Old File if URL Changed ───────────────────────────────────
+    const oldUrl = application.attachments[existingIdx].fileUrl;
+    if (oldUrl && oldUrl !== fileUrl) {
+      const oldPath = path.join(process.cwd(), 'public', oldUrl);
+      if (fs.existsSync(oldPath)) {
+        try {
+          fs.unlinkSync(oldPath);
+        } catch (e) {
+          console.error("Old attachment delete failed:", e);
+        }
+      }
+    }
     application.attachments[existingIdx] = { type, fileUrl, fileName, uploadedAt: Date.now() };
   } else {
     application.attachments.push({ type, fileUrl, fileName });

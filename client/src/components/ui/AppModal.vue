@@ -9,7 +9,7 @@ const props = defineProps({
   subtitle:   { type: String, default: '' },
   icon:       { type: String, default: '' },
   size:       { type: String, default: 'md',
-    validator: (v) => ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'full'].includes(v) },
+    validator: (v) => ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'full', 'fixed'].includes(v) },
   width:      { type: String, default: '' },
   persistent: { type: Boolean, default: false },
   hideHeader: { type: Boolean, default: false },
@@ -88,8 +88,11 @@ const sizeMap = {
     <Transition name="modal">
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-[400] flex p-4"
-        :class="align === 'top' ? 'items-start pt-[8vh]' : 'items-center'"
+        class="fixed inset-0 z-[400] flex"
+        :class="[
+          align === 'top' ? 'items-start pt-[8vh]' : 'items-center',
+          size === 'fixed' ? 'p-0' : 'p-4'
+        ]"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="title ? 'modal-title' : undefined">
@@ -108,20 +111,20 @@ const sizeMap = {
           tabindex="-1"
           :class="[
             'modal-panel relative w-full flex flex-col overflow-hidden outline-none',
-            'bg-[var(--surface)] rounded-[var(--radius-2xl)]',
+            size === 'fixed' ? 'h-screen w-screen rounded-none border-none' : 'bg-[var(--surface)] rounded-[var(--radius-2xl)]',
             sizeMap[size],
-            scrollable ? 'max-h-[90vh]' : '',
+            scrollable && size !== 'fixed' ? 'max-h-[90vh]' : '',
           ]"
           :style="{
-            border: '1px solid var(--border-main)',
-            boxShadow: '0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.08), 0 40px 72px rgba(0,0,0,0.12)',
-            margin: 'auto',
-            width: width || undefined,
-            maxWidth: width ? '95vw' : undefined
+            border: size === 'fixed' ? 'none' : '1px solid var(--border-main)',
+            boxShadow: size === 'fixed' ? 'none' : '0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.08), 0 40px 72px rgba(0,0,0,0.12)',
+            margin: size === 'fixed' ? '0' : 'auto',
+            width: width || (size === 'fixed' ? '100vw' : undefined),
+            maxWidth: width ? '95vw' : (size === 'fixed' ? '100vw' : undefined)
           }">
 
           <!-- Blue accent strip -->
-          <div style="height: 3px; background: var(--color-primary); border-radius: var(--radius-xl) var(--radius-xl) 0 0; flex-shrink: 0;"></div>
+          <div v-if="size !== 'fixed'" style="height: 3px; background: var(--color-primary); border-radius: var(--radius-xl) var(--radius-xl) 0 0; flex-shrink: 0;"></div>
 
           <!-- Header -->
           <slot name="header">

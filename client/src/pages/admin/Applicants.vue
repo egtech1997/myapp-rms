@@ -1,10 +1,11 @@
 <script setup>
-import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
+import { ref, reactive, computed, onMounted, inject, watch, nextTick } from 'vue'
 import apiClient from '@/api/axios'
 import { AppBadge, AppButton, AppTableReport, AppPageHeader, AppModal } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { useRecruitmentStore } from '@/stores/recruitment'
 import { storeToRefs } from 'pinia'
+import { resolveUrl } from '@/utils/url'
 
 const toast = inject('$toast')
 const swal = inject('$swal')
@@ -141,13 +142,6 @@ watch(selectedJobId, () => {
 })
 
 // ── Preview Logic ────────────────────────────────────────────────────────────
-const resolveUrl = (path) => {
-  if (!path) return ''
-  if (path.startsWith('http')) return path
-  const base = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000'
-  return `${base}${path}`
-}
-
 const isImage = computed(() => {
   if (!selectedDocUrl.value) return false
   const url = selectedDocUrl.value.split('?')[0]
