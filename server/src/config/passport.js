@@ -18,25 +18,11 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value.toLowerCase();
-        const isAdminEmail = email.endsWith("@deped.gov.ph");
-        const requiredRoleName = isAdminEmail ? "admin" : "user";
-
-        const targetRole = await Role.findOne({ name: requiredRoleName });
+        const targetRole = await Role.findOne({ name: "user" });
 
         let user = await User.findOne({ email }).populate("roles");
 
         if (user) {
-          const currentRoleNames = user.roles.map((r) => r.name.toLowerCase());
-
-          const needsPromotion =
-            isAdminEmail &&
-            !currentRoleNames.includes("admin") &&
-            !currentRoleNames.includes("super_admin");
-
-          if (needsPromotion && targetRole) {
-            user.roles = [targetRole._id];
-          }
-
           user.googleId = profile.id;
           user.isVerified = true;
           user.lastLogin = Date.now();

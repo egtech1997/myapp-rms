@@ -7,7 +7,7 @@ import { AppPageHeader, AppButton, AppCard } from '@/components/ui'
 const toast         = inject('$toast')
 const settingsStore = useSettingsStore()
 
-const SERVER_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '')
+const SERVER_BASE = (import.meta.env.VITE_API_URL || `${window.location.origin}/api`).replace('/api', '')
 
 // ── State ────────────────────────────────────────────────────────────────────
 const loading  = ref(true)

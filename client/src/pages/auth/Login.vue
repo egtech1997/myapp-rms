@@ -33,7 +33,7 @@ const handleLogin = async () => {
 };
 
 const handleGoogleLogin = () => {
-    const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/$/, "");
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || `${window.location.origin}/api`).replace(/\/$/, "");
     const finalUrl = `${baseUrl}/auth/google`;
     window.location.href = finalUrl;
 };

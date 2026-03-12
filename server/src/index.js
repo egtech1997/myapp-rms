@@ -7,8 +7,9 @@ connectDB()
   .then(async () => {
     await seedRubrics();
     const PORT = process.env.PORT || 4000;
-    app.listen(PORT, () => {
-      console.log(`🚀 API Live at http://localhost:${PORT}`);
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 API Server running on port ${PORT}`);
+      if (process.env.BACKEND_URL) console.log(`🔗 Backend URL: ${process.env.BACKEND_URL}`);
     });
   })
   .catch((err) => {

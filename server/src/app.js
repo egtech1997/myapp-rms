@@ -34,9 +34,36 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost",
+  "http://127.0.0.1",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is exactly in our list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Dynamic check: Allow if it matches the same IP/Host as CLIENT_URL 
+      // even if the port or protocol varies slightly (e.g. http vs https)
+      const clientUrlHost = process.env.CLIENT_URL ? new URL(process.env.CLIENT_URL).hostname : null;
+      const requestHost = new URL(origin).hostname;
+
+      if (requestHost === clientUrlHost || requestHost === 'localhost' || requestHost === '127.0.0.1') {
+        callback(null, true);
+      } else {
+        console.warn(`[CORS Blocked] Origin: ${origin} | Expected: ${process.env.CLIENT_URL}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   }),
 );

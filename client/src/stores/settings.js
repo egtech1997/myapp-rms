@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import apiClient from '@/api/axios'
 
-const SERVER_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '')
+const SERVER_BASE = (import.meta.env.VITE_API_URL || `${window.location.origin}/api`).replace('/api', '')
 
 export const useSettingsStore = defineStore('settings', () => {
   const systemName    = ref('DepEd GHC')

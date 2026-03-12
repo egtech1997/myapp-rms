@@ -5,7 +5,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useJobs } from '@/composables/useJobs'
 import apiClient from '@/api/axios'
 import ApplicantCoverPagePdf from '@/components/ApplicantCoverPagePdf.vue'
-import { AppBadge } from '@/components/ui'
+import { AppBadge, AppFileViewer } from '@/components/ui'
+import Swal from 'sweetalert2'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -19,12 +20,38 @@ const filterTrack = ref('')
 const userProfile = ref(null)
 const loadingUser = ref(false)
 
+// File Viewer State
+const showViewer = ref(false)
+const viewerUrl = ref('')
+const viewerTitle = ref('')
+
+const openViewer = (url, title = 'Document Preview') => {
+  if (!url) return
+  viewerUrl.value = url
+  viewerTitle.value = title
+  showViewer.value = true
+}
+
 const fetchUserProfile = async () => {
   if (!authStore.isAuthenticated) return
   loadingUser.value = true
   try {
     const { data } = await apiClient.get('/v1/profile/me')
     userProfile.value = data.data
+    
+    // Initialize selections when profile is loaded
+    if (userProfile.value) {
+      selEdu.value  = userProfile.value.education?.map((_, i) => i) || []
+      selElig.value = userProfile.value.eligibility?.map((_, i) => i) || []
+      selTrn.value  = userProfile.value.training?.map((_, i) => i) || []
+      selExp.value  = userProfile.value.experience?.map((_, i) => i) || []
+      
+      perfRating.value = {
+        score:         userProfile.value.performanceRating?.score         ?? '',
+        adjective:     userProfile.value.performanceRating?.adjective     ?? '',
+        periodCovered: userProfile.value.performanceRating?.periodCovered ?? '',
+      }
+    }
   } catch {
     // silent — QS matching is non-critical
   } finally {
@@ -70,13 +97,11 @@ const getMatchStatus = (job) => {
 
 // ── MODAL STATE ──────────────────────────────────────────────────────────────
 const selectedJob    = ref(null)
-const modalStep      = ref('detail')
+const modalStep      = ref('detail') // 'detail' or 'success'
 const showModal      = ref(false)
 const submittedApp   = ref(null)
 const showCoverPdf   = ref(false)
 
-const profile        = ref(null)
-const loadingProfile = ref(false)
 const applying       = ref(false)
 const applyError     = ref('')
 
@@ -104,39 +129,6 @@ const openJob = (job) => {
 const closeModal = () => {
   showModal.value  = false
   applyError.value = ''
-  profile.value    = null
-}
-
-const startApply = () => {
-  if (!authStore.isAuthenticated) {
-    router.push({ path: '/auth/login', query: { redirect: '/user/vacancies' } })
-    return
-  }
-  modalStep.value = 'update_prompt'
-}
-
-const continueApply = async () => {
-  loadingProfile.value = true
-  applyError.value     = ''
-  try {
-    const { data } = await apiClient.get('/v1/profile/me')
-    profile.value = data.data || null
-    const p = profile.value
-    selEdu.value  = p?.education  ?.map((_, i) => i) || []
-    selElig.value = p?.eligibility?.map((_, i) => i) || []
-    selTrn.value  = p?.training   ?.map((_, i) => i) || []
-    selExp.value  = p?.experience ?.map((_, i) => i) || []
-    perfRating.value = {
-      score:         p?.performanceRating?.score         ?? '',
-      adjective:     p?.performanceRating?.adjective     ?? '',
-      periodCovered: p?.performanceRating?.periodCovered ?? '',
-    }
-    modalStep.value = 'review'
-  } catch {
-    applyError.value = 'Failed to load profile. Please try again.'
-  } finally {
-    loadingProfile.value = false
-  }
 }
 
 const toggle = (arr, idx) => {
@@ -145,10 +137,38 @@ const toggle = (arr, idx) => {
   else arr.splice(i, 1)
 }
 
+const handleApplyClick = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push({ path: '/auth/login', query: { redirect: '/user/vacancies' } })
+    return
+  }
+
+  const result = await Swal.fire({
+    title: 'Confirm Application',
+    text: `Are you sure you want to apply for ${selectedJob.value.positionTitle}? Please ensure your selected PDS records are accurate.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Submit Application',
+    cancelButtonText: 'Review Again',
+    confirmButtonColor: 'var(--color-primary)',
+    background: 'var(--surface)',
+    color: 'var(--text-main)',
+    customClass: {
+      popup: 'rounded-3xl border border-[var(--border-main)] shadow-2xl',
+      confirmButton: 'rounded-xl px-6 py-3 font-bold uppercase tracking-widest text-xs',
+      cancelButton: 'rounded-xl px-6 py-3 font-bold uppercase tracking-widest text-xs'
+    }
+  });
+
+  if (result.isConfirmed) {
+    submitApplication();
+  }
+}
+
 const submitApplication = async () => {
   applying.value   = true
   applyError.value = ''
-  const p = profile.value
+  const p = userProfile.value
   const applicantData = {
     personalInfo: {
       firstName:   p.name?.firstName,
@@ -185,6 +205,12 @@ const submitApplication = async () => {
     modalStep.value = 'success'
   } catch (err) {
     applyError.value = err.response?.data?.message || 'Application failed. Please try again.'
+    Swal.fire({
+      icon: 'error',
+      title: 'Application Failed',
+      text: applyError.value,
+      confirmButtonColor: 'var(--color-primary)'
+    });
   } finally {
     applying.value = false
   }
@@ -225,17 +251,19 @@ const trackBorderClass = {
 const qualificationRows = (job) => {
   const q = job?.qualifications || {}
   const rows = []
-  if (q.education)   rows.push({ label: 'Education',   value: q.education })
+  if (q.education)   rows.push({ id: 'education',   label: 'Education',   value: q.education })
   if (q.experience)  rows.push({
+    id: 'experience',
     label: 'Experience',
     value: q.experience + (q.minExperienceMonths > 0 ? ` — minimum ${q.minExperienceMonths} month${q.minExperienceMonths > 1 ? 's' : ''}` : ''),
   })
   if (q.trainings)   rows.push({
+    id: 'training',
     label: 'Training',
     value: q.trainings + (q.minTrainingHours > 0 ? ` — minimum ${q.minTrainingHours} hour${q.minTrainingHours > 1 ? 's' : ''}` : ''),
   })
   const eligArr = Array.isArray(q.eligibility) ? q.eligibility : (q.eligibility ? [q.eligibility] : [])
-  if (eligArr.length) rows.push({ label: 'Eligibility', value: eligArr.join(' / ') })
+  if (eligArr.length) rows.push({ id: 'eligibility', label: 'Eligibility', value: eligArr.join(' / ') })
   return rows
 }
 

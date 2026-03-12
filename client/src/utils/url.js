@@ -9,7 +9,7 @@ export const resolveUrl = (path) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
   
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+  const apiUrl = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
   
   // Strip trailing slash, then strip /api (with or without trailing slash), then strip any remaining trailing slash
   const baseUrl = apiUrl

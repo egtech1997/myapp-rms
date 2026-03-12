@@ -79,12 +79,10 @@ const seedSystem = async () => {
     ]);
 
     const superAdminRole = roles.find((r) => r.name === "super_admin");
-    const adminRole = roles.find((r) => r.name === "admin");
-    const userRole = roles.find((r) => r.name === "user");
 
-    const commonPassword = await bcrypt.hash("123", 12);
+    const commonPassword = await bcrypt.hash("password", 12);
 
-    const dummyUsers = [
+    const initialUsers = [
       {
         username: "super_admin",
         email: "superadmin@deped.gov.ph",
@@ -92,31 +90,15 @@ const seedSystem = async () => {
         roles: [superAdminRole._id],
         isVerified: true,
       },
-      {
-        username: "admin_user",
-        email: "admin@deped.gov.ph",
-        password: commonPassword,
-        roles: [adminRole._id],
-        isVerified: true,
-      },
-      {
-        username: "user_user",
-        email: "user@gmail.com",
-        password: commonPassword,
-        roles: [userRole._id],
-        isVerified: true,
-      },
     ];
 
-    await User.insertMany(dummyUsers);
+    await User.insertMany(initialUsers);
 
     console.log("-----------------------------------------------");
     console.log("🚀 SYSTEM SEEDED SUCCESSFULLY");
     console.log("-----------------------------------------------");
     console.log("👤 SUPER ADMIN: superadmin@deped.gov.ph");
-    console.log("👤 ADMIN:       admin@deped.gov.ph");
-    console.log("👤 USER:        user@gmail.com");
-    console.log("🔑 PASSWORD:    123");
+    console.log("🔑 PASSWORD:    password");
     console.log("-----------------------------------------------");
 
     process.exit(0);

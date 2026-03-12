@@ -9,12 +9,9 @@ export const registerUserLogic = async (userData) => {
   const { otp, expiresAt } = otpService.generateOTP();
   const hashedOtp = otpService.hashOTP(otp);
 
-  const isAdminEmail = email.toLowerCase().endsWith("@deped.gov.ph");
-  const roleName = isAdminEmail ? "admin" : "user";
-
-  const targetRole = await Role.findOne({ name: roleName });
+  const targetRole = await Role.findOne({ name: "user" });
   if (!targetRole) {
-    throw new Error(`Role '${roleName}' not found. Please seed the database.`);
+    throw new Error("Role 'user' not found. Please seed the database.");
   }
 
   let user = await User.findOne({ email });

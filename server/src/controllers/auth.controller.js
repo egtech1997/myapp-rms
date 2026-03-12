@@ -65,13 +65,12 @@ export const googleAuthCallback = catchAsync(async (req, res, next) => {
   await updateLoginTimestamp(user);
   sendTokenCookie(res, user);
 
-  // FIXED: This now exactly matches your Frontend Pinia logic
-  const isDepEd = user.email.toLowerCase().endsWith("@deped.gov.ph");
+  // Redirect based on actual assigned roles
   const hasStaffRole = user.roles.some(
     (r) => r.name !== "user" && r.name !== "applicant",
   );
 
-  const redirectTarget = isDepEd || hasStaffRole ? "admin" : "user";
+  const redirectTarget = hasStaffRole ? "admin" : "user";
 
   res.redirect(`${process.env.CLIENT_URL}/${redirectTarget}/dashboard`);
 });
