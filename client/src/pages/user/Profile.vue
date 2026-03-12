@@ -165,19 +165,20 @@ const handleTrainingUpload = async (e, index) => {
   }
 }
 
-const handleEducationUpload = async (e, index) => {
+const handleEducationUpload = async (e, index, field) => {
   const file = e.target.files[0]
   if (!file) return
   const formData = new FormData()
   formData.append('file', file)
   formData.append('type', 'education')
-  if (form.education[index].document) {
-    formData.append('oldUrl', form.education[index].document)
+  formData.append('field', field)
+  if (form.education[index][field]) {
+    formData.append('oldUrl', form.education[index][field])
   }
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
-    form.education[index].document = data.fileUrl
-    toast.fire({ icon: 'success', title: 'Education Document Uploaded' })
+    form.education[index][field] = data.fileUrl
+    toast.fire({ icon: 'success', title: `${field.toUpperCase()} Uploaded` })
   } catch (err) {
     toast.fire({ icon: 'error', title: 'Upload Failed' })
   }
@@ -234,7 +235,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'n
 // ── DYNAMIC ACTIONS ──────────────────────────────────────────────
 const addItem = (list) => {
   if (list === 'children') form.family.children.push({ firstName: '', middleName: '', lastName: '', suffix: '', birthDate: '' })
-  else if (list === 'education') form.education.push({ level: 'Bachelor', school: '', degree: '', periodFrom: '', periodTo: '', status: 'Graduated', unitsEarned: '', yearGraduated: '', honorsReceived: '' })
+  else if (list === 'education') form.education.push({ level: 'Bachelor', school: '', degree: '', periodFrom: '', periodTo: '', status: 'Graduated', unitsEarned: '', yearGraduated: '', honorsReceived: '', diploma: '', tor: '' })
   else if (list === 'eligibility') form.eligibility.push({ type: '', name: '', rating: '', dateOfExam: '', placeOfExam: '', licenseNumber: '', licenseValidity: '', document: '' })
   else if (list === 'experience') form.experience.push({ periodFrom: '', periodTo: '', position: '', company: '', monthlySalary: null, salaryGrade: '', statusOfAppointment: 'Permanent', serviceType: 'Private', companyEmail: '', companyPhone: '', keyResponsibilities: [], document: '' })
   else if (list === 'voluntary') form.voluntaryWork.push({ organization: '', periodFrom: '', periodTo: '', hours: null, position: '' })
@@ -674,31 +675,61 @@ const REMOVE_BTN = 'w-10 h-10 flex items-center justify-center text-red-400 hove
                   v-model="e.unitsEarned" :class="F" placeholder="e.g. 36 Units" /></div>
 
               <!-- UPLOAD FOR EDUCATION -->
-              <div class="col-span-full pt-4 border-t border-[var(--border-main)] flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-full bg-[var(--color-primary-light)]/20 flex items-center justify-center text-[var(--color-primary)]">
-                    <i class="pi pi-file text-[10px]"></i>
+              <div class="col-span-full pt-4 border-t border-[var(--border-main)] space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-[var(--color-primary-light)]/20 flex items-center justify-center text-[var(--color-primary)]">
+                      <i class="pi pi-file text-[10px]"></i>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Diploma</span>
                   </div>
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Transcript of Records / Diploma</span>
+                  <div class="flex items-center gap-3">
+                    <div v-if="e.diploma" class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                        <i class="pi pi-check-circle text-[9px]"></i>
+                        <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                      </div>
+                      <button @click="openViewer(e.diploma, 'Diploma Proof')" type="button"
+                        class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all shadow-sm">
+                        <i class="pi pi-eye text-xs"></i>
+                      </button>
+                    </div>
+                    <label class="relative cursor-pointer">
+                      <div class="h-9 px-4 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center gap-2 text-[10px] font-bold text-[var(--text-sub)] transition-all hover:bg-[var(--bg-app)] shadow-sm">
+                        <i class="pi pi-cloud-upload text-[10px]"></i>
+                        {{ e.diploma ? 'Change' : 'Upload' }}
+                      </div>
+                      <input type="file" class="hidden" accept=".pdf,image/*" @change="handleEducationUpload($event, i, 'diploma')" />
+                    </label>
+                  </div>
                 </div>
-                <div class="flex items-center gap-3">
-                  <div v-if="e.document" class="flex items-center gap-2">
-                    <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
-                      <i class="pi pi-check-circle text-[9px]"></i>
-                      <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-[var(--color-primary-light)]/20 flex items-center justify-center text-[var(--color-primary)]">
+                      <i class="pi pi-file text-[10px]"></i>
                     </div>
-                    <button @click="openViewer(e.document, 'Education Proof')" type="button"
-                      class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all shadow-sm">
-                      <i class="pi pi-eye text-xs"></i>
-                    </button>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Transcript of Records (TOR)</span>
                   </div>
-                  <label class="relative cursor-pointer">
-                    <div class="h-9 px-4 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center gap-2 text-[10px] font-bold text-[var(--text-sub)] transition-all hover:bg-[var(--bg-app)] shadow-sm">
-                      <i class="pi pi-cloud-upload text-[10px]"></i>
-                      {{ e.document ? 'Change' : 'Upload' }}
+                  <div class="flex items-center gap-3">
+                    <div v-if="e.tor" class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                        <i class="pi pi-check-circle text-[9px]"></i>
+                        <span class="text-[9px] font-black uppercase tracking-tight">Attached</span>
+                      </div>
+                      <button @click="openViewer(e.tor, 'TOR Proof')" type="button"
+                        class="h-9 w-9 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-primary)] transition-all shadow-sm">
+                        <i class="pi pi-eye text-xs"></i>
+                      </button>
                     </div>
-                    <input type="file" class="hidden" accept=".pdf,image/*" @change="handleEducationUpload($event, i)" />
-                  </label>
+                    <label class="relative cursor-pointer">
+                      <div class="h-9 px-4 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center gap-2 text-[10px] font-bold text-[var(--text-sub)] transition-all hover:bg-[var(--bg-app)] shadow-sm">
+                        <i class="pi pi-cloud-upload text-[10px]"></i>
+                        {{ e.tor ? 'Change' : 'Upload' }}
+                      </div>
+                      <input type="file" class="hidden" accept=".pdf,image/*" @change="handleEducationUpload($event, i, 'tor')" />
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>

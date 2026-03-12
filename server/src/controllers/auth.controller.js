@@ -3,10 +3,14 @@ import { sendEmail } from "../services/email.service.js";
 import User from "../models/User.js";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import { sendTokenCookie } from "../utils/auth.js";
 import { updateLoginTimestamp, formatUserResponse } from "../utils/user.js";
 import catchAsync from "../utils/catchAsync.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const register = catchAsync(async (req, res, next) => {
   console.log(`📩 Attempting registration for: ${req.body.email}`);
@@ -138,7 +142,7 @@ export const updateAvatar = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user._id).populate("roles");
 
   if (user.avatar && user.avatar.startsWith("/uploads/avatars/")) {
-    const oldPath = path.join(process.cwd(), "public", user.avatar);
+    const oldPath = path.join(__dirname, "..", "..", "public", user.avatar);
     if (fs.existsSync(oldPath)) {
       try {
         fs.unlinkSync(oldPath);

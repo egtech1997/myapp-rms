@@ -70,7 +70,7 @@ app.use(
 
 app.use(
   "/uploads",
-  express.static(path.join(process.cwd(), "public", "uploads")),
+  express.static(path.join(__dirname, "..", "public", "uploads")),
 );
 
 // Security & Parsing

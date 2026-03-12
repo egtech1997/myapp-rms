@@ -1062,6 +1062,20 @@ const filterTabs = [
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="flex gap-2 mb-1">
+                              <button v-if="edu.diploma" 
+                                @click="selectedDocUrl = resolveUrl(edu.diploma); showPreview = true"
+                                class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase"
+                                title="View Diploma">
+                                <i class="pi pi-file"></i> Diploma
+                              </button>
+                              <button v-if="edu.tor" 
+                                @click="selectedDocUrl = resolveUrl(edu.tor); showPreview = true"
+                                class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase"
+                                title="View TOR">
+                                <i class="pi pi-file-pdf"></i> TOR
+                              </button>
+                            </div>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="edu.isRelevant = true"
@@ -1122,6 +1136,11 @@ const filterTabs = [
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
+                            <button v-if="elig.document" 
+                              @click="selectedDocUrl = resolveUrl(elig.document); showPreview = true"
+                              class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
+                              <i class="pi pi-file-pdf"></i> View Proof
+                            </button>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="elig.isRelevant = true"
@@ -1193,6 +1212,11 @@ const filterTabs = [
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
+                            <button v-if="exp.document" 
+                              @click="selectedDocUrl = resolveUrl(exp.document); showPreview = true"
+                              class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
+                              <i class="pi pi-file-pdf"></i> View Proof
+                            </button>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="exp.isRelevant = true"
@@ -1256,6 +1280,11 @@ const filterTabs = [
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
+                            <button v-if="trn.document" 
+                              @click="selectedDocUrl = resolveUrl(trn.document); showPreview = true"
+                              class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
+                              <i class="pi pi-file-pdf"></i> View Proof
+                            </button>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="trn.isRelevant = true"

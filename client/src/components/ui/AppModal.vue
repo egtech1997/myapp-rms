@@ -15,7 +15,7 @@ const props = defineProps({
   hideHeader: { type: Boolean, default: false },
   scrollable: { type: Boolean, default: true },
   align:      { type: String, default: 'center', validator: (v) => ['center', 'top'].includes(v) },
-  bodyClass:  { type: String, default: '' },
+  bodyClass:  { type: [String, Array, Object], default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'close'])
 

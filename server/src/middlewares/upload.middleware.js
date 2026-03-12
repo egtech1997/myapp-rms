@@ -2,17 +2,22 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = "public/uploads/avatars";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const uploadDir = path.join(__dirname, "..", "..", "public", "uploads", "avatars");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const systemUploadDir = "public/uploads/system";
+const systemUploadDir = path.join(__dirname, "..", "..", "public", "uploads", "system");
 if (!fs.existsSync(systemUploadDir)) {
   fs.mkdirSync(systemUploadDir, { recursive: true });
 }
 
-const docUploadDir = "public/uploads/documents";
+const docUploadDir = path.join(__dirname, "..", "..", "public", "uploads", "documents");
 if (!fs.existsSync(docUploadDir)) {
   fs.mkdirSync(docUploadDir, { recursive: true });
 }

@@ -111,6 +111,8 @@ const profileSchema = new mongoose.Schema(
         unitsEarned: String,
         yearGraduated: String,
         honorsReceived: String,
+        diploma: String, // Path to uploaded diploma
+        tor: String,     // Path to uploaded transcript of records
       },
     ],
 

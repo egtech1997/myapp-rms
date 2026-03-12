@@ -7,6 +7,10 @@ import { notifyStatusUpdate } from "../services/email.service.js";
 import { logAction } from "../services/audit.service.js";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ── 1. Submit Application (User) ────────────────────────────────────────────
 export const applyToJob = catchAsync(async (req, res, next) => {
@@ -314,7 +318,8 @@ export const uploadApplicationAttachment = catchAsync(async (req, res, next) => 
 
   const fileSuffix = typeMap[type] || type;
   const newFileName = `${application.applicationCode}-${fileSuffix}${ext}`;
-  const newFilePath = path.join(process.cwd(), 'public/uploads/documents', newFileName);
+  const publicDir = path.join(__dirname, '..', '..', 'public');
+  const newFilePath = path.join(publicDir, 'uploads', 'documents', newFileName);
   const oldTempPath = req.file.path;
 
   // If a file with the same name already exists, we overwrite it.
@@ -338,7 +343,7 @@ export const uploadApplicationAttachment = catchAsync(async (req, res, next) => 
     // ── Delete Old File if URL Changed ───────────────────────────────────
     const oldUrl = application.attachments[existingIdx].fileUrl;
     if (oldUrl && oldUrl !== fileUrl) {
-      const oldPath = path.join(process.cwd(), 'public', oldUrl);
+      const oldPath = path.join(publicDir, oldUrl);
       if (fs.existsSync(oldPath)) {
         try {
           fs.unlinkSync(oldPath);

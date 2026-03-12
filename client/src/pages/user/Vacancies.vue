@@ -111,6 +111,14 @@ const selTrn  = ref([])
 const selExp  = ref([])
 const perfRating = ref({ score: '', adjective: '', periodCovered: '' })
 
+// Expanded Rows for Record Selection
+const expandedRows = ref([])
+const toggleRow = (id) => {
+  const idx = expandedRows.value.indexOf(id)
+  if (idx === -1) expandedRows.value.push(id)
+  else expandedRows.value.splice(idx, 1)
+}
+
 const loadAll = async () => {
   await Promise.all([fetchJobs({ status: 'published' }), fetchUserProfile()])
 }
@@ -120,10 +128,28 @@ onActivated(loadAll)
 const handleSearch = () => fetchJobs({ status: 'published', search: searchQuery.value })
 
 const openJob = (job) => {
+  if (!authStore.isAuthenticated) {
+    router.push({ path: '/auth/login', query: { redirect: '/user/vacancies' } })
+    return
+  }
   selectedJob.value = job
   modalStep.value   = 'detail'
   applyError.value  = ''
   showModal.value   = true
+  
+  // Re-initialize selections from profile if available
+  if (userProfile.value) {
+    selEdu.value  = userProfile.value.education?.map((_, i) => i) || []
+    selElig.value = userProfile.value.eligibility?.map((_, i) => i) || []
+    selTrn.value  = userProfile.value.training?.map((_, i) => i) || []
+    selExp.value  = userProfile.value.experience?.map((_, i) => i) || []
+    
+    perfRating.value = {
+      score:         userProfile.value.performanceRating?.score         ?? '',
+      adjective:     userProfile.value.performanceRating?.adjective     ?? '',
+      periodCovered: userProfile.value.performanceRating?.periodCovered ?? '',
+    }
+  }
 }
 
 const closeModal = () => {
@@ -138,14 +164,9 @@ const toggle = (arr, idx) => {
 }
 
 const handleApplyClick = async () => {
-  if (!authStore.isAuthenticated) {
-    router.push({ path: '/auth/login', query: { redirect: '/user/vacancies' } })
-    return
-  }
-
   const result = await Swal.fire({
     title: 'Confirm Application',
-    text: `Are you sure you want to apply for ${selectedJob.value.positionTitle}? Please ensure your selected PDS records are accurate.`,
+    text: `Are you sure you want to apply for ${selectedJob.value.positionTitle}? Please ensure your selected PDS records and performance rating are accurate.`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Yes, Submit Application',
@@ -505,35 +526,161 @@ const deadlineClass = (d) => {
               </div>
             </div>
 
-            <!-- Urgency banner -->
-            <div v-if="selectedJob.deadline && daysLeft(selectedJob.deadline) !== null && daysLeft(selectedJob.deadline) >= 0 && daysLeft(selectedJob.deadline) <= 7"
-              class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-[var(--radius-xl)] px-4 py-3">
-              <i class="pi pi-exclamation-triangle text-amber-500"></i>
-              <p class="text-sm text-amber-700 font-bold">
-                Deadline {{ daysLeft(selectedJob.deadline) === 0 ? 'is today' : 'in ' + daysLeft(selectedJob.deadline) + ' days' }}
-                &mdash; {{ formatDate(selectedJob.deadline) }}
-              </p>
-            </div>
-
             <!-- Description -->
             <div v-if="selectedJob.description">
               <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Duties &amp; Description</h3>
               <p class="text-sm text-[var(--text-sub)] leading-relaxed">{{ selectedJob.description }}</p>
             </div>
 
-            <!-- Qualification Standards -->
+            <!-- Qualification Standards with Clickable Selection -->
             <div>
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Qualification Standards</h3>
-              <div class="space-y-0 rounded-[var(--radius-xl)] border border-[var(--border-main)] overflow-hidden">
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Qualification Standards &amp; Record Selection</h3>
+              <div class="space-y-3">
                 <div v-for="row in qualificationRows(selectedJob)" :key="row.label"
-                  class="flex gap-4 px-4 py-3.5 border-b border-[var(--border-main)] last:border-0 hover:bg-[var(--bg-app)] transition-colors">
-                  <div class="w-24 flex-shrink-0 text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest pt-0.5">{{ row.label }}</div>
-                  <div class="text-sm text-[var(--text-sub)] font-medium leading-relaxed">{{ row.value }}</div>
-                </div>
-                <div v-if="qualificationRows(selectedJob).length === 0" class="px-4 py-6 text-center text-xs text-[var(--text-muted)]">
-                  No qualification standards specified.
+                  class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] overflow-hidden transition-all">
+                  
+                  <!-- Main Header Row (Clickable) -->
+                  <div @click="toggleRow(row.id)"
+                    class="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-[var(--surface)] transition-colors group">
+                    <div class="w-20 flex-shrink-0 text-[9px] font-black text-[var(--text-faint)] uppercase tracking-widest">{{ row.label }}</div>
+                    <div class="flex-1 text-sm text-[var(--text-sub)] font-bold leading-tight">
+                      {{ row.value }}
+                      <div class="mt-1 flex items-center gap-2">
+                        <span v-if="row.id === 'education' && selEdu.length > 0" class="text-[9px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2 py-0.5 rounded-full uppercase tracking-widest">{{ selEdu.length }} Selected</span>
+                        <span v-else-if="row.id === 'experience' && selExp.length > 0" class="text-[9px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2 py-0.5 rounded-full uppercase tracking-widest">{{ selExp.length }} Selected</span>
+                        <span v-else-if="row.id === 'training' && selTrn.length > 0" class="text-[9px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2 py-0.5 rounded-full uppercase tracking-widest">{{ selTrn.length }} Selected</span>
+                        <span v-else-if="row.id === 'eligibility' && selElig.length > 0" class="text-[9px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2 py-0.5 rounded-full uppercase tracking-widest">{{ selElig.length }} Selected</span>
+                        <span v-else class="text-[9px] font-bold text-[var(--text-faint)] uppercase tracking-widest italic">Click to select records</span>
+                      </div>
+                    </div>
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-faint)] group-hover:bg-[var(--bg-app)] group-hover:text-[var(--color-primary)] transition-all">
+                      <i :class="['pi text-[10px] transition-transform duration-300', expandedRows.includes(row.id) ? 'pi-chevron-up' : 'pi-chevron-down']"></i>
+                    </div>
+                  </div>
+
+                  <!-- Expanded List (Clickable) -->
+                  <div v-if="expandedRows.includes(row.id)" class="border-t border-[var(--border-main)] bg-[var(--surface)] animate-fade-in">
+                    <div class="p-2 space-y-1">
+                      
+                      <!-- Education Records -->
+                      <template v-if="row.id === 'education'">
+                        <div v-for="(edu, i) in userProfile?.education" :key="i"
+                          class="flex items-center gap-4 p-3 rounded-[var(--radius-xl)] hover:bg-[var(--bg-app)] group/item transition-colors">
+                          <input type="checkbox" :id="'edu-'+i" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)" class="accent-[var(--color-primary)] w-4 h-4 flex-shrink-0 cursor-pointer" />
+                          <label :for="'edu-'+i" class="flex-1 min-w-0 cursor-pointer">
+                            <p class="text-xs font-black text-[var(--text-main)] truncate">{{ edu.school }}</p>
+                            <p class="text-[10px] text-[var(--text-muted)] font-medium truncate">{{ edu.level }} &mdash; {{ edu.degree }}</p>
+                          </label>
+                          <div class="flex items-center gap-2">
+                            <button v-if="edu.diploma" @click.stop="openViewer(edu.diploma, edu.degree + ' - Diploma')"
+                              class="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:ring-1 hover:ring-[var(--color-primary)] transition-all"
+                              title="View Diploma">
+                              <i class="pi pi-file text-xs"></i>
+                            </button>
+                            <button v-if="edu.tor" @click.stop="openViewer(edu.tor, edu.degree + ' - TOR')"
+                              class="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:ring-1 hover:ring-[var(--color-primary)] transition-all"
+                              title="View TOR">
+                              <i class="pi pi-file-pdf text-xs"></i>
+                            </button>
+                            <span v-if="!edu.diploma && !edu.tor" class="text-[9px] font-bold text-[var(--text-faint)] italic px-2">No Doc</span>
+                          </div>
+                        </div>
+                        <div v-if="!userProfile?.education?.length" class="p-4 text-center text-[10px] text-[var(--text-faint)] italic">No education records on file.</div>
+                      </template>
+
+                      <!-- Experience Records -->
+                      <template v-if="row.id === 'experience'">
+                        <div v-for="(ex, i) in userProfile?.experience" :key="i"
+                          class="flex items-center gap-4 p-3 rounded-[var(--radius-xl)] hover:bg-[var(--bg-app)] group/item transition-colors">
+                          <input type="checkbox" :id="'exp-'+i" :checked="selExp.includes(i)" @change="toggle(selExp, i)" class="accent-[var(--color-primary)] w-4 h-4 flex-shrink-0 cursor-pointer" />
+                          <label :for="'exp-'+i" class="flex-1 min-w-0 cursor-pointer">
+                            <p class="text-xs font-black text-[var(--text-main)] truncate">{{ ex.position }}</p>
+                            <p class="text-[10px] text-[var(--text-muted)] font-medium truncate">{{ ex.company }}</p>
+                            <p class="text-[9px] text-[var(--text-faint)] font-bold mt-0.5">{{ formatDate(ex.periodFrom) }} &mdash; {{ ex.periodTo ? formatDate(ex.periodTo) : 'Present' }}</p>
+                          </label>
+                          <div class="flex items-center gap-2">
+                            <button v-if="ex.document" @click.stop="openViewer(ex.document, ex.position)"
+                              class="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:ring-1 hover:ring-[var(--color-primary)] transition-all"
+                              title="View Document">
+                              <i class="pi pi-file text-xs"></i>
+                            </button>
+                            <span v-else class="text-[9px] font-bold text-[var(--text-faint)] italic px-2">No Doc</span>
+                          </div>
+                        </div>
+                        <div v-if="!userProfile?.experience?.length" class="p-4 text-center text-[10px] text-[var(--text-faint)] italic">No experience records on file.</div>
+                      </template>
+
+                      <!-- Training Records -->
+                      <template v-if="row.id === 'training'">
+                        <div v-for="(tr, i) in userProfile?.training" :key="i"
+                          class="flex items-center gap-4 p-3 rounded-[var(--radius-xl)] hover:bg-[var(--bg-app)] group/item transition-colors">
+                          <input type="checkbox" :id="'trn-'+i" :checked="selTrn.includes(i)" @change="toggle(selTrn, i)" class="accent-[var(--color-primary)] w-4 h-4 flex-shrink-0 cursor-pointer" />
+                          <label :for="'trn-'+i" class="flex-1 min-w-0 cursor-pointer">
+                            <p class="text-xs font-black text-[var(--text-main)] truncate">{{ tr.title }}</p>
+                            <p class="text-[10px] text-[var(--text-muted)] font-medium truncate">{{ tr.hours }} Hours &mdash; {{ tr.typeOfLD }}</p>
+                            <p class="text-[9px] text-[var(--text-faint)] font-bold mt-0.5">{{ formatDate(tr.periodFrom) }}</p>
+                          </label>
+                          <div class="flex items-center gap-2">
+                            <button v-if="tr.document" @click.stop="openViewer(tr.document, tr.title)"
+                              class="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:ring-1 hover:ring-[var(--color-primary)] transition-all"
+                              title="View Document">
+                              <i class="pi pi-file text-xs"></i>
+                            </button>
+                            <span v-else class="text-[9px] font-bold text-[var(--text-faint)] italic px-2">No Doc</span>
+                          </div>
+                        </div>
+                        <div v-if="!userProfile?.training?.length" class="p-4 text-center text-[10px] text-[var(--text-faint)] italic">No training records on file.</div>
+                      </template>
+
+                      <!-- Eligibility Records -->
+                      <template v-if="row.id === 'eligibility'">
+                        <div v-for="(el, i) in userProfile?.eligibility" :key="i"
+                          class="flex items-center gap-4 p-3 rounded-[var(--radius-xl)] hover:bg-[var(--bg-app)] group/item transition-colors">
+                          <input type="checkbox" :id="'el-'+i" :checked="selElig.includes(i)" @change="toggle(selElig, i)" class="accent-[var(--color-primary)] w-4 h-4 flex-shrink-0 cursor-pointer" />
+                          <label :for="'el-'+i" class="flex-1 min-w-0 cursor-pointer">
+                            <p class="text-xs font-black text-[var(--text-main)] truncate">{{ el.name }}</p>
+                            <p class="text-[10px] text-[var(--text-muted)] font-medium truncate">{{ el.rating ? 'Rating: ' + el.rating + '%' : 'No Rating' }}</p>
+                            <p class="text-[9px] text-[var(--text-faint)] font-bold mt-0.5">{{ el.dateOfExam ? formatDate(el.dateOfExam) : 'No Date' }}</p>
+                          </label>
+                          <div class="flex items-center gap-2">
+                            <button v-if="el.document" @click.stop="openViewer(el.document, el.name)"
+                              class="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:ring-1 hover:ring-[var(--color-primary)] transition-all"
+                              title="View Document">
+                              <i class="pi pi-file text-xs"></i>
+                            </button>
+                            <span v-else class="text-[9px] font-bold text-[var(--text-faint)] italic px-2">No Doc</span>
+                          </div>
+                        </div>
+                        <div v-if="!userProfile?.eligibility?.length" class="p-4 text-center text-[10px] text-[var(--text-faint)] italic">No eligibility records on file.</div>
+                      </template>
+
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Performance Rating -->
+            <div>
+              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Performance Rating (Required)</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-5">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Score</label>
+                  <input v-model="perfRating.score" type="number" step="0.001" placeholder="e.g. 4.850"
+                    class="h-10 px-3 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:outline-none transition-all" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Adjectival</label>
+                  <input v-model="perfRating.adjective" type="text" placeholder="Outstanding"
+                    class="h-10 px-3 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:outline-none transition-all" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Period Covered</label>
+                  <input v-model="perfRating.periodCovered" type="text" placeholder="Jan - Dec 2024"
+                    class="h-10 px-3 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:outline-none transition-all" />
+                </div>
+              </div>
+              <p class="text-[10px] text-[var(--text-muted)] mt-2 italic px-1">Please provide your most recent verified performance rating.</p>
             </div>
 
             <!-- Competency Requirements -->
@@ -547,186 +694,28 @@ const deadlineClass = (d) => {
                 </li>
               </ul>
             </div>
-
-            <!-- Item Numbers / Slots -->
-            <div v-if="selectedJob.itemNumbers?.length">
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Plantilla Item Numbers</h3>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="item in selectedJob.itemNumbers" :key="item"
-                  class="font-mono text-[10px] font-bold px-2.5 py-1.5 rounded-[var(--radius-md)] bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-muted)]">
-                  {{ item }}
-                </span>
-              </div>
-              <p class="text-[9px] text-[var(--text-faint)] mt-2 font-medium">
-                {{ selectedJob.itemNumbers.length }} slot{{ selectedJob.itemNumbers.length !== 1 ? 's' : '' }} available
-              </p>
-            </div>
-
-            <!-- QS Match breakdown (if authenticated) -->
-            <div v-if="authStore.isAuthenticated && getMatchStatus(selectedJob)"
-              class="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-[var(--radius-2xl)] p-5">
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-4">Your QS Match</h3>
-              <div class="space-y-3">
-                <div v-for="c in getMatchStatus(selectedJob).criteria" :key="c.label" class="flex items-center gap-3">
-                  <div :class="['w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0', c.met ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500']">
-                    <i :class="['text-[10px]', c.met ? 'pi pi-check' : 'pi pi-times']"></i>
-                  </div>
-                  <div class="flex-1 flex justify-between items-center">
-                    <span class="text-xs font-bold text-[var(--text-sub)]">{{ c.label }}</span>
-                    <span :class="['text-xs tabular-nums', c.met ? 'text-emerald-600 font-bold' : 'text-red-500 font-black']">
-                      {{ c.act }} <span class="text-[var(--text-faint)] font-normal">/ {{ c.req }}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-end gap-3 flex-shrink-0">
-            <button @click="closeModal" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors px-4">Cancel</button>
-            <button @click="startApply" :disabled="isExpired(selectedJob.deadline)"
-              class="btn-primary h-11 px-8 rounded-[var(--radius-xl)] shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ isExpired(selectedJob.deadline) ? 'Deadline Passed' : 'Apply for this Position' }}
-              <i v-if="!isExpired(selectedJob.deadline)" class="pi pi-arrow-right text-xs"></i>
-            </button>
-          </div>
-        </template>
-
-        <!-- ── STEP: update_prompt ─────────────────────────────────────────── -->
-        <template v-else-if="modalStep === 'update_prompt'">
-          <div class="flex justify-end px-6 pt-5 flex-shrink-0">
-            <button @click="closeModal" class="w-8 h-8 rounded-full bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-              <i class="pi pi-times text-sm"></i>
-            </button>
-          </div>
-          <div class="px-12 pb-12 flex flex-col items-center text-center gap-6">
-            <div class="w-20 h-20 rounded-[var(--radius-3xl)] bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
-              <i class="pi pi-id-card text-3xl"></i>
-            </div>
-            <div>
-              <h2 class="text-xl font-black text-[var(--text-main)]">Strengthen Your Application</h2>
-              <p class="text-sm text-[var(--text-muted)] mt-2 max-w-sm mx-auto leading-relaxed">Ensure your PDS profile is up to date before submitting. You can update your records or proceed with your current data.</p>
-            </div>
-            <div class="flex gap-3 w-full max-w-xs">
-              <button @click="closeModal(); router.push('/user/profile')" class="flex-1 h-12 rounded-[var(--radius-xl)] border border-[var(--border-main)] text-[var(--text-sub)] text-xs font-black uppercase tracking-widest hover:border-[var(--color-primary-ring)] transition-all">
-                Update Profile
-              </button>
-              <button @click="continueApply" :disabled="loadingProfile" class="flex-1 h-12 rounded-[var(--radius-xl)] btn-primary text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60">
-                <i v-if="loadingProfile" class="pi pi-spin pi-spinner text-xs"></i>
-                {{ loadingProfile ? 'Loading...' : 'Continue' }}
-              </button>
-            </div>
-            <p v-if="applyError" class="text-xs text-red-500 font-bold">{{ applyError }}</p>
-          </div>
-        </template>
-
-        <!-- ── STEP: review ────────────────────────────────────────────────── -->
-        <template v-else-if="modalStep === 'review'">
-          <div class="px-8 py-6 border-b border-[var(--border-main)] flex justify-between items-center flex-shrink-0">
-            <div>
-              <h2 class="text-lg font-black text-[var(--text-main)]">Review Your Application</h2>
-              <p class="text-xs text-[var(--text-muted)] mt-0.5">Select the PDS records to include with your submission.</p>
-            </div>
-            <button @click="closeModal" class="w-8 h-8 rounded-full bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-              <i class="pi pi-times text-sm"></i>
-            </button>
-          </div>
-
-          <div class="overflow-y-auto custom-scrollbar flex-1 p-8 space-y-7">
-
-            <!-- Education -->
-            <div v-if="profile?.education?.length">
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Education</h3>
-              <div class="space-y-2">
-                <label v-for="(edu, i) in profile.education" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selEdu.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
-                  <input type="checkbox" :checked="selEdu.includes(i)" @change="toggle(selEdu, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
-                  <div>
-                    <p class="text-xs font-black text-[var(--text-main)]">{{ edu.school }}</p>
-                    <p class="text-[10px] text-[var(--text-muted)]">{{ edu.level }} &mdash; {{ edu.degree }}</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Eligibility -->
-            <div v-if="profile?.eligibility?.length">
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Civil Service Eligibility</h3>
-              <div class="space-y-2">
-                <label v-for="(el, i) in profile.eligibility" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selElig.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
-                  <input type="checkbox" :checked="selElig.includes(i)" @change="toggle(selElig, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
-                  <div>
-                    <p class="text-xs font-black text-[var(--text-main)]">{{ el.name }}</p>
-                    <p class="text-[10px] text-[var(--text-muted)]">{{ el.rating ? 'Rating: ' + el.rating : '' }}{{ el.dateOfExam ? ' &mdash; ' + formatDate(el.dateOfExam) : '' }}</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Training -->
-            <div v-if="profile?.training?.length">
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Training &amp; L&amp;D</h3>
-              <div class="space-y-2">
-                <label v-for="(tr, i) in profile.training" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selTrn.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
-                  <input type="checkbox" :checked="selTrn.includes(i)" @change="toggle(selTrn, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
-                  <div>
-                    <p class="text-xs font-black text-[var(--text-main)]">{{ tr.title }}</p>
-                    <p class="text-[10px] text-[var(--text-muted)]">{{ tr.hours }}hrs &mdash; {{ tr.typeOfLD || 'General' }}</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Experience -->
-            <div v-if="profile?.experience?.length">
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Work Experience</h3>
-              <div class="space-y-2">
-                <label v-for="(ex, i) in profile.experience" :key="i"
-                  :class="['flex items-start gap-3 p-3 rounded-[var(--radius-xl)] border cursor-pointer transition-all', selExp.includes(i) ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] border-[var(--border-main)] hover:border-[var(--color-primary-ring)]']">
-                  <input type="checkbox" :checked="selExp.includes(i)" @change="toggle(selExp, i)" class="mt-0.5 accent-[var(--color-primary)] w-4 h-4 flex-shrink-0" />
-                  <div>
-                    <p class="text-xs font-black text-[var(--text-main)]">{{ ex.position }}</p>
-                    <p class="text-[10px] text-[var(--text-muted)]">{{ ex.company }}</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Performance Rating -->
-            <div>
-              <h3 class="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[0.2em] mb-3">Performance Rating</h3>
-              <div class="grid grid-cols-3 gap-3">
-                <div class="flex flex-col gap-1">
-                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Score</label>
-                  <input v-model="perfRating.score" type="number" placeholder="e.g. 4.5" class="input h-10 text-sm" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Adjectival</label>
-                  <input v-model="perfRating.adjective" type="text" placeholder="Outstanding" class="input h-10 text-sm" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[10px] font-bold text-[var(--text-faint)] uppercase tracking-widest">Period</label>
-                  <input v-model="perfRating.periodCovered" type="text" placeholder="2024-Q4" class="input h-10 text-sm" />
-                </div>
-              </div>
-            </div>
-
-            <p v-if="applyError" class="text-xs text-red-500 font-bold bg-red-50 border border-red-100 rounded-[var(--radius-xl)] px-4 py-3">{{ applyError }}</p>
           </div>
 
           <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex justify-between items-center gap-3 flex-shrink-0">
-            <button @click="modalStep = 'update_prompt'" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center gap-1.5 transition-colors">
-              <i class="pi pi-arrow-left text-[10px]"></i> Back
-            </button>
-            <button @click="submitApplication" :disabled="applying" class="btn-primary h-11 px-8 rounded-[var(--radius-xl)] shadow-lg flex items-center gap-2 disabled:opacity-60">
-              <i v-if="applying" class="pi pi-spin pi-spinner text-xs"></i>
-              {{ applying ? 'Submitting...' : 'Submit Application' }}
-              <i v-if="!applying" class="pi pi-send text-xs"></i>
-            </button>
+            <div class="flex items-center gap-2 text-[var(--text-muted)] text-[10px] font-bold">
+              <i class="pi pi-info-circle"></i>
+              Click on QS rows to expand and select specific PDS records.
+            </div>
+            <div class="flex gap-3">
+              <button @click="closeModal" class="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors px-4">Cancel</button>
+              <button @click="handleApplyClick" :disabled="applying || isExpired(selectedJob.deadline)"
+                class="btn-primary h-11 px-8 rounded-[var(--radius-xl)] shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i v-if="applying" class="pi pi-spin pi-spinner text-xs"></i>
+                {{ isExpired(selectedJob.deadline) ? 'Deadline Passed' : (applying ? 'Submit Application' : 'Submit Application') }}
+                <i v-if="!applying && !isExpired(selectedJob.deadline)" class="pi pi-send text-xs"></i>
+              </button>
+            </div>
           </div>
         </template>
+
+        <!-- ── STEP: update_prompt (REMOVED) ───────────────────────────────── -->
+
+        <!-- ── STEP: review (REMOVED) ──────────────────────────────────────── -->
 
         <!-- ── STEP: success ───────────────────────────────────────────────── -->
         <template v-else-if="modalStep === 'success'">
@@ -766,6 +755,13 @@ const deadlineClass = (d) => {
 
     <!-- PDF Component -->
     <ApplicantCoverPagePdf v-if="showCoverPdf && submittedApp" :app="submittedApp" @close="showCoverPdf = false" />
+    
+    <!-- File Viewer -->
+    <AppFileViewer
+      v-model="showViewer"
+      :url="viewerUrl"
+      :title="viewerTitle"
+    />
   </div>
 </template>
 
