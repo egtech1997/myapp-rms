@@ -82,9 +82,10 @@ export const profileValidator = Joi.object({
     rating: Joi.string().allow("", null),
     dateOfExam: Joi.date().allow(null, ""),
     placeOfExam: Joi.string().allow("", null),
-    licenseNumber: Joi.string().allow("", null),
+    licenseNumber:   Joi.string().allow("", null),
     licenseValidity: Joi.date().allow(null, ""),
-    document: Joi.string().allow("", null),
+    document:        Joi.string().allow("", null),
+    licenseDocument: Joi.string().allow("", null),
   })),
 
   education: Joi.array().items(Joi.object({
@@ -97,6 +98,8 @@ export const profileValidator = Joi.object({
     unitsEarned: Joi.string().allow("", null),
     yearGraduated: Joi.string().allow("", null),
     honorsReceived: Joi.string().allow("", null),
+    tor:     Joi.string().allow("", null),
+    diploma: Joi.string().allow("", null),
   })),
 
   training: Joi.array().items(Joi.object({

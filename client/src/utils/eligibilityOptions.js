@@ -5,6 +5,7 @@
 export const ELIGIBILITY_OPTIONS = [
   // ── 2nd Level (Professional) ──────────────────────────────────────────────
   { value: "RA 1080 (Registered Teacher / LET)",         label: "RA 1080 — Registered Teacher (LET)",              level: 2 },
+  { value: "NQESH (National Qualifying Exam for School Heads)", label: "NQESH — National Qualifying Exam for School Heads", level: 2 },
   { value: "RA 1080 (Other Professional — Board Exam)",  label: "RA 1080 — Other Professional (Board Exam)",        level: 2 },
   { value: "Career Service (Professional)",              label: "Career Service Professional — 2nd Level (CSE-PPT)", level: 2 },
   { value: "Bar (RA 1080)",                              label: "RA 1080 — Bar Exam (Attorney)",                    level: 2 },

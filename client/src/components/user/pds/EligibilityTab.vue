@@ -1,6 +1,7 @@
 <script setup>
 import { AppInput, AppSelect } from '@/components/ui'
 import { ELIGIBILITY_GROUPS } from '@/utils/eligibilityOptions'
+import { docFilename, docIsPdf } from '@/composables/useDocUpload'
 
 defineOptions({ name: 'EligibilityTab' })
 
@@ -12,8 +13,8 @@ const emit = defineEmits(['update:modelValue', 'upload', 'preview'])
 
 const addEntry = () => {
   emit('update:modelValue', [
+    { type: '', name: '', rating: '', dateOfExam: '', placeOfExam: '', licenseNumber: '', licenseValidity: '', document: '', licenseDocument: '' },
     ...props.modelValue,
-    { type: '', name: '', rating: '', dateOfExam: '', placeOfExam: '', licenseNumber: '', licenseValidity: '', document: '' },
   ])
 }
 
@@ -82,7 +83,7 @@ const removeEntry = (i) => {
             <AppSelect
               v-model="item.type"
               label="Eligibility Category"
-              :options="Object.entries(ELIGIBILITY_GROUPS).map(([label, opts]) => ({ label, options: opts }))"
+              :options="ELIGIBILITY_GROUPS"
               :grouped="true" />
           </div>
 
@@ -121,33 +122,77 @@ const removeEntry = (i) => {
           </div>
         </div>
 
-        <!-- Document attachment -->
+        <!-- Document attachments -->
         <div class="px-5 py-3.5 bg-[var(--bg-app)] border-t border-[var(--border-main)]">
-          <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">Supporting Document</p>
-          <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
-            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-              <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-[10px] font-bold text-[var(--text-muted)]">Rating Certificate / License / Board Result</p>
-              <button v-if="item.document"
-                @click="$emit('preview', item.document, item.name || 'Eligibility Document')"
-                class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
-                View uploaded
-              </button>
-              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
-                Upload
-                <input type="file" class="sr-only" accept=".pdf,image/*"
-                  @change="$emit('upload', $event, i)" />
+          <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">Supporting Documents</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+            <!-- Card 1: Board Result / Rating Certificate -->
+            <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                :class="item.document ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--bg-app)]'">
+                <i :class="[
+                  'text-sm',
+                  item.document
+                    ? (docIsPdf(item.document) ? 'pi pi-file-pdf text-[var(--color-primary)]' : 'pi pi-image text-[var(--color-primary)]')
+                    : 'pi pi-clipboard text-[var(--text-faint)]'
+                ]"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold text-[var(--text-muted)]">Board Result / Rating Certificate</p>
+                <div v-if="item.document" class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[110px]" :title="docFilename(item.document)">
+                    {{ docFilename(item.document) }}
+                  </span>
+                  <button @click="$emit('preview', item.document, 'Board Result / Rating Certificate')"
+                    class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+                </div>
+                <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
+                  Click to upload
+                  <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i, 'document')" />
+                </label>
+              </div>
+              <label v-if="item.document"
+                class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all cursor-pointer shrink-0"
+                title="Replace file">
+                <i class="pi pi-sync text-[10px]"></i>
+                <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i, 'document')" />
               </label>
             </div>
-            <label v-if="item.document"
-              class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
-              title="Replace file">
-              <i class="pi pi-sync text-[10px]"></i>
-              <input type="file" class="sr-only" accept=".pdf,image/*"
-                @change="$emit('upload', $event, i)" />
-            </label>
+
+            <!-- Card 2: PRC License Card / License Document -->
+            <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                :class="item.licenseDocument ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--bg-app)]'">
+                <i :class="[
+                  'text-sm',
+                  item.licenseDocument
+                    ? (docIsPdf(item.licenseDocument) ? 'pi pi-file-pdf text-[var(--color-primary)]' : 'pi pi-image text-[var(--color-primary)]')
+                    : 'pi pi-id-card text-[var(--text-faint)]'
+                ]"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold text-[var(--text-muted)]">PRC License Card / License Document</p>
+                <div v-if="item.licenseDocument" class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[110px]" :title="docFilename(item.licenseDocument)">
+                    {{ docFilename(item.licenseDocument) }}
+                  </span>
+                  <button @click="$emit('preview', item.licenseDocument, 'PRC License Card')"
+                    class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+                </div>
+                <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
+                  Click to upload
+                  <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i, 'licenseDocument')" />
+                </label>
+              </div>
+              <label v-if="item.licenseDocument"
+                class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all cursor-pointer shrink-0"
+                title="Replace file">
+                <i class="pi pi-sync text-[10px]"></i>
+                <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i, 'licenseDocument')" />
+              </label>
+            </div>
+
           </div>
         </div>
 

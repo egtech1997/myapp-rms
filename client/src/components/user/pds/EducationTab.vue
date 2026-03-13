@@ -1,5 +1,6 @@
 <script setup>
 import { AppInput, AppSelect } from '@/components/ui'
+import { docFilename, docIsPdf } from '@/composables/useDocUpload'
 
 defineOptions({ name: 'EducationTab' })
 
@@ -32,12 +33,12 @@ const showUnitsEarned   = (edu) => edu.status === 'Units Earned' || edu.status =
 
 const addEntry = () => {
   emit('update:modelValue', [
-    ...props.modelValue,
     {
       level: '', school: '', degree: '', periodFrom: '', periodTo: '',
       status: 'Graduated', unitsEarned: '', yearGraduated: '',
       honorsReceived: '', tor: '', diploma: '',
     },
+    ...props.modelValue,
   ])
 }
 
@@ -178,38 +179,55 @@ const onStatusChange = (edu, val) => {
         </div>
 
         <!-- Document attachments -->
-        <div class="px-5 py-3.5 bg-[var(--bg-app)] border-t border-[var(--border-main)] flex flex-wrap gap-3">
-          <p class="w-full text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-1">Supporting Documents</p>
+        <div class="px-5 py-3.5 bg-[var(--bg-app)] border-t border-[var(--border-main)]">
+          <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">Supporting Documents</p>
+          <div class="flex flex-wrap gap-3">
+            <div v-for="doc in [
+              { key: 'tor',     label: 'Transcript of Records (TOR)' },
+              { key: 'diploma', label: 'Diploma / Certificate'       },
+            ]" :key="doc.key"
+              class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)] flex-1 min-w-[220px]">
 
-          <div v-for="doc in [
-            { key: 'tor',     label: 'Transcript of Records (TOR)' },
-            { key: 'diploma', label: 'Diploma / Certificate'       },
-          ]" :key="doc.key"
-            class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)] min-w-[200px]">
-            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-              <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-[10px] font-bold text-[var(--text-muted)] truncate">{{ doc.label }}</p>
-              <button v-if="edu[doc.key]"
-                @click="$emit('preview', edu[doc.key], `${doc.label} — ${edu.school}`)"
-                class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
-                View uploaded
-              </button>
-              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
-                Upload
+              <!-- Icon: PDF or image -->
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                :class="edu[doc.key] ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--bg-app)]'">
+                <i :class="[
+                  'text-sm',
+                  edu[doc.key]
+                    ? (docIsPdf(edu[doc.key]) ? 'pi pi-file-pdf text-[var(--color-primary)]' : 'pi pi-image text-[var(--color-primary)]')
+                    : 'pi pi-upload text-[var(--text-faint)]'
+                ]"></i>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold text-[var(--text-muted)]">{{ doc.label }}</p>
+                <!-- Uploaded: filename + view link -->
+                <div v-if="edu[doc.key]" class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[120px]" :title="docFilename(edu[doc.key])">
+                    {{ docFilename(edu[doc.key]) }}
+                  </span>
+                  <button @click="$emit('preview', edu[doc.key], `${doc.label} — ${edu.school}`)"
+                    class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">
+                    View
+                  </button>
+                </div>
+                <!-- Not uploaded -->
+                <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
+                  Click to upload
+                  <input type="file" class="sr-only" accept=".pdf,image/*"
+                    @change="$emit('upload', $event, i, doc.key)" />
+                </label>
+              </div>
+
+              <!-- Replace button -->
+              <label v-if="edu[doc.key]"
+                class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all cursor-pointer shrink-0"
+                title="Replace file">
+                <i class="pi pi-sync text-[10px]"></i>
                 <input type="file" class="sr-only" accept=".pdf,image/*"
                   @change="$emit('upload', $event, i, doc.key)" />
               </label>
             </div>
-            <!-- Re-upload -->
-            <label v-if="edu[doc.key]"
-              class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
-              title="Replace file">
-              <i class="pi pi-sync text-[10px]"></i>
-              <input type="file" class="sr-only" accept=".pdf,image/*"
-                @change="$emit('upload', $event, i, doc.key)" />
-            </label>
           </div>
         </div>
 

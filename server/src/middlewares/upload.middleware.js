@@ -1,87 +1,101 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const uploadDir = path.join(__dirname, "..", "..", "public", "uploads", "avatars");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const publicDir = path.join(__dirname, "..", "..", "public");
 
-const systemUploadDir = path.join(__dirname, "..", "..", "public", "uploads", "system");
-if (!fs.existsSync(systemUploadDir)) {
-  fs.mkdirSync(systemUploadDir, { recursive: true });
-}
+// ── Sanitize email for use as a filesystem folder name ────────────────────────
+// Keeps letters, digits, dots, hyphens, underscores, and the @ symbol.
+// Replaces anything else with underscore and lowercases the whole string.
+const sanitizeEmail = (email = "unknown") =>
+  email.toLowerCase().replace(/[^a-z0-9.@_-]/g, "_");
 
-const docUploadDir = path.join(__dirname, "..", "..", "public", "uploads", "documents");
-if (!fs.existsSync(docUploadDir)) {
-  fs.mkdirSync(docUploadDir, { recursive: true });
-}
+// ── Ensure base upload dirs exist at startup ──────────────────────────────────
+const ensureDir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); };
 
+ensureDir(path.join(publicDir, "uploads", "avatars"));
+ensureDir(path.join(publicDir, "uploads", "system"));
+ensureDir(path.join(publicDir, "uploads", "documents"));
+
+// ── Avatar storage ────────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (_req, _file, cb) => cb(null, path.join(publicDir, "uploads", "avatars")),
   filename: (req, file, cb) => {
     const userId = req.user?._id || "guest";
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     let ext = path.extname(file.originalname).toLowerCase();
-
-    if (!ext) {
-      if (file.mimetype === "image/gif") ext = ".gif";
-      else if (file.mimetype === "image/png") ext = ".png";
-      else ext = ".jpg";
-    }
-
-    cb(null, `avatar-${userId}-${uniqueSuffix}${ext}`);
+    if (!ext) ext = file.mimetype === "image/gif" ? ".gif" : file.mimetype === "image/png" ? ".png" : ".jpg";
+    cb(null, `avatar-${userId}-${unique}${ext}`);
   },
 });
 
+// ── Document storage — organised by email / section ──────────────────────────
+// IMPORTANT: The client must append `type` (and optionally `field`) to FormData
+// BEFORE appending the `file` field so multer can read req.body.type here.
 const docStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, docUploadDir),
-  filename: (req, file, cb) => {
-    const userId = req.user?._id || "user";
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  destination: (req, _file, cb) => {
+    const email   = sanitizeEmail(req.user?.email);
+    const section = (req.body.type || "general").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const dir     = path.join(publicDir, "uploads", "documents", email, section);
+    ensureDir(dir);
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     let ext = path.extname(file.originalname).toLowerCase();
-    if (!ext) {
-      if (file.mimetype === "application/pdf") ext = ".pdf";
-      else if (file.mimetype === "image/png") ext = ".png";
-      else ext = ".jpg";
-    }
-    cb(null, `doc-${userId}-${uniqueSuffix}${ext}`);
+    if (!ext) ext = file.mimetype === "application/pdf" ? ".pdf" : file.mimetype === "image/png" ? ".png" : ".jpg";
+    cb(null, `${unique}${ext}`);
   },
 });
 
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/")) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error("Invalid file type. Only images (including GIFs) are allowed!"),
-      false,
-    );
-  }
-};
-
-const docFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/") || file.mimetype === "application/pdf") {
-    cb(null, true);
-  } else {
-    cb(new Error("Invalid file type. Only images and PDFs are allowed!"), false);
-  }
-};
-
-export const uploadAvatar = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024,
+// ── Application document storage — organised by jobId / userId ───────────────
+// IMPORTANT: The client must append `jobId` BEFORE the file field in FormData.
+const applicationDocStorage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    const jobId  = (req.body.jobId  || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const userId = (req.user?._id?.toString() || "guest").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const dir    = path.join(publicDir, "uploads", "applications", jobId, userId);
+    ensureDir(dir);
+    cb(null, dir);
   },
-  fileFilter: fileFilter,
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!ext) ext = file.mimetype === "application/pdf" ? ".pdf" : file.mimetype === "image/png" ? ".png" : ".jpg";
+    cb(null, `${unique}${ext}`);
+  },
+});
+
+// ── System logo storage ───────────────────────────────────────────────────────
+const systemStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, path.join(publicDir, "uploads", "system")),
+  filename: (_req, file, cb) => {
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!ext) ext = file.mimetype === "image/png" ? ".png" : ".jpg";
+    cb(null, `logo-${Date.now()}${ext}`);
+  },
+});
+
+// ── File filters ──────────────────────────────────────────────────────────────
+const imageFilter = (_req, file, cb) =>
+  file.mimetype.startsWith("image/")
+    ? cb(null, true)
+    : cb(new Error("Only image files are allowed."), false);
+
+const docFilter = (_req, file, cb) =>
+  file.mimetype.startsWith("image/") || file.mimetype === "application/pdf"
+    ? cb(null, true)
+    : cb(new Error("Only images and PDF files are allowed."), false);
+
+// ── Exports ───────────────────────────────────────────────────────────────────
+export const uploadAvatar = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: imageFilter,
 });
 
 export const uploadDocument = multer({
@@ -90,17 +104,14 @@ export const uploadDocument = multer({
   fileFilter: docFilter,
 });
 
-const systemStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, systemUploadDir),
-  filename: (req, file, cb) => {
-    let ext = path.extname(file.originalname).toLowerCase();
-    if (!ext) ext = file.mimetype === "image/png" ? ".png" : ".jpg";
-    cb(null, `logo-${Date.now()}${ext}`);
-  },
+export const uploadApplicationDoc = multer({
+  storage: applicationDocStorage,
+  limits:  { fileSize: 15 * 1024 * 1024 },
+  fileFilter: docFilter,
 });
 
 export const uploadSystemLogo = multer({
   storage: systemStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: fileFilter,
+  fileFilter: imageFilter,
 });

@@ -136,6 +136,19 @@ const applicationSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now }
       }
     ],
+    submissionDocs: {
+      pds:                        { fileUrl: String, fileName: String, uploadedAt: Date },
+      applicationLetter:          { fileUrl: String, fileName: String, uploadedAt: Date },
+      performanceRatingDoc:       { fileUrl: String, fileName: String, uploadedAt: Date },
+      latestAppointment:          { fileUrl: String, fileName: String, uploadedAt: Date },
+      workExperienceSheet:        { fileUrl: String, fileName: String, uploadedAt: Date },
+      outstandingAccomplishments: [{ fileUrl: String, fileName: String, uploadedAt: { type: Date, default: Date.now } }],
+      movs:                       [{ fileUrl: String, fileName: String, uploadedAt: { type: Date, default: Date.now } }],
+      research:                   { fileUrl: String, fileName: String, uploadedAt: Date },
+      awards:                     [{ fileUrl: String, fileName: String, uploadedAt: { type: Date, default: Date.now } }],
+      others:                     [{ fileUrl: String, fileName: String, uploadedAt: { type: Date, default: Date.now } }],
+    },
+
     isQualified: { type: Boolean, default: true },
     disqualificationReason: {
       type: String,

@@ -1,5 +1,6 @@
 <script setup>
 import { AppInput, AppSelect, AppTextarea } from '@/components/ui'
+import { docFilename, docIsPdf } from '@/composables/useDocUpload'
 
 defineOptions({ name: 'ExperienceTab' })
 
@@ -26,12 +27,12 @@ const serviceTypeOptions = [
 
 const addEntry = () => {
   emit('update:modelValue', [
-    ...props.modelValue,
     {
       position: '', company: '', monthlySalary: '', salaryGrade: '',
       statusOfAppointment: 'Permanent', periodFrom: '', periodTo: '',
       serviceType: 'Government', keyResponsibilities: [], document: '',
     },
+    ...props.modelValue,
   ])
 }
 
@@ -44,9 +45,9 @@ const removeEntry = (i) => {
 const addResponsibility = (exp) => exp.keyResponsibilities.push('')
 const removeResponsibility = (exp, i) => exp.keyResponsibilities.splice(i, 1)
 
-const isPresent = (exp) => !exp.periodTo
+const isPresent = (exp) => exp.periodTo === null
 const togglePresent = (exp) => {
-  exp.periodTo = exp.periodTo ? '' : null
+  exp.periodTo = isPresent(exp) ? '' : null
 }
 </script>
 
@@ -169,12 +170,12 @@ const togglePresent = (exp) => {
               <i class="pi pi-plus text-[9px]"></i> Add
             </button>
           </div>
-          <div v-if="item.keyResponsibilities.length" class="flex flex-col gap-2">
-            <div v-for="(_, ri) in item.keyResponsibilities" :key="ri" class="flex items-center gap-2">
+          <div v-if="item.keyResponsibilities.length" class="flex flex-col gap-1">
+            <div v-for="(_, ri) in item.keyResponsibilities" :key="ri" class="flex items-start gap-1.5">
               <AppInput v-model="item.keyResponsibilities[ri]"
                 :label="`Responsibility ${ri + 1}`" size="sm" class="flex-1" />
               <button @click="removeResponsibility(item, ri)"
-                class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                class="w-8 h-8 shrink-0 self-start mt-1 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
                 <i class="pi pi-trash text-xs"></i>
               </button>
             </div>
@@ -186,28 +187,34 @@ const togglePresent = (exp) => {
         <div class="px-5 py-3.5 bg-[var(--bg-app)] border-t border-[var(--border-main)]">
           <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">Supporting Document</p>
           <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
-            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-              <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              :class="item.document ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--bg-app)]'">
+              <i :class="[
+                'text-sm',
+                item.document
+                  ? (docIsPdf(item.document) ? 'pi pi-file-pdf text-[var(--color-primary)]' : 'pi pi-image text-[var(--color-primary)]')
+                  : 'pi pi-upload text-[var(--text-faint)]'
+              ]"></i>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-[10px] font-bold text-[var(--text-muted)]">Certificate of Employment (COE) / Service Record</p>
-              <button v-if="item.document"
-                @click="$emit('preview', item.document, `COE — ${item.position}`)"
-                class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
-                View uploaded
-              </button>
-              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
-                Upload
-                <input type="file" class="sr-only" accept=".pdf,image/*"
-                  @change="$emit('upload', $event, i)" />
+              <div v-if="item.document" class="flex items-center gap-2 mt-0.5">
+                <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[140px]" :title="docFilename(item.document)">
+                  {{ docFilename(item.document) }}
+                </span>
+                <button @click="$emit('preview', item.document, `COE — ${item.position}`)"
+                  class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+              </div>
+              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
+                Click to upload
+                <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i)" />
               </label>
             </div>
             <label v-if="item.document"
-              class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
+              class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all cursor-pointer shrink-0"
               title="Replace file">
               <i class="pi pi-sync text-[10px]"></i>
-              <input type="file" class="sr-only" accept=".pdf,image/*"
-                @change="$emit('upload', $event, i)" />
+              <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i)" />
             </label>
           </div>
         </div>

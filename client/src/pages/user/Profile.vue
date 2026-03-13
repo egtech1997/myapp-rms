@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onActivated, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useRoute, useRouter } from 'vue-router'
 import { resolveUrl } from '@/utils/url'
 import apiClient from '@/api/axios'
 
@@ -13,15 +14,21 @@ import EligibilityTab from '@/components/user/pds/EligibilityTab.vue'
 import ExperienceTab  from '@/components/user/pds/ExperienceTab.vue'
 import TrainingTab    from '@/components/user/pds/TrainingTab.vue'
 import OthersTab      from '@/components/user/pds/OthersTab.vue'
+import ReferencesTab  from '@/components/user/pds/ReferencesTab.vue'
 
 defineOptions({ name: 'UserProfile' })
 
 const authStore = useAuthStore()
+const route     = useRoute()
+const router    = useRouter()
 const toast     = inject('$toast')
+
+const isSetupMode = computed(() => route.query.setup === '1')
+const nextPath    = computed(() => route.query.next || '/user/vacancies')
 
 const loading   = ref(true)
 const saving    = ref(false)
-const activeTab = ref(localStorage.getItem('pds_active_tab') || 'personal')
+const activeTab = ref(localStorage.getItem('profile_active_tab') || 'personal')
 
 const showViewer  = ref(false)
 const viewerUrl   = ref('')
@@ -42,6 +49,7 @@ const tabs = [
   { id: 'experience',  label: 'Experience',  icon: 'pi-briefcase'      },
   { id: 'training',    label: 'Training',    icon: 'pi-book'           },
   { id: 'others',      label: 'Others',      icon: 'pi-list'           },
+  { id: 'references',  label: 'References',  icon: 'pi-address-book'   },
 ]
 
 const form = reactive({
@@ -58,6 +66,7 @@ const form = reactive({
     children: [],
   },
   education: [], eligibility: [], experience: [], training: [],
+  references: [],
   voluntaryWork: [],
   specialSkills: [], nonAcademicDistinctions: [], memberships: [],
   pdsQuestions: {
@@ -89,6 +98,7 @@ const completenessSteps = computed(() => [
   { id: 'experience',  done: !!(form.experience?.length) },
   { id: 'training',    done: !!(form.training?.length) },
   { id: 'others',      done: !!(form.specialSkills?.length || form.voluntaryWork?.length) },
+  { id: 'references',  done: !!(form.references?.some(r => r.name)) },
 ])
 
 const completenessPercent = computed(() => {
@@ -100,7 +110,7 @@ const isDone = (tabId) => completenessSteps.value.find(s => s.id === tabId)?.don
 
 const setTab = (id) => {
   activeTab.value = id
-  localStorage.setItem('pds_active_tab', id)
+  localStorage.setItem('profile_active_tab', id)
 }
 
 const loadProfile = async () => {
@@ -120,6 +130,10 @@ const saveProfile = async () => {
   try {
     await apiClient.put('/v1/profile/me', form)
     toast.fire({ icon: 'success', title: 'Profile saved!' })
+    // If in setup mode and required fields are now filled, continue to intended destination
+    if (isSetupMode.value && form.name?.firstName) {
+      router.push(nextPath.value)
+    }
   } catch {
     toast.fire({ icon: 'error', title: 'Failed to save profile' })
   } finally {
@@ -130,17 +144,33 @@ const saveProfile = async () => {
 const handleUpload = async (event, section, index, field) => {
   const file = event.target.files[0]
   if (!file) return
+
+  // Resolve old URL for server-side cleanup on replace
+  let oldUrl = ''
+  if (section === 'education'     && index !== null) oldUrl = form.education[index]?.[field]              || ''
+  if (section === 'eligibility'   && index !== null) oldUrl = form.eligibility[index]?.[field]            || ''
+  if (section === 'experience'    && index !== null) oldUrl = form.experience[index]?.document            || ''
+  if (section === 'training'      && index !== null) oldUrl = form.training[index]?.document              || ''
+  if (section === 'comelecAddress')                  oldUrl = form.comelecAddress?.document               || ''
+
+  // IMPORTANT: append type/field BEFORE file so multer reads them
+  // in the diskStorage destination callback (stream order matters)
   const formData = new FormData()
-  formData.append('file', file)
   formData.append('type', section)
-  if (field) formData.append('field', field)
+  if (field)  formData.append('field', field)
+  if (oldUrl) formData.append('oldUrl', oldUrl)
+  formData.append('file', file)
+
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
-    if (section === 'education')   form.education[index][field]     = data.fileUrl
-    if (section === 'eligibility') form.eligibility[index].document = data.fileUrl
-    if (section === 'experience')  form.experience[index].document  = data.fileUrl
-    if (section === 'training')    form.training[index].document    = data.fileUrl
-    toast.fire({ icon: 'success', title: 'Document uploaded' })
+    if (section === 'education')      form.education[index][field]      = data.fileUrl
+    if (section === 'eligibility')    form.eligibility[index][field]    = data.fileUrl
+    if (section === 'experience')     form.experience[index].document   = data.fileUrl
+    if (section === 'training')       form.training[index].document     = data.fileUrl
+    if (section === 'comelecAddress') form.comelecAddress.document      = data.fileUrl
+    // Auto-save so file URLs persist across page refreshes
+    await apiClient.put('/v1/profile/me', form)
+    toast.fire({ icon: 'success', title: 'Document uploaded and saved' })
   } catch {
     toast.fire({ icon: 'error', title: 'Upload failed' })
   }
@@ -174,7 +204,7 @@ onActivated(loadProfile)
 
         <!-- Identity -->
         <div class="flex-1 min-w-0">
-          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)] mb-0.5">CS Form 212 — Personal Data Sheet</p>
+          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)] mb-0.5">Applicant Profile</p>
           <p class="text-base font-black text-[var(--text-main)] leading-tight">{{ fullName }}</p>
           <p class="text-xs text-[var(--text-muted)] truncate">{{ authStore.user?.email }}</p>
         </div>
@@ -230,17 +260,19 @@ onActivated(loadProfile)
 
       <!-- ── Tab content ──────────────────────────────────── -->
       <div class="p-6">
-        <PersonalTab    v-if="activeTab === 'personal'"    v-model="form" />
+        <PersonalTab    v-if="activeTab === 'personal'"    v-model="form"
+          @upload="(e, section) => handleUpload(e, section, null, null)" @preview="openViewer" />
         <FamilyTab      v-if="activeTab === 'family'"      v-model="form.family" />
         <EducationTab   v-if="activeTab === 'education'"   v-model="form.education"
           @upload="(e, i, f) => handleUpload(e, 'education', i, f)" @preview="openViewer" />
         <EligibilityTab v-if="activeTab === 'eligibility'" v-model="form.eligibility"
-          @upload="(e, i) => handleUpload(e, 'eligibility', i)" @preview="openViewer" />
+          @upload="(e, i, f) => handleUpload(e, 'eligibility', i, f)" @preview="openViewer" />
         <ExperienceTab  v-if="activeTab === 'experience'"  v-model="form.experience"
           @upload="(e, i) => handleUpload(e, 'experience', i)" @preview="openViewer" />
         <TrainingTab    v-if="activeTab === 'training'"    v-model="form.training"
           @upload="(e, i) => handleUpload(e, 'training', i)" @preview="openViewer" />
         <OthersTab      v-if="activeTab === 'others'"      v-model="form" />
+        <ReferencesTab  v-if="activeTab === 'references'"  v-model="form.references" />
       </div>
 
     </div>

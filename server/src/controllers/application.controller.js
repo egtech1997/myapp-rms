@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 
 // ── 1. Submit Application (User) ────────────────────────────────────────────
 export const applyToJob = catchAsync(async (req, res, next) => {
-  const { jobId, category } = req.body;
+  const { jobId, category, submissionDocs } = req.body;
 
   const job = await Job.findById(jobId);
   if (!job) return next(new AppError("Job not found.", 404));
@@ -30,12 +30,14 @@ export const applyToJob = catchAsync(async (req, res, next) => {
     return next(new AppError("You have already applied for this position.", 400));
   }
 
-  let applicantData = req.body.applicantData || {};
-  
-  // ── Always Snapshot Personal Info from Profile for Integrity ─────────
+  // Client sends selected sub-arrays via applicantData; personalInfo is always
+  // force-snapshotted server-side for integrity.
+  const applicantData = req.body.applicantData || {};
+
   const profile = await Profile.findOne({ user: req.user._id }).lean();
   if (!profile) return next(new AppError("Please complete your PDS profile before applying.", 400));
 
+  // Force-snapshot personal info from server-side profile (cannot be spoofed)
   applicantData.personalInfo = {
     firstName:        profile.name?.firstName,
     middleName:       profile.name?.middleName,
@@ -59,23 +61,26 @@ export const applyToJob = catchAsync(async (req, res, next) => {
     comelecAddress:   profile.comelecAddress,
   };
 
-  // ── Snapshot other sections from Profile for Integrity ──────────────
-  applicantData.education         = profile.education || [];
-  applicantData.eligibility       = profile.eligibility || [];
-  applicantData.experience        = profile.experience || [];
-  applicantData.training          = profile.training || [];
-  applicantData.voluntaryWork     = profile.voluntaryWork || [];
-  applicantData.performanceRating = profile.performanceRating || {};
-  applicantData.competencies      = profile.competencies || [];
-  applicantData.specialSkills     = profile.specialSkills || [];
+  // Supplemental fields always snapshotted from server profile
+  applicantData.voluntaryWork           = profile.voluntaryWork || [];
+  applicantData.competencies            = profile.competencies  || [];
+  applicantData.specialSkills           = profile.specialSkills || [];
   applicantData.nonAcademicDistinctions = profile.nonAcademicDistinctions || [];
-  applicantData.memberships       = profile.memberships || [];
+  applicantData.memberships             = profile.memberships   || [];
+
+  // If the client did not send selected sub-arrays, fall back to full profile snapshot
+  if (!applicantData.education)   applicantData.education   = profile.education   || [];
+  if (!applicantData.eligibility) applicantData.eligibility = profile.eligibility || [];
+  if (!applicantData.experience)  applicantData.experience  = profile.experience  || [];
+  if (!applicantData.training)    applicantData.training    = profile.training    || [];
+  if (!applicantData.performanceRating) applicantData.performanceRating = profile.performanceRating || {};
 
   const newApplication = await Application.create({
     submittedBy: req.user._id,
     submittedTo: jobId,
     category,
     applicantData,
+    submissionDocs: submissionDocs || {},
   });
 
   await Job.findByIdAndUpdate(jobId, {
@@ -385,4 +390,24 @@ export const syncApplicationWithProfile = catchAsync(async (req, res, next) => {
   await application.save();
 
   res.status(200).json({ status: 'success', data: application });
+});
+
+// ── Upload Application Submission Document ───────────────────────────────────
+// POST /v1/applications/upload-doc
+// Multer (applicationDocStorage) saves to:
+//   public/uploads/applications/{jobId}/{userId}/{timestamp}.ext
+// Returns { fileUrl, fileName } for the client to collect before final submit.
+const publicDir = path.join(__dirname, "..", "..", "public");
+
+export const uploadSubmissionDoc = catchAsync(async (req, res, next) => {
+  if (!req.file) return next(new AppError("No file uploaded.", 400));
+
+  const relativePath = req.file.destination
+    .replace(publicDir, "")
+    .replace(/\\/g, "/");
+
+  const fileUrl  = `${relativePath}/${req.file.filename}`;
+  const fileName = req.file.originalname;
+
+  res.status(200).json({ status: "success", fileUrl, fileName });
 });

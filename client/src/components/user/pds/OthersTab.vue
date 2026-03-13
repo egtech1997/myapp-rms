@@ -7,43 +7,25 @@ const props = defineProps({
   modelValue: { type: Object, required: true },
 })
 
-const emit = defineEmits(['update:modelValue'])
+// modelValue IS the reactive form object — mutate directly, no emit needed
 
 // ── Voluntary Work ──────────────────────────────────────────────
 const addVoluntary = () => {
-  const voluntaryWork = [...(props.modelValue.voluntaryWork || []),
-    { organization: '', periodFrom: '', periodTo: '', hours: '', position: '' }]
-  emit('update:modelValue', { ...props.modelValue, voluntaryWork })
+  props.modelValue.voluntaryWork.unshift(
+    { organization: '', periodFrom: '', periodTo: '', hours: '', position: '' }
+  )
 }
-const removeVoluntary = (i) => {
-  const voluntaryWork = [...(props.modelValue.voluntaryWork || [])]
-  voluntaryWork.splice(i, 1)
-  emit('update:modelValue', { ...props.modelValue, voluntaryWork })
-}
+const removeVoluntary = (i) => props.modelValue.voluntaryWork.splice(i, 1)
 
-// ── Simple string list (skills / distinctions / memberships) ────
-const addListItem = (field) => {
-  const list = [...(props.modelValue[field] || []), '']
-  emit('update:modelValue', { ...props.modelValue, [field]: list })
-}
-const removeListItem = (field, i) => {
-  const list = [...(props.modelValue[field] || [])]
-  list.splice(i, 1)
-  emit('update:modelValue', { ...props.modelValue, [field]: list })
-}
-const updateListItem = (field, i, val) => {
-  const list = [...(props.modelValue[field] || [])]
-  list[i] = val
-  emit('update:modelValue', { ...props.modelValue, [field]: list })
-}
+// ── Simple string lists ─────────────────────────────────────────
+const addListItem = (field) => props.modelValue[field].unshift('')
+const removeListItem = (field, i) => props.modelValue[field].splice(i, 1)
+const updateListItem = (field, i, val) => { props.modelValue[field][i] = val }
 
 // ── PDS Questions ───────────────────────────────────────────────
-const updateQ = (key, val) => {
-  emit('update:modelValue', {
-    ...props.modelValue,
-    pdsQuestions: { ...props.modelValue.pdsQuestions, [key]: val },
-  })
-}
+const updateQ = (key, val) => { props.modelValue.pdsQuestions[key] = val }
+
+const anyYes = (q) => q.parts.some((p) => props.modelValue.pdsQuestions?.[p.key])
 
 const PDS_QUESTIONS = [
   {
@@ -107,17 +89,14 @@ const PDS_QUESTIONS = [
     group: '40',
     label: 'Indigenous People / Disability / Solo Parent',
     parts: [
-      { key: 'q40a', text: 'Are you a member of any indigenous group? (RA 8371 — Indigenous People\'s Act)' },
+      { key: 'q40a', text: "Are you a member of any indigenous group? (RA 8371 — Indigenous People's Act)" },
       { key: 'q40b', text: 'Are you a person with disability? (RA 7277 — Magna Carta for Disabled Persons)' },
-      { key: 'q40c', text: 'Are you a solo parent? (RA 8972 — Solo Parents\' Welfare Act)' },
+      { key: 'q40c', text: "Are you a solo parent? (RA 8972 — Solo Parents' Welfare Act)" },
     ],
     detailKey: 'q40_details',
     detailHint: 'If yes, provide details and any supporting document reference',
   },
 ]
-
-const anyYes = (q) =>
-  q.parts.some((p) => props.modelValue.pdsQuestions?.[p.key])
 </script>
 
 <template>
@@ -142,8 +121,11 @@ const anyYes = (q) =>
 
       <div v-if="!modelValue.voluntaryWork?.length"
         class="py-10 flex flex-col items-center gap-2 border-2 border-dashed border-[var(--border-main)] rounded-[var(--radius-xl)] bg-[var(--bg-app)]">
-        <i class="pi pi-heart text-xl text-[var(--text-faint)]"></i>
-        <p class="text-xs text-[var(--text-muted)]">No voluntary work listed</p>
+        <i class="pi pi-heart text-2xl text-[var(--text-faint)]"></i>
+        <p class="text-xs font-medium text-[var(--text-muted)]">No voluntary work listed</p>
+        <button @click="addVoluntary" class="btn-secondary h-8 px-3 text-xs flex items-center gap-1.5">
+          <i class="pi pi-plus text-[9px]"></i> Add First Entry
+        </button>
       </div>
 
       <div v-else class="flex flex-col gap-3">
@@ -151,9 +133,12 @@ const anyYes = (q) =>
           class="border border-[var(--border-main)] rounded-[var(--radius-xl)] overflow-hidden"
           style="box-shadow:var(--shadow-xs)">
           <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center justify-between">
-            <span class="text-xs font-bold text-[var(--text-muted)]">{{ v.organization || `Voluntary Work ${i + 1}` }}</span>
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-[var(--color-primary)] text-white text-[9px] font-black flex items-center justify-center shrink-0">{{ i + 1 }}</span>
+              <span class="text-xs font-bold text-[var(--text-muted)]">{{ v.organization || 'Voluntary Work Entry' }}</span>
+            </div>
             <button @click="removeVoluntary(i)"
-              class="w-6 h-6 rounded-md flex items-center justify-center text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
               <i class="pi pi-trash text-xs"></i>
             </button>
           </div>
@@ -161,10 +146,10 @@ const anyYes = (q) =>
             <div class="col-span-2">
               <AppInput v-model="v.organization" label="Organization / Institution" size="sm" />
             </div>
-            <AppInput v-model="v.position" label="Position / Nature of Work" size="sm" />
+            <AppInput v-model="v.position"   label="Position / Nature of Work" size="sm" />
             <AppInput v-model="v.periodFrom" type="date" label="From" size="sm" />
             <AppInput v-model="v.periodTo"   type="date" label="To"   size="sm" />
-            <AppInput v-model="v.hours" type="number" label="No. of Hours" size="sm" />
+            <AppInput v-model="v.hours"      type="number" label="No. of Hours" size="sm" />
           </div>
         </div>
       </div>
@@ -179,21 +164,22 @@ const anyYes = (q) =>
           </div>
           <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Special Skills &amp; Hobbies</h3>
         </div>
-        <button @click="addListItem('specialSkills')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+        <button @click="addListItem('specialSkills')" class="btn-secondary h-8 px-3 text-xs flex items-center gap-1.5">
           <i class="pi pi-plus text-[9px]"></i> Add
         </button>
       </div>
-      <div v-if="!modelValue.specialSkills?.length" class="py-6 text-center border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-app)]">
+      <div v-if="!modelValue.specialSkills?.length"
+        class="py-6 flex flex-col items-center gap-1 border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-app)]">
         <p class="text-[11px] text-[var(--text-faint)]">e.g. Computer Programming, Public Speaking, Guitar Playing</p>
       </div>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <div v-for="(item, i) in modelValue.specialSkills" :key="i" class="flex items-center gap-2">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-1">
+        <div v-for="(item, i) in modelValue.specialSkills" :key="i" class="flex items-start gap-1.5">
           <AppInput
             :modelValue="item"
             @update:modelValue="v => updateListItem('specialSkills', i, v)"
             :label="`Skill / Hobby ${i + 1}`" size="sm" class="flex-1" />
           <button @click="removeListItem('specialSkills', i)"
-            class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+            class="w-8 h-8 shrink-0 self-start mt-1 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
             <i class="pi pi-trash text-xs"></i>
           </button>
         </div>
@@ -209,21 +195,22 @@ const anyYes = (q) =>
           </div>
           <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Non-Academic Distinctions / Recognition</h3>
         </div>
-        <button @click="addListItem('nonAcademicDistinctions')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+        <button @click="addListItem('nonAcademicDistinctions')" class="btn-secondary h-8 px-3 text-xs flex items-center gap-1.5">
           <i class="pi pi-plus text-[9px]"></i> Add
         </button>
       </div>
-      <div v-if="!modelValue.nonAcademicDistinctions?.length" class="py-6 text-center border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-app)]">
+      <div v-if="!modelValue.nonAcademicDistinctions?.length"
+        class="py-6 flex flex-col items-center gap-1 border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-app)]">
         <p class="text-[11px] text-[var(--text-faint)]">e.g. Best Teacher Award, Gawad Patnugot, Regional Winner</p>
       </div>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div v-for="(item, i) in modelValue.nonAcademicDistinctions" :key="i" class="flex items-center gap-2">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+        <div v-for="(item, i) in modelValue.nonAcademicDistinctions" :key="i" class="flex items-start gap-1.5">
           <AppInput
             :modelValue="item"
             @update:modelValue="v => updateListItem('nonAcademicDistinctions', i, v)"
             :label="`Distinction / Award ${i + 1}`" size="sm" class="flex-1" />
           <button @click="removeListItem('nonAcademicDistinctions', i)"
-            class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+            class="w-8 h-8 shrink-0 self-start mt-1 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
             <i class="pi pi-trash text-xs"></i>
           </button>
         </div>
@@ -239,73 +226,76 @@ const anyYes = (q) =>
           </div>
           <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Memberships in Associations / Organizations</h3>
         </div>
-        <button @click="addListItem('memberships')" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+        <button @click="addListItem('memberships')" class="btn-secondary h-8 px-3 text-xs flex items-center gap-1.5">
           <i class="pi pi-plus text-[9px]"></i> Add
         </button>
       </div>
-      <div v-if="!modelValue.memberships?.length" class="py-6 text-center border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-app)]">
+      <div v-if="!modelValue.memberships?.length"
+        class="py-6 flex flex-col items-center gap-1 border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-app)]">
         <p class="text-[11px] text-[var(--text-faint)]">e.g. Philippine Association of Teachers, DepEd Teachers Club</p>
       </div>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div v-for="(item, i) in modelValue.memberships" :key="i" class="flex items-center gap-2">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+        <div v-for="(item, i) in modelValue.memberships" :key="i" class="flex items-start gap-1.5">
           <AppInput
             :modelValue="item"
             @update:modelValue="v => updateListItem('memberships', i, v)"
             :label="`Organization / Association ${i + 1}`" size="sm" class="flex-1" />
           <button @click="removeListItem('memberships', i)"
-            class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+            class="w-8 h-8 shrink-0 self-start mt-1 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
             <i class="pi pi-trash text-xs"></i>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ── 5. PDS Questions (Q34–Q40) ───────────────────── -->
+    <!-- ── 5. Background & Disclosure Questions ──────────── -->
     <div>
       <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
         <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
           <i class="pi pi-list-check text-xs text-[var(--color-primary)]"></i>
         </div>
         <div>
-          <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">CS Form 212 — Questions (34–40)</h3>
+          <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Background & Disclosure Questions</h3>
           <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Answer all questions truthfully. False statements are grounds for disqualification.</p>
         </div>
       </div>
 
-      <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-3">
         <div v-for="q in PDS_QUESTIONS" :key="q.group"
           class="border border-[var(--border-main)] rounded-[var(--radius-xl)] overflow-hidden"
           style="box-shadow:var(--shadow-xs)">
 
-          <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)]">
-            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)]">Question {{ q.group }} — {{ q.label }}</p>
+          <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2">
+            <span class="text-[10px] font-black text-[var(--color-primary)]">Q{{ q.group }}</span>
+            <span class="text-[10px] font-bold text-[var(--text-muted)]">{{ q.label }}</span>
           </div>
 
           <div class="p-4 flex flex-col gap-3">
-            <div v-for="part in q.parts" :key="part.key" class="flex items-start gap-3">
-              <!-- Yes/No toggle -->
-              <div class="flex items-center gap-2 shrink-0 pt-0.5">
-                <label class="flex items-center gap-1 cursor-pointer select-none">
-                  <input type="radio" :name="part.key" :value="true"
+            <div v-for="part in q.parts" :key="part.key"
+              class="flex items-start gap-3 py-2 px-3 rounded-lg bg-[var(--bg-app)]">
+              <!-- Yes/No radios -->
+              <div class="flex items-center gap-3 shrink-0 mt-0.5">
+                <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input type="radio" :name="part.key"
                     :checked="modelValue.pdsQuestions?.[part.key] === true"
                     @change="updateQ(part.key, true)"
                     class="accent-[var(--color-primary)]" />
-                  <span class="text-xs font-bold text-green-600">Yes</span>
+                  <span class="text-xs font-black text-green-600">Yes</span>
                 </label>
-                <label class="flex items-center gap-1 cursor-pointer select-none">
-                  <input type="radio" :name="part.key" :value="false"
-                    :checked="modelValue.pdsQuestions?.[part.key] === false || modelValue.pdsQuestions?.[part.key] == null"
+                <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input type="radio" :name="part.key"
+                    :checked="!modelValue.pdsQuestions?.[part.key]"
                     @change="updateQ(part.key, false)"
                     class="accent-[var(--color-primary)]" />
                   <span class="text-xs font-bold text-[var(--text-muted)]">No</span>
                 </label>
               </div>
-              <p class="text-xs text-[var(--text-sub)] flex-1">{{ part.text }}</p>
+              <p class="text-xs text-[var(--text-sub)] flex-1 leading-relaxed">{{ part.text }}</p>
             </div>
 
-            <!-- Details field — shown if any part is Yes -->
+            <!-- Details — shown if any part answered Yes -->
             <Transition name="field-slide">
-              <div v-if="anyYes(q)" class="mt-1">
+              <div v-if="anyYes(q)">
                 <AppTextarea
                   :modelValue="modelValue.pdsQuestions?.[q.detailKey]"
                   @update:modelValue="v => updateQ(q.detailKey, v)"

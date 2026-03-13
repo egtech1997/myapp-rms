@@ -221,7 +221,7 @@ onActivated(fetchApplications)
     <!-- 4. Detail Modal -->
     <AppModal v-model="showModal" 
       :title="editMode ? 'Update Data Snapshot' : (selectedApp?.job?.positionTitle || 'Application Detail')"
-      :subtitle="editMode ? 'Resync your PDS records for this specific application.' : 'Recruitment journey and verification status.'"
+      :subtitle="editMode ? 'Resync your profile records for this specific application.' : 'Recruitment journey and verification status.'"
       size="lg" @close="showModal = false">
       
       <template v-if="!editMode">

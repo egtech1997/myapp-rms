@@ -114,6 +114,7 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.user = null
         this.initialized = false
+        sessionStorage.removeItem('profile_checked')
         window.location.href = '/'
       }
     },

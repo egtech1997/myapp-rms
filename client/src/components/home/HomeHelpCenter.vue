@@ -8,11 +8,11 @@ const faqGroups = ref([
         items: [
             {
                 q: 'How do I start my application?',
-                a: 'First, create an account using your email or Google account. Then, complete your Personal Data Sheet (PDS) in the Profile section. Once your profile is ready, you can browse vacancies and click "Apply".'
+                a: 'First, create an account using your email or Google account. Then, complete your Applicant Profile in the Profile section — this includes your personal information, education, work experience, eligibility, and training. Once your profile is ready, browse vacancies and click "Apply".'
             },
             {
                 q: 'What are the required documents?',
-                a: 'Under DO 007, s. 2023, you need to provide your PDS, Transcript of Records (TOR), PRC License/Eligibility, Service Records, and Performance Ratings. All data is entered directly into the system—no file uploads are required.'
+                a: 'You will need to upload your documents through the application form: a signed and notarized profile summary, Transcript of Records (TOR), eligibility certificate or board rating, latest performance evaluation, and appointment paper or COE. Digital scans or clear photos saved as PDF are accepted.'
             },
             {
                 q: 'Can I apply for multiple positions?',
@@ -44,7 +44,7 @@ const faqGroups = ref([
             },
             {
                 q: 'Is my data secure?',
-                a: 'Yes, all PDS records are encrypted and access is strictly restricted to authorized HR personnel and the Selection Board through our Role-Based Access Control (RBAC) system.'
+                a: 'Yes, all profile and application records are encrypted and access is strictly restricted to authorized HR personnel and the Selection Board through our Role-Based Access Control (RBAC) system.'
             }
         ]
     }

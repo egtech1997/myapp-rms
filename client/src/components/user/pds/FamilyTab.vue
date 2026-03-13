@@ -11,8 +11,8 @@ const emit = defineEmits(['update:modelValue'])
 
 const addChild = () => {
   const children = [
-    ...props.modelValue.children,
     { firstName: '', middleName: '', lastName: '', suffix: '', birthDate: '' },
+    ...props.modelValue.children,
   ]
   emit('update:modelValue', { ...props.modelValue, children })
 }

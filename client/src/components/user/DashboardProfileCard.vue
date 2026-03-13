@@ -63,7 +63,7 @@ const getBarColor = (val) => {
       <div class="max-w-xs">
         <p class="text-sm font-bold text-[var(--text-main)]">Profile setup required</p>
         <p class="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">
-          Your personal data sheet (PDS) is missing. Complete it now to enable application features.
+          Your applicant profile is not yet set up. Complete it now to enable application features.
         </p>
       </div>
       <router-link to="/user/profile" custom v-slot="{ navigate }">
@@ -140,7 +140,7 @@ const getBarColor = (val) => {
         </div>
         <div class="flex-1">
            <p class="text-xs font-bold text-amber-900">Your profile is missing data</p>
-           <p class="text-[11px] text-amber-700 mt-0.5">Complete your PDS to improve your chances in the selection process.</p>
+           <p class="text-[11px] text-amber-700 mt-0.5">Complete your profile to improve your chances in the selection process.</p>
         </div>
         <router-link to="/user/profile" class="text-xs font-black uppercase tracking-widest text-amber-900 bg-amber-200 px-4 py-2 rounded-lg hover:bg-amber-300 transition-colors">
            Fix Now

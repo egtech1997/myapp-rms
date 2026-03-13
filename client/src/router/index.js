@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import apiClient from '@/api/axios'
 
 const routes = [
   {
@@ -218,7 +219,31 @@ router.beforeEach(async (to, from) => {
     }
   }
 
-  // 7. Proceed normally
+  // 7. Profile gate — user routes (except /user/profile) require a completed profile
+  if (
+    isLoggedIn &&
+    !authStore.isAdmin &&
+    to.path.startsWith('/user/') &&
+    to.path !== '/user/profile'
+  ) {
+    // Only check on first navigation after login (use sessionStorage flag to avoid
+    // calling the API on every route change)
+    const checked = sessionStorage.getItem('profile_checked')
+    if (!checked) {
+      try {
+        const { data } = await apiClient.get('/v1/profile/me')
+        sessionStorage.setItem('profile_checked', '1')
+        if (!data.data) {
+          // No profile yet — redirect to profile page, preserve intended destination
+          return { path: '/user/profile', query: { setup: '1', next: to.fullPath } }
+        }
+      } catch {
+        sessionStorage.setItem('profile_checked', '1')
+      }
+    }
+  }
+
+  // 8. Proceed normally
   return true
 })
 

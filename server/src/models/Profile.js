@@ -86,9 +86,10 @@ const profileSchema = new mongoose.Schema(
         rating:         { type: String, trim: true },
         dateOfExam:     Date,
         placeOfExam:    { type: String, trim: true },
-        licenseNumber:  String,
+        licenseNumber:   String,
         licenseValidity: Date,
-        document:       String, // Path to uploaded license/rating certificate
+        document:        String, // Rating certificate / board exam result
+        licenseDocument: String, // PRC license card / license document
       },
     ],
 

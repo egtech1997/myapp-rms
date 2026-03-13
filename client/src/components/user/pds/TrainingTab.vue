@@ -1,5 +1,6 @@
 <script setup>
 import { AppInput, AppSelect } from '@/components/ui'
+import { docFilename, docIsPdf } from '@/composables/useDocUpload'
 
 defineOptions({ name: 'TrainingTab' })
 
@@ -20,8 +21,8 @@ const ldTypeOptions = [
 
 const addEntry = () => {
   emit('update:modelValue', [
-    ...props.modelValue,
     { title: '', dateIssued: '', hours: '', typeOfLD: 'Technical', provider: '', document: '' },
+    ...props.modelValue,
   ])
 }
 
@@ -119,28 +120,34 @@ const removeEntry = (i) => {
         <div class="px-5 py-3.5 bg-[var(--bg-app)] border-t border-[var(--border-main)]">
           <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">Supporting Document</p>
           <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
-            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-              <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              :class="item.document ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--bg-app)]'">
+              <i :class="[
+                'text-sm',
+                item.document
+                  ? (docIsPdf(item.document) ? 'pi pi-file-pdf text-[var(--color-primary)]' : 'pi pi-image text-[var(--color-primary)]')
+                  : 'pi pi-upload text-[var(--text-faint)]'
+              ]"></i>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-[10px] font-bold text-[var(--text-muted)]">Training Certificate / Certificate of Participation</p>
-              <button v-if="item.document"
-                @click="$emit('preview', item.document, item.title || 'Training Certificate')"
-                class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
-                View uploaded
-              </button>
-              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
-                Upload
-                <input type="file" class="sr-only" accept=".pdf,image/*"
-                  @change="$emit('upload', $event, i)" />
+              <div v-if="item.document" class="flex items-center gap-2 mt-0.5">
+                <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[140px]" :title="docFilename(item.document)">
+                  {{ docFilename(item.document) }}
+                </span>
+                <button @click="$emit('preview', item.document, item.title || 'Training Certificate')"
+                  class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+              </div>
+              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
+                Click to upload
+                <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i)" />
               </label>
             </div>
             <label v-if="item.document"
-              class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
+              class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all cursor-pointer shrink-0"
               title="Replace file">
               <i class="pi pi-sync text-[10px]"></i>
-              <input type="file" class="sr-only" accept=".pdf,image/*"
-                @change="$emit('upload', $event, i)" />
+              <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, i)" />
             </label>
           </div>
         </div>

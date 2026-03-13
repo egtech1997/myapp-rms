@@ -1,5 +1,6 @@
 <script setup>
 import { AppInput, AppSelect, AppCheckbox } from '@/components/ui'
+import { docFilename, docIsPdf } from '@/composables/useDocUpload'
 
 defineOptions({ name: 'PersonalTab' })
 
@@ -120,13 +121,13 @@ const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
               <i class="pi pi-plus text-[9px]"></i> Add
             </button>
           </div>
-          <div class="flex flex-col gap-2">
-            <div v-for="(_, i) in modelValue.contact.phones" :key="i" class="flex items-center gap-2">
+          <div class="flex flex-col gap-1">
+            <div v-for="(_, i) in modelValue.contact.phones" :key="i" class="flex items-start gap-1.5">
               <AppInput v-model="modelValue.contact.phones[i]"
                 :label="i === 0 ? 'Primary Phone' : `Phone ${i + 1}`"
                 prefixIcon="pi-phone" size="sm" class="flex-1" />
               <button v-if="i > 0" @click="removePhone(i)"
-                class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                class="w-8 h-8 shrink-0 self-start mt-1 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
                 <i class="pi pi-trash text-xs"></i>
               </button>
             </div>
@@ -142,13 +143,13 @@ const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
               <i class="pi pi-plus text-[9px]"></i> Add
             </button>
           </div>
-          <div class="flex flex-col gap-2">
-            <div v-for="(_, i) in modelValue.contact.emails" :key="i" class="flex items-center gap-2">
+          <div class="flex flex-col gap-1">
+            <div v-for="(_, i) in modelValue.contact.emails" :key="i" class="flex items-start gap-1.5">
               <AppInput v-model="modelValue.contact.emails[i]"
                 :label="i === 0 ? 'Primary Email' : `Email ${i + 1}`"
                 prefixIcon="pi-envelope" size="sm" class="flex-1" />
               <button v-if="i > 0" @click="removeEmail(i)"
-                class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                class="w-8 h-8 shrink-0 self-start mt-1 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
                 <i class="pi pi-trash text-xs"></i>
               </button>
             </div>
@@ -203,28 +204,34 @@ const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
 
       <!-- COMELEC Document -->
       <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
-        <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-          <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          :class="modelValue.comelecAddress.document ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--bg-app)]'">
+          <i :class="[
+            'text-sm',
+            modelValue.comelecAddress.document
+              ? (docIsPdf(modelValue.comelecAddress.document) ? 'pi pi-file-pdf text-[var(--color-primary)]' : 'pi pi-image text-[var(--color-primary)]')
+              : 'pi pi-upload text-[var(--text-faint)]'
+          ]"></i>
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-[10px] font-bold text-[var(--text-muted)]">Voter's ID / Certificate of Registration</p>
-          <button v-if="modelValue.comelecAddress.document"
-            @click="$emit('preview', modelValue.comelecAddress.document, 'COMELEC Registration')"
-            class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
-            View uploaded
-          </button>
-          <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
-            Upload
-            <input type="file" class="sr-only" accept=".pdf,image/*"
-              @change="$emit('upload', $event, 'comelecAddress')" />
+          <div v-if="modelValue.comelecAddress.document" class="flex items-center gap-2 mt-0.5">
+            <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[140px]" :title="docFilename(modelValue.comelecAddress.document)">
+              {{ docFilename(modelValue.comelecAddress.document) }}
+            </span>
+            <button @click="$emit('preview', modelValue.comelecAddress.document, 'COMELEC Registration')"
+              class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+          </div>
+          <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
+            Click to upload
+            <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, 'comelecAddress')" />
           </label>
         </div>
         <label v-if="modelValue.comelecAddress.document"
-          class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
+          class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--surface)] text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all cursor-pointer shrink-0"
           title="Replace file">
           <i class="pi pi-sync text-[10px]"></i>
-          <input type="file" class="sr-only" accept=".pdf,image/*"
-            @change="$emit('upload', $event, 'comelecAddress')" />
+          <input type="file" class="sr-only" accept=".pdf,image/*" @change="$emit('upload', $event, 'comelecAddress')" />
         </label>
       </div>
     </div>
