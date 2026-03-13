@@ -35,51 +35,17 @@ export const uploadProfileDocument = catchAsync(async (req, res, next) => {
     return next(new AppError("Please upload a file", 400));
   }
 
-  const { type, field } = req.body; // type: 'education', field: 'diploma' or 'tor'
-  if (!type) {
-    return next(new AppError("Document type is required", 400));
-  }
-
-  const userEmail = req.user.email;
-  const profile = await Profile.findOne({ user: req.user._id });
-  
-  // ── Determine the next number for this type/field ──────────────────
-  let count = 1;
-  if (profile) {
-    const items = profile[type] || [];
-    // Only count items that already have this specific document field attached
-    const existingDocs = items.filter(item => field ? item[field] : item.document).length;
-    count = existingDocs + 1;
-  }
-
-  const ext = path.extname(req.file.originalname).toLowerCase();
-  const fileSuffix = field ? `${type}-${field}` : type;
-  let newFileName = `${userEmail}-${fileSuffix}${count}${ext}`;
-  const publicDir = path.join(__dirname, "..", "..", "public");
-  let newFilePath = path.join(publicDir, 'uploads', 'documents', newFileName);
-
-  // If for some reason the file already exists on disk (e.g. from a previous failed save),
-  // we increment until we find a free name.
-  while (fs.existsSync(newFilePath)) {
-    count++;
-    newFileName = `${userEmail}-${fileSuffix}${count}${ext}`;
-    newFilePath = path.join(publicDir, 'uploads', 'documents', newFileName);
-  }
-
-  try {
-    fs.renameSync(req.file.path, newFilePath);
-  } catch (err) {
-    console.error("Profile File Rename Error:", err);
-    return next(new AppError("Could not rename profile document.", 500));
-  }
-
-  const fileUrl = `/uploads/documents/${newFileName}`;
+  // Mulder already saved the file with a unique name in docUploadDir
+  // We just return the URL pointing to that file
+  const fileUrl = `/uploads/documents/${req.file.filename}`;
 
   // ── Delete Old File if Provided ───────────────────────────────────────
   const { oldUrl } = req.body;
+  const publicDir = path.join(__dirname, "..", "..", "public");
+  
   if (oldUrl && oldUrl !== fileUrl) {
-    const oldPath = path.join(publicDir, oldUrl);
-    if (fs.existsSync(oldPath)) {
+    const oldPath = path.join(publicDir, oldUrl.replace('/api/', '/'));
+    if (fs.existsSync(oldPath) && !oldPath.includes('default')) {
       try {
         fs.unlinkSync(oldPath);
       } catch (e) {

@@ -1,6 +1,8 @@
-# DepEd Recruitment & Selection Portal (ORAS) - System State
+# DepEd HR Recruitment Portal (Guih-Ranking) - System State
 
 ## 🏗️ Architecture Overview
+- **Project Name:** Guih-Ranking
+- **Purpose:** Official Recruitment Portal for Human Resources in the Department of Education (DepEd).
 - **Tech Stack:** MERN (MongoDB, Express, Vue 3, Node.js)
 - **Frontend:** Vite + Vue 3 (Composition API), Tailwind CSS v4, PrimeVue Icons
 - **Backend:** Node.js + Express, Mongoose, Passport.js (JWT/Cookie)

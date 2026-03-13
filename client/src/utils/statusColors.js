@@ -1,5 +1,5 @@
 /**
- * Centralized Status Configuration for ORAS
+ * Centralized Status Configuration for Guih-Ranking
  * Ensures consistent color coding and labeling across all modules.
  */
 

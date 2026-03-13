@@ -301,49 +301,17 @@ export const uploadApplicationAttachment = catchAsync(async (req, res, next) => 
     return next(new AppError('Application is already verified and locked.', 400));
   }
 
-  // ── Custom Naming Implementation ───────────────────────────────────────
-  const ext = path.extname(req.file.originalname).toLowerCase();
-  
-  // Map internal types to user-friendly filename suffixes
-  const typeMap = {
-    'transcript': 'transcriptofrecords',
-    'diploma': 'diploma',
-    'eligibility': 'certificateofeligibility',
-    'service_record': 'servicerecord',
-    'training_cert': 'trainingcertificates',
-    'experience': 'experience-proof',
-    'pds_signed': 'signed-pds',
-    'id_proof': 'identity-proof'
-  };
-
-  const fileSuffix = typeMap[type] || type;
-  const newFileName = `${application.applicationCode}-${fileSuffix}${ext}`;
-  const publicDir = path.join(__dirname, '..', '..', 'public');
-  const newFilePath = path.join(publicDir, 'uploads', 'documents', newFileName);
-  const oldTempPath = req.file.path;
-
-  // If a file with the same name already exists, we overwrite it.
-  // Actually fs.rename will overwrite by default on most systems.
-  try {
-    // Ensure the new filename is used
-    if (fs.existsSync(newFilePath)) {
-      fs.unlinkSync(newFilePath); // Remove old one if exists to be safe
-    }
-    fs.renameSync(oldTempPath, newFilePath);
-  } catch (err) {
-    console.error("File Rename Error:", err);
-    return next(new AppError("Could not rename file.", 500));
-  }
-
-  const fileUrl = '/uploads/documents/' + newFileName;
+  // Mulder already saved the file with a unique name in docUploadDir
+  const fileUrl = '/uploads/documents/' + req.file.filename;
   const fileName = req.file.originalname;
+  const publicDir = path.join(__dirname, '..', '..', 'public');
 
   const existingIdx = application.attachments.findIndex(a => a.type === type);
   if (existingIdx !== -1) {
     // ── Delete Old File if URL Changed ───────────────────────────────────
     const oldUrl = application.attachments[existingIdx].fileUrl;
     if (oldUrl && oldUrl !== fileUrl) {
-      const oldPath = path.join(publicDir, oldUrl);
+      const oldPath = path.join(publicDir, oldUrl.replace('/api/', '/'));
       if (fs.existsSync(oldPath)) {
         try {
           fs.unlinkSync(oldPath);

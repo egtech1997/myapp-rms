@@ -18,6 +18,13 @@ export default defineConfig({
   server: {
     host: true,
     port: 80,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
   resolve: {
     alias: {

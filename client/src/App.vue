@@ -94,7 +94,7 @@ const currentText = computed(() => loadingTexts[loadingTextIndex.value])
             <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] bg-white shadow-2xl shadow-blue-500/20 border border-slate-100 p-1 flex items-center justify-center overflow-hidden animate-float">
               <img v-if="settingsStore.resolvedLogoUrl" 
                 :src="settingsStore.resolvedLogoUrl" 
-                alt="ORAS Logo" 
+                alt="Guih-Ranking Logo" 
                 class="w-full h-full object-contain" />
               <div v-else class="w-full h-full bg-blue-600 flex items-center justify-center">
                  <i class="pi pi-shield text-white text-3xl"></i>
@@ -106,7 +106,7 @@ const currentText = computed(() => loadingTexts[loadingTextIndex.value])
           <div class="flex flex-col items-center text-center max-w-xs gap-6">
             <div class="space-y-2">
               <h1 class="text-xl font-black text-slate-900 tracking-tight uppercase tracking-[0.2em]">
-                {{ settingsStore.systemName || 'ORAS' }}
+                {{ settingsStore.systemName || 'Guih-Ranking' }}
               </h1>
               <div class="h-6 overflow-hidden relative w-64">
                 <Transition name="text-slide" mode="out-in">

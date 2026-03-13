@@ -45,7 +45,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
+      if (!origin || process.env.NODE_ENV !== 'production') return callback(null, true);
       
       // Check if origin is exactly in our list
       if (allowedOrigins.includes(origin)) {
@@ -80,7 +80,7 @@ app.use(mongoSanitize());
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "gnc_oras_secret",
+    secret: process.env.SESSION_SECRET || "guih_ranking_secret",
     resave: false,
     saveUninitialized: false,
     cookie: {

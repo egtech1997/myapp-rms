@@ -129,6 +129,8 @@ const handlePwUpdate = async () => {
     } finally { isSaving.value = false }
 }
 
+import { AppInput, AppTextarea, AppButton } from '@/components/ui'
+
 const navLinks = [
     { label: 'Dashboard', to: '/user/dashboard', icon: 'pi-home' },
     { label: 'Job Vacancies', to: '/user/vacancies', icon: 'pi-briefcase' },
@@ -408,21 +410,20 @@ const closeMenu = () => { showMobileMenu.value = false }
 
                     <!-- TAB: Profile Info -->
                     <div v-if="settingsTab === 'profile'" class="p-6 flex flex-col gap-5" role="tabpanel">
-                        <div class="flex flex-col gap-1.5">
-                            <label
-                                class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Username</label>
-                            <input v-model="profileForm.username" class="input" placeholder="Your unique username"
-                                autocomplete="username" />
-                            <p class="text-[10px] text-[var(--text-faint)]">Lowercase, no spaces. Used for login and
-                                display.</p>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Bio
-                                <span class="normal-case font-normal text-[var(--text-faint)]">({{
-                                    profileForm.bio.length }}/240)</span></label>
-                            <textarea v-model="profileForm.bio" class="input resize-none" rows="3" maxlength="240"
-                                placeholder="A short bio about yourself — your role, school, advocacies..."></textarea>
-                        </div>
+                        <AppInput 
+                            v-model="profileForm.username" 
+                            label="Username" 
+                            hint="Lowercase, no spaces. Used for login and display." 
+                            size="sm"
+                        />
+                        <AppTextarea 
+                            v-model="profileForm.bio" 
+                            label="Bio" 
+                            :maxlength="240" 
+                            show-count 
+                            placeholder="A short bio about yourself — your role, school, advocacies..."
+                            size="sm"
+                        />
                         <div>
                             <p class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">
                                 Social Links</p>
@@ -432,24 +433,21 @@ const closeMenu = () => { showMobileMenu.value = false }
                                         class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                                         <i class="pi pi-facebook text-blue-600 text-sm"></i>
                                     </div>
-                                    <input v-model="profileForm.links.facebook" class="input flex-1"
-                                        placeholder="facebook.com/yourprofile" />
+                                    <AppInput v-model="profileForm.links.facebook" label="Facebook URL" size="sm" class="flex-1" />
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <div
                                         class="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
                                         <i class="pi pi-linkedin text-sky-700 text-sm"></i>
                                     </div>
-                                    <input v-model="profileForm.links.linkedin" class="input flex-1"
-                                        placeholder="linkedin.com/in/yourprofile" />
+                                    <AppInput v-model="profileForm.links.linkedin" label="LinkedIn URL" size="sm" class="flex-1" />
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <div
                                         class="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
                                         <i class="pi pi-twitter text-slate-600 text-sm"></i>
                                     </div>
-                                    <input v-model="profileForm.links.twitter" class="input flex-1"
-                                        placeholder="twitter.com/yourhandle" />
+                                    <AppInput v-model="profileForm.links.twitter" label="Twitter URL" size="sm" class="flex-1" />
                                 </div>
                             </div>
                         </div>
@@ -503,25 +501,22 @@ const closeMenu = () => { showMobileMenu.value = false }
                             </div>
                         </div>
                         <template v-else>
-                            <div v-for="field in [
-                                { key: 'current', show: showCurrPw, toggle: () => showCurrPw = !showCurrPw, label: 'Current Password', ac: 'current-password' },
-                                { key: 'new', show: showNewPw, toggle: () => showNewPw = !showNewPw, label: 'New Password', ac: 'new-password', hint: 'Minimum 8 characters' },
-                                { key: 'confirm', show: showConfirmPw, toggle: () => showConfirmPw = !showConfirmPw, label: 'Confirm New Password', ac: 'new-password' },
-                            ]" :key="field.key" class="flex flex-col gap-1.5">
-                                <label :for="`upw-${field.key}`"
-                                    class="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">{{
-                                    field.label }}</label>
-                                <div class="relative">
-                                    <input :id="`upw-${field.key}`" v-model="pw[field.key]"
-                                        :type="field.show ? 'text' : 'password'" :placeholder="field.hint || '••••••••'"
-                                        :autocomplete="field.ac" class="input pr-10" />
-                                    <button type="button" @click="field.toggle"
-                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                                        :aria-label="field.show ? `Hide ${field.label}` : `Show ${field.label}`">
-                                        <i :class="['pi text-sm', field.show ? 'pi-eye-slash' : 'pi-eye']"
-                                            aria-hidden="true"></i>
-                                    </button>
-                                </div>
+                            <div class="flex flex-col gap-4">
+                                <AppInput 
+                                    v-for="field in [
+                                        { key: 'current', show: showCurrPw, toggle: () => showCurrPw = !showCurrPw, label: 'Current Password', ac: 'current-password' },
+                                        { key: 'new', show: showNewPw, toggle: () => showNewPw = !showNewPw, label: 'New Password', ac: 'new-password', hint: 'Minimum 8 characters' },
+                                        { key: 'confirm', show: showConfirmPw, toggle: () => showConfirmPw = !showConfirmPw, label: 'Confirm New Password', ac: 'new-password' },
+                                    ]" 
+                                    :key="field.key"
+                                    v-model="pw[field.key]"
+                                    :type="field.show ? 'text' : 'password'"
+                                    :label="field.label"
+                                    :hint="field.hint"
+                                    :autocomplete="field.ac"
+                                    toggleable
+                                    size="sm"
+                                />
                             </div>
                         </template>
                     </div>
