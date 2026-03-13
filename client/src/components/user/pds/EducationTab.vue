@@ -1,123 +1,229 @@
 <script setup>
-import { AppInput, AppButton, AppSelect } from '@/components/ui'
+import { AppInput, AppSelect } from '@/components/ui'
 
 defineOptions({ name: 'EducationTab' })
 
 const props = defineProps({
   modelValue: { type: Array, required: true },
 })
-
 const emit = defineEmits(['update:modelValue', 'upload', 'preview'])
 
-const levels = [
-  { label: 'Elementary', value: 'Elementary' },
-  { label: 'Secondary', value: 'Secondary' },
-  { label: 'Vocational', value: 'Vocational' },
-  { label: 'Bachelor (College)', value: 'Bachelor' },
-  { label: 'Masteral', value: 'Masteral' },
-  { label: 'Doctorate', value: 'Doctorate' }
+// DepEd QS-relevant education levels (no Elementary/Secondary)
+const DEGREE_LEVELS = [
+  { label: 'Vocational / Trade Course',       value: 'Vocational'          },
+  { label: 'Associate Degree',                value: 'Associate'           },
+  { label: "Bachelor's Degree",               value: 'Bachelor'            },
+  { label: 'Post-Baccalaureate Certificate',  value: 'Post-Baccalaureate'  },
+  { label: "Master's Degree",                 value: 'Masteral'            },
+  { label: 'Post-Graduate Diploma',           value: 'Post-Graduate Diploma' },
+  { label: 'Doctorate Degree',                value: 'Doctorate'           },
 ]
 
-const statusOptions = [
-  { label: 'Graduated', value: 'Graduated' },
-  { label: 'CAR (Completed Academic Requirements)', value: 'CAR' },
-  { label: 'Units Earned', value: 'Units Earned' },
-  { label: 'Associate', value: 'Associate' }
+const STATUS_OPTIONS = [
+  { label: 'Graduated',                                    value: 'Graduated'    },
+  { label: 'CAR – Completed Academic Requirements',        value: 'CAR'          },
+  { label: 'Units Earned (Did Not Graduate)',              value: 'Units Earned' },
+  { label: 'Did Not Graduate / Dropped',                   value: 'Dropout'      },
 ]
+
+// Dynamic field visibility
+const showYearGraduated = (edu) => edu.status === 'Graduated'
+const showUnitsEarned   = (edu) => edu.status === 'Units Earned' || edu.status === 'CAR'
 
 const addEntry = () => {
-  const newList = [...props.modelValue, {
-    level: '', school: '', degree: '', periodFrom: '', periodTo: '',
-    status: 'Graduated', unitsEarned: '', yearGraduated: '', honorsReceived: '',
-    tor: '', diploma: ''
-  }]
-  emit('update:modelValue', newList)
+  emit('update:modelValue', [
+    ...props.modelValue,
+    {
+      level: '', school: '', degree: '', periodFrom: '', periodTo: '',
+      status: 'Graduated', unitsEarned: '', yearGraduated: '',
+      honorsReceived: '', tor: '', diploma: '',
+    },
+  ])
 }
 
-const removeEntry = (index) => {
-  const newList = [...props.modelValue]
-  newList.splice(index, 1)
-  emit('update:modelValue', newList)
+const removeEntry = (i) => {
+  const list = [...props.modelValue]
+  list.splice(i, 1)
+  emit('update:modelValue', list)
+}
+
+const onStatusChange = (edu, val) => {
+  edu.status = val
+  // Clear fields that are no longer applicable
+  if (val !== 'Graduated')                             edu.yearGraduated = ''
+  if (val !== 'Units Earned' && val !== 'CAR')         edu.unitsEarned   = ''
 }
 </script>
 
 <template>
-  <div class="flex flex-col gap-8 py-6 animate-fade-in">
-    
-    <div class="flex items-center justify-between border-b border-[var(--border-main)] pb-4">
+  <div class="flex flex-col gap-6">
+
+    <!-- Section header -->
+    <div class="flex items-center justify-between">
       <div>
-        <h3 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">Educational Background</h3>
-        <p class="text-xs text-[var(--text-muted)] mt-1">List all schools attended, starting from the most recent.</p>
+        <h3 class="text-sm font-black text-[var(--text-main)]">Educational Background</h3>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">List all schools attended from most recent. Elementary and Secondary records are not required.</p>
       </div>
-      <AppButton size="sm" icon="pi-plus" @click="addEntry">Add Education</AppButton>
+      <button @click="addEntry" class="btn-primary h-9 px-4 text-xs flex items-center gap-2 shrink-0">
+        <i class="pi pi-plus text-[10px]"></i> Add Education
+      </button>
     </div>
 
-    <div v-if="modelValue.length === 0" class="py-20 flex flex-col items-center gap-4 bg-[var(--surface-2)] rounded-3xl border-2 border-dashed border-[var(--border-main)]">
-       <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center text-[var(--text-faint)] shadow-sm">
-         <i class="pi pi-graduation-cap text-2xl"></i>
-       </div>
-       <p class="text-sm font-bold text-[var(--text-muted)]">No educational records added yet.</p>
-       <AppButton variant="secondary" size="sm" @click="addEntry">Click to add your first record</AppButton>
+    <!-- Empty state -->
+    <div v-if="modelValue.length === 0"
+      class="py-16 flex flex-col items-center gap-3 border-2 border-dashed border-[var(--border-main)] rounded-[var(--radius-xl)] bg-[var(--bg-app)]">
+      <div class="w-14 h-14 rounded-2xl bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center shadow-sm">
+        <i class="pi pi-graduation-cap text-xl text-[var(--text-faint)]"></i>
+      </div>
+      <div class="text-center">
+        <p class="text-sm font-bold text-[var(--text-main)]">No educational records yet</p>
+        <p class="text-xs text-[var(--text-muted)] mt-1">Add your college, post-grad, or vocational education.</p>
+      </div>
+      <button @click="addEntry" class="btn-secondary h-9 px-4 text-xs flex items-center gap-2">
+        <i class="pi pi-plus text-[10px]"></i> Add First Record
+      </button>
     </div>
 
-    <div v-else class="space-y-6">
-      <div v-for="(edu, i) in modelValue" :key="i" 
-        class="bg-white border border-[var(--border-main)] rounded-2xl overflow-hidden shadow-sm hover:border-[var(--border-strong)] transition-all group">
-        
-        <!-- Entry Header -->
-        <div class="px-6 py-3 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <span class="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white text-[10px] font-bold flex items-center justify-center">{{ i + 1 }}</span>
-            <span class="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Education Entry</span>
+    <!-- Education entries -->
+    <div v-else class="flex flex-col gap-5">
+      <div
+        v-for="(edu, i) in modelValue" :key="i"
+        class="border border-[var(--border-main)] rounded-[var(--radius-xl)] overflow-hidden"
+        style="box-shadow:var(--shadow-xs)">
+
+        <!-- Entry header -->
+        <div class="px-5 py-3 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+              {{ i + 1 }}
+            </span>
+            <span class="text-xs font-bold text-[var(--text-muted)]">
+              {{ edu.level || 'Education Entry' }}
+              <span v-if="edu.school" class="font-normal"> — {{ edu.school }}</span>
+            </span>
           </div>
-          <button @click="removeEntry(i)" class="text-rose-500 hover:text-rose-700 transition-colors">
-            <i class="pi pi-trash text-sm"></i>
+          <button @click="removeEntry(i)"
+            class="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+            <i class="pi pi-trash text-xs"></i>
           </button>
         </div>
 
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div class="lg:col-span-2">
-            <AppInput v-model="edu.school" label="Name of School" placeholder="e.g. University of the Philippines" />
-          </div>
-          <AppSelect v-model="edu.level" label="Level" :options="levels" />
+        <!-- Fields -->
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-          <AppInput v-model="edu.degree" label="Basic Education / Degree / Course" placeholder="e.g. BS Information Technology" />
-          <AppInput v-model="edu.periodFrom" label="Period From" placeholder="Year" />
-          <AppInput v-model="edu.periodTo" label="Period To" placeholder="Year / Present" />
-          
-          <AppSelect v-model="edu.status" label="Current Status" :options="statusOptions" />
-          <AppInput v-model="edu.unitsEarned" label="Units Earned (if not graduated)" placeholder="e.g. 36 Units" />
-          <AppInput v-model="edu.yearGraduated" label="Year Graduated" />
-          <div class="lg:col-span-3">
-            <AppInput v-model="edu.honorsReceived" label="Scholarship / Honors Received" placeholder="e.g. Cum Laude" />
+          <!-- Level (full width on its own row) -->
+          <div class="sm:col-span-2 lg:col-span-1">
+            <AppSelect
+              v-model="edu.level"
+              label="Education Level"
+              :options="DEGREE_LEVELS" />
+          </div>
+
+          <!-- School name -->
+          <div class="sm:col-span-2">
+            <AppInput v-model="edu.school" label="Name of School / University" />
+          </div>
+
+          <!-- Degree / Course -->
+          <div class="sm:col-span-2 lg:col-span-2">
+            <AppInput v-model="edu.degree" label="Degree / Course Title"
+              :hint="edu.level === 'Bachelor' ? 'e.g. Bachelor of Secondary Education major in English'
+                   : edu.level === 'Masteral'  ? 'e.g. Master of Arts in Education'
+                   : edu.level === 'Doctorate' ? 'e.g. Doctor of Philosophy in Educational Management'
+                   : edu.level === 'Vocational' ? 'e.g. Technical-Vocational Teacher Education'
+                   : 'Enter the full degree or course title'" />
+          </div>
+
+          <!-- Status -->
+          <div>
+            <AppSelect
+              v-model="edu.status"
+              label="Completion Status"
+              :options="STATUS_OPTIONS"
+              @update:modelValue="(v) => onStatusChange(edu, v)" />
+          </div>
+
+          <!-- Period From / To -->
+          <div>
+            <AppInput v-model="edu.periodFrom" label="Year Started" type="number"
+              hint="4-digit year e.g. 2018" />
+          </div>
+          <div>
+            <AppInput v-model="edu.periodTo" label="Year Ended / Present" type="number"
+              hint="4-digit year or leave blank if ongoing" />
+          </div>
+
+          <!-- Year Graduated — only when Graduated -->
+          <Transition name="field-slide">
+            <div v-if="showYearGraduated(edu)">
+              <AppInput v-model="edu.yearGraduated" label="Year Graduated" type="number"
+                hint="4-digit year e.g. 2022" />
+            </div>
+          </Transition>
+
+          <!-- Units Earned — only when Units Earned or CAR -->
+          <Transition name="field-slide">
+            <div v-if="showUnitsEarned(edu)">
+              <AppInput v-model="edu.unitsEarned" label="Units Earned"
+                :hint="edu.status === 'CAR' ? 'All academic units completed' : 'e.g. 36 units'" />
+            </div>
+          </Transition>
+
+          <!-- Honors -->
+          <div class="sm:col-span-2 lg:col-span-3">
+            <AppInput v-model="edu.honorsReceived" label="Scholarship / Academic Honors Received"
+              hint="e.g. Cum Laude, Dean's List, CHED Scholar — leave blank if none" />
+          </div>
+
+        </div>
+
+        <!-- Document attachments -->
+        <div class="px-5 py-3.5 bg-[var(--bg-app)] border-t border-[var(--border-main)] flex flex-wrap gap-3">
+          <p class="w-full text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-1">Supporting Documents</p>
+
+          <div v-for="doc in [
+            { key: 'tor',     label: 'Transcript of Records (TOR)' },
+            { key: 'diploma', label: 'Diploma / Certificate'       },
+          ]" :key="doc.key"
+            class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)] min-w-[200px]">
+            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+              <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] font-bold text-[var(--text-muted)] truncate">{{ doc.label }}</p>
+              <button v-if="edu[doc.key]"
+                @click="$emit('preview', edu[doc.key], `${doc.label} — ${edu.school}`)"
+                class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
+                View uploaded
+              </button>
+              <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
+                Upload
+                <input type="file" class="sr-only" accept=".pdf,image/*"
+                  @change="$emit('upload', $event, i, doc.key)" />
+              </label>
+            </div>
+            <!-- Re-upload -->
+            <label v-if="edu[doc.key]"
+              class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
+              title="Replace file">
+              <i class="pi pi-sync text-[10px]"></i>
+              <input type="file" class="sr-only" accept=".pdf,image/*"
+                @change="$emit('upload', $event, i, doc.key)" />
+            </label>
           </div>
         </div>
 
-        <!-- Document Attachments -->
-        <div class="px-6 py-4 bg-[var(--surface-2)] border-t border-[var(--border-main)] flex flex-wrap gap-4">
-          <div v-for="doc in ['tor', 'diploma']" :key="doc" class="flex items-center gap-3 p-2 bg-white rounded-xl border border-[var(--border-main)] shadow-sm">
-             <div class="w-8 h-8 rounded-lg bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-muted)]">
-               <i class="pi pi-file-pdf"></i>
-             </div>
-             <div class="flex flex-col">
-               <span class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)]">{{ doc }}</span>
-               <button v-if="edu[doc]" @click="$emit('preview', edu[doc], `${doc.toUpperCase()} - ${edu.school}`)" 
-                 class="text-[11px] font-bold text-blue-600 hover:underline text-left">View Uploaded</button>
-               <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
-                 Upload Document
-                 <input type="file" class="hidden" accept=".pdf,image/*" @change="$emit('upload', $event, i, doc)" />
-               </label>
-             </div>
-             <button v-if="edu[doc]" class="ml-2 text-[var(--text-faint)] hover:text-rose-500 transition-colors">
-               <label class="cursor-pointer">
-                 <i class="pi pi-sync text-[10px]"></i>
-                 <input type="file" class="hidden" accept=".pdf,image/*" @change="$emit('upload', $event, i, doc)" />
-               </label>
-             </button>
-          </div>
-        </div>
       </div>
     </div>
 
   </div>
 </template>
+
+<style scoped>
+.field-slide-enter-active { transition: all 0.2s var(--ease-out); }
+.field-slide-leave-active { transition: all 0.15s var(--ease-in); }
+.field-slide-enter-from, .field-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+</style>

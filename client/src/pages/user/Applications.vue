@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onActivated, inject } from 'vue'
 import apiClient from '@/api/axios'
-import ApplicantCoverPagePdf from '@/components/ApplicantCoverPagePdf.vue'
+import ApplicantCoverPagePdf from '@/components/user/ApplicantCoverPagePdf.vue'
 import { AppBadge, AppModal, AppTabs, AppButton, AppFileViewer, AppSpinner } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { resolveUrl } from '@/utils/url'

@@ -5,7 +5,12 @@ defineOptions({ name: 'AppSelect', inheritAttrs: false })
 
 const props = defineProps({
   modelValue:  { type: [String, Number, null], default: '' },
+  /**
+   * Flat options: ['A', 'B'] or [{ label, value }]
+   * Grouped options (pass `grouped: true`): [{ label: 'Group', options: [...] }]
+   */
   options:     { type: Array, default: () => [] },
+  grouped:     { type: Boolean, default: false },
   label:       { type: String, default: '' },
   placeholder: { type: String, default: 'Select an option' },
   valueKey:    { type: String, default: 'value' },
@@ -20,58 +25,41 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'focus', 'blur'])
 const isFocused = ref(false)
 
-const normalizedOptions = computed(() =>
-  props.options.map((o) =>
+const normalizeFlat = (arr) =>
+  arr.map((o) =>
     typeof o === 'string' || typeof o === 'number'
       ? { label: o, value: o }
       : { label: o[props.labelKey], value: o[props.valueKey] }
   )
+
+const normalizedOptions = computed(() =>
+  props.grouped ? props.options : normalizeFlat(props.options)
 )
 
-const hasValue = computed(() => 
+const hasValue = computed(() =>
   props.modelValue !== null && props.modelValue !== undefined && props.modelValue.toString().length > 0
 )
 
+// CSS peer-placeholder-shown doesn't work on <select>, use JS
 const isFloating = computed(() => isFocused.value || hasValue.value)
 
-// Sizing Maps
-const containerClasses = {
-  xs: 'min-h-[40px] px-3',
-  sm: 'min-h-[46px] px-3.5',
-  md: 'min-h-[52px] px-4',
-  lg: 'min-h-[60px] px-5',
+const sizeConfigs = {
+  xs: { h: 'h-8',  f: 'text-xs'   },
+  sm: { h: 'h-10', f: 'text-sm'   },
+  md: { h: 'h-11', f: 'text-sm'   },
+  lg: { h: 'h-12', f: 'text-base' },
 }
 
-const selectClasses = {
-  xs: 'text-xs pt-1',
-  sm: 'text-sm pt-1',
-  md: 'text-sm pt-1',
-  lg: 'text-base pt-1.5',
-}
-
-const labelClasses = {
-  xs: 'text-xs',
-  sm: 'text-sm',
-  md: 'text-sm',
-  lg: 'text-base',
-}
-
-// Floating offsets
-const floatingOffsets = {
-  xs: '-translate-y-5 scale-75',
-  sm: '-translate-y-5.5 scale-75',
-  md: '-translate-y-6.5 scale-75',
-  lg: '-translate-y-8 scale-75',
-}
+const config = computed(() => sizeConfigs[props.size] || sizeConfigs.md)
 
 const onChange = (e) => emit('update:modelValue', e.target.value)
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 w-full group">
-    
+  <div class="flex flex-col gap-1 w-full">
+
     <div class="relative flex items-center w-full">
-      
+
       <!-- NATIVE SELECT -->
       <select
         v-bind="$attrs"
@@ -79,49 +67,61 @@ const onChange = (e) => emit('update:modelValue', e.target.value)
         :value="modelValue"
         :disabled="disabled"
         :class="[
-          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 border peer',
-          containerClasses[size],
-          selectClasses[size],
-          'font-bold text-[var(--text-main)] rounded-xl pr-10 cursor-pointer',
-          error 
-            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5' 
+          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl pr-10 cursor-pointer px-4 peer',
+          config.h,
+          config.f,
+          error
+            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5'
             : 'border-[var(--border-main)] hover:border-[var(--border-strong)] focus:border-[var(--color-primary)] focus:ring-0',
           disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-[var(--surface)]',
-          isFocused ? 'border-2' : 'border-1'
+          isFocused ? 'border-2' : 'border',
         ]"
         @change="onChange"
         @focus="isFocused = true; $emit('focus', $event)"
-        @blur="isFocused = false; $emit('blur', $event)"
-      >
+        @blur="isFocused = false; $emit('blur', $event)">
+
         <option value="" disabled :selected="!modelValue">{{ placeholder }}</option>
-        <option
-          v-for="opt in normalizedOptions"
-          :key="opt.value"
-          :value="opt.value"
-          :selected="opt.value === modelValue"
-        >{{ opt.label }}</option>
+
+        <template v-if="grouped">
+          <optgroup v-for="group in options" :key="group.label" :label="group.label">
+            <option
+              v-for="opt in normalizeFlat(group.options || [])"
+              :key="opt.value" :value="opt.value" :selected="opt.value === modelValue">
+              {{ opt.label }}
+            </option>
+          </optgroup>
+        </template>
+
+        <template v-else>
+          <option
+            v-for="opt in normalizedOptions"
+            :key="opt.value" :value="opt.value" :selected="opt.value === modelValue">
+            {{ opt.label }}
+          </option>
+        </template>
+
       </select>
 
-      <!-- FLOATING LABEL -->
-      <label 
+      <!-- FLOATING LABEL — JS-driven (CSS peer-placeholder-shown doesn't apply to <select>) -->
+      <label
         v-if="label"
         :for="id"
         :class="[
-          'absolute flex items-center gap-2 transition-all duration-300 pointer-events-none select-none origin-[0] start-4 px-1 bg-[var(--surface)]',
-          labelClasses[size],
-          'text-[var(--text-faint)] font-medium',
-          /* Floating State (Focus or Has Value) */
-          'peer-focus:px-1 peer-focus:font-black peer-focus:text-[var(--color-primary)]',
-          isFloating ? floatingOffsets[size] : 'top-1/2 -translate-y-1/2',
-          /* Match behavior of placeholder-shown for select (empty string check) */
-          !isFloating ? 'top-1/2 -translate-y-1/2 scale-100' : '',
-          error && isFloating ? '!text-rose-500' : ''
-        ]"
-      >
-        {{ label }}
+          'absolute inline-flex items-center gap-1.5 duration-300 transform origin-[0]',
+          'pointer-events-none select-none start-4 px-1 bg-[var(--surface)]',
+          config.f,
+          isFloating
+            ? 'top-1.5 -translate-y-3.5 scale-75 font-black z-10'
+            : 'top-1/2 -translate-y-1/2 scale-100 font-medium z-0',
+          isFloating
+            ? (error ? 'text-rose-500' : 'text-[var(--color-primary)]')
+            : 'text-[var(--text-faint)]',
+          'max-w-[calc(100%-3rem)] overflow-hidden',
+        ]">
+        <span class="min-w-0 truncate">{{ label }}</span>
       </label>
 
-      <!-- CHEVRON ICON -->
+      <!-- CHEVRON -->
       <div class="absolute right-4 pointer-events-none flex items-center">
         <i class="pi pi-chevron-down text-[11px] text-[var(--text-muted)]"></i>
       </div>
@@ -146,10 +146,7 @@ const onChange = (e) => emit('update:modelValue', e.target.value)
 <style scoped>
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s var(--ease-out); }
 .slide-up-enter-from { opacity: 0; transform: translateY(4px); }
-.slide-up-leave-to { opacity: 0; transform: translateY(-4px); }
+.slide-up-leave-to   { opacity: 0; transform: translateY(-4px); }
 
-select:focus {
-  outline: none;
-  box-shadow: none;
-}
+select:focus { outline: none; box-shadow: none; }
 </style>

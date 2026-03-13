@@ -1,51 +1,47 @@
 <script setup>
-import { ref, reactive, computed, onMounted, inject } from 'vue'
+import { ref, reactive, computed, onMounted, onActivated, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { resolveUrl } from '@/utils/url'
 import apiClient from '@/api/axios'
 
-// UI Primitives
-import { AppButton, AppFileViewer, AppSpinner, AppCard, AppTabs } from '@/components/ui'
+import { AppSpinner, AppFileViewer } from '@/components/ui'
 
-// PDS Tabs
-import PersonalTab from '@/components/user/pds/PersonalTab.vue'
-import FamilyTab from '@/components/user/pds/FamilyTab.vue'
-import EducationTab from '@/components/user/pds/EducationTab.vue'
+import PersonalTab    from '@/components/user/pds/PersonalTab.vue'
+import FamilyTab      from '@/components/user/pds/FamilyTab.vue'
+import EducationTab   from '@/components/user/pds/EducationTab.vue'
 import EligibilityTab from '@/components/user/pds/EligibilityTab.vue'
-import ExperienceTab from '@/components/user/pds/ExperienceTab.vue'
-import TrainingTab from '@/components/user/pds/TrainingTab.vue'
-import OthersTab from '@/components/user/pds/OthersTab.vue'
+import ExperienceTab  from '@/components/user/pds/ExperienceTab.vue'
+import TrainingTab    from '@/components/user/pds/TrainingTab.vue'
+import OthersTab      from '@/components/user/pds/OthersTab.vue'
 
 defineOptions({ name: 'UserProfile' })
 
 const authStore = useAuthStore()
-const toast = inject('$toast')
+const toast     = inject('$toast')
 
-// ── STATE ──────────────────────────────────────────────────────────────────
-const loading = ref(true)
-const saving  = ref(false)
+const loading   = ref(true)
+const saving    = ref(false)
 const activeTab = ref(localStorage.getItem('pds_active_tab') || 'personal')
 
-// File Viewer
-const showViewer = ref(false)
-const viewerUrl  = ref('')
+const showViewer  = ref(false)
+const viewerUrl   = ref('')
 const viewerTitle = ref('')
 
 const openViewer = (url, title = 'Document Preview') => {
   if (!url) return
-  viewerUrl.value = resolveUrl(url)
+  viewerUrl.value   = resolveUrl(url)
   viewerTitle.value = title
-  showViewer.value = true
+  showViewer.value  = true
 }
 
 const tabs = [
-  { id: 'personal',    label: 'Personal',    icon: 'pi-user' },
-  { id: 'family',      label: 'Family',      icon: 'pi-users' },
+  { id: 'personal',    label: 'Personal',    icon: 'pi-user'           },
+  { id: 'family',      label: 'Family',      icon: 'pi-users'          },
   { id: 'education',   label: 'Education',   icon: 'pi-graduation-cap' },
-  { id: 'eligibility', label: 'Eligibility', icon: 'pi-verified' },
-  { id: 'experience',  label: 'Experience',  icon: 'pi-briefcase' },
-  { id: 'training',    label: 'Training',    icon: 'pi-book' },
-  { id: 'others',      label: 'Other',       icon: 'pi-list' },
+  { id: 'eligibility', label: 'Eligibility', icon: 'pi-verified'       },
+  { id: 'experience',  label: 'Experience',  icon: 'pi-briefcase'      },
+  { id: 'training',    label: 'Training',    icon: 'pi-book'           },
+  { id: 'others',      label: 'Others',      icon: 'pi-list'           },
 ]
 
 const form = reactive({
@@ -53,12 +49,12 @@ const form = reactive({
   sex: '', birthDate: '', isIndigenous: false, isSoloParent: false, religion: '', disability: '', civilStatus: '',
   gsisNo: '', pagibigNo: '', philhealthNo: '', tinNo: '', philSysNo: '', agencyEmployeeNo: '',
   contact: { phones: [''], emails: [''] },
-  currentAddress: { sitio: '', barangay: '', municipality: '', city: '', province: '', zipCode: '', country: 'Philippines' },
-  comelecAddress: { sitio: '', barangay: '', municipality: '', city: '', province: '', zipCode: '', country: 'Philippines', document: '' },
+  currentAddress:  { sitio: '', barangay: '', municipality: '', city: '', province: '', zipCode: '', country: 'Philippines' },
+  comelecAddress:  { sitio: '', barangay: '', municipality: '', city: '', province: '', zipCode: '', country: 'Philippines', document: '' },
   family: {
-    spouse: { firstName: '', middleName: '', lastName: '', suffix: '', occupation: '', employer: '', businessAddress: '', phone: '' },
-    father: { firstName: '', middleName: '', lastName: '', suffix: '' },
-    mother: { firstName: '', middleName: '', lastName: '', suffix: '' },
+    spouse:   { firstName: '', middleName: '', lastName: '', suffix: '', occupation: '', employer: '', businessAddress: '', phone: '' },
+    father:   { firstName: '', middleName: '', lastName: '', suffix: '' },
+    mother:   { firstName: '', middleName: '', lastName: '', suffix: '' },
     children: [],
   },
   education: [], eligibility: [], experience: [], training: [],
@@ -67,12 +63,40 @@ const form = reactive({
   pdsQuestions: {
     q34a: false, q34b: false, q35a: false, q35b: false, q36: false, q37: false,
     q38a: false, q38b: false, q39: false, q40a: false, q40b: false, q40c: false,
-    q34_details: '', q35_details: '', q36_details: '', q37_details: '', q38_details: '', q39_details: '', q40_details: ''
+    q34_details: '', q35_details: '', q36_details: '', q37_details: '',
+    q38_details: '', q39_details: '', q40_details: '',
   },
-  performanceRating: { score: '', adjective: '', periodCovered: '' }
+  performanceRating: { score: '', adjective: '', periodCovered: '' },
 })
 
-// ── ACTIONS ────────────────────────────────────────────────────────────────
+const avatarSrc = computed(() =>
+  authStore.user?.avatarUrl ||
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.user?.username || 'U')}&background=4A4D8F&color=fff&bold=true`
+)
+
+const fullName = computed(() => {
+  const n = form.name
+  if (!n?.firstName) return authStore.user?.username || 'User'
+  return [n.firstName, n.middleName ? n.middleName[0] + '.' : '', n.lastName]
+    .filter(Boolean).join(' ')
+})
+
+const completenessSteps = computed(() => [
+  { id: 'personal',    done: !!form.name?.firstName },
+  { id: 'family',      done: !!(form.family?.father?.firstName || form.family?.children?.length) },
+  { id: 'education',   done: !!(form.education?.length) },
+  { id: 'eligibility', done: !!(form.eligibility?.length) },
+  { id: 'experience',  done: !!(form.experience?.length) },
+  { id: 'training',    done: !!(form.training?.length) },
+  { id: 'others',      done: !!(form.specialSkills?.length || form.voluntaryWork?.length) },
+])
+
+const completenessPercent = computed(() => {
+  const done = completenessSteps.value.filter(s => s.done).length
+  return Math.round((done / completenessSteps.value.length) * 100)
+})
+
+const isDone = (tabId) => completenessSteps.value.find(s => s.id === tabId)?.done
 
 const setTab = (id) => {
   activeTab.value = id
@@ -83,12 +107,8 @@ const loadProfile = async () => {
   loading.value = true
   try {
     const { data } = await apiClient.get('/v1/profile/me')
-    if (data.data) {
-       // Merge data into reactive form
-       Object.assign(form, data.data)
-    }
-  } catch (err) {
-    console.error('Failed to load profile', err)
+    if (data.data) Object.assign(form, data.data)
+  } catch {
     toast.fire({ icon: 'error', title: 'Failed to load profile data' })
   } finally {
     loading.value = false
@@ -99,151 +119,137 @@ const saveProfile = async () => {
   saving.value = true
   try {
     await apiClient.put('/v1/profile/me', form)
-    toast.fire({ icon: 'success', title: 'Profile saved successfully' })
-  } catch (err) {
-    console.error('Save failed', err)
+    toast.fire({ icon: 'success', title: 'Profile saved!' })
+  } catch {
     toast.fire({ icon: 'error', title: 'Failed to save profile' })
   } finally {
     saving.value = false
   }
 }
 
-// Global Upload Handler for Tab Components
 const handleUpload = async (event, section, index, field) => {
   const file = event.target.files[0]
   if (!file) return
-  
   const formData = new FormData()
   formData.append('file', file)
   formData.append('type', section)
   if (field) formData.append('field', field)
-
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
-    
-    // Dynamically update the form based on section
-    if (section === 'education') {
-      form.education[index][field] = data.fileUrl
-    } else if (section === 'eligibility') {
-      form.eligibility[index].document = data.fileUrl
-    } else if (section === 'experience') {
-      form.experience[index].document = data.fileUrl
-    } else if (section === 'training') {
-      form.training[index].document = data.fileUrl
-    }
-    
+    if (section === 'education')   form.education[index][field]     = data.fileUrl
+    if (section === 'eligibility') form.eligibility[index].document = data.fileUrl
+    if (section === 'experience')  form.experience[index].document  = data.fileUrl
+    if (section === 'training')    form.training[index].document    = data.fileUrl
     toast.fire({ icon: 'success', title: 'Document uploaded' })
-  } catch (err) {
+  } catch {
     toast.fire({ icon: 'error', title: 'Upload failed' })
   }
 }
 
 onMounted(loadProfile)
+onActivated(loadProfile)
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto pb-20">
-    
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 animate-slide-down">
-      <div>
-        <p class="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--color-primary)] mb-2">Guih-Ranking PDS Hub</p>
-        <h1 class="text-3xl font-black text-[var(--text-main)] tracking-tight">My Application Profile</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-1 font-medium">Keep your Personal Data Sheet (CS Form 212) up to date.</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <AppButton @click="saveProfile" :loading="saving" icon="pi-save" size="lg" class="shadow-lg shadow-[var(--color-primary)]/20 px-8">
-           Save All Changes
-        </AppButton>
-      </div>
+  <div class="max-w-4xl mx-auto pb-12 animate-fade-in">
+
+    <!-- ── Loading ──────────────────────────────────────────── -->
+    <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-28
+      bg-[var(--surface)] rounded-[var(--radius-xl)] border border-[var(--border-main)]"
+      style="box-shadow:var(--shadow-sm)">
+      <AppSpinner size="lg" />
+      <p class="text-[11px] font-bold uppercase tracking-widest text-[var(--text-faint)]">Loading profile…</p>
     </div>
 
-    <!-- Main Content Grid -->
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 bg-white rounded-3xl border border-[var(--border-main)]">
-       <AppSpinner size="lg" />
-       <p class="text-xs font-black uppercase tracking-widest text-[var(--text-faint)]">Synchronizing Profile...</p>
-    </div>
+    <div v-else class="bg-[var(--surface)] border border-[var(--border-main)] rounded-[var(--radius-xl)] overflow-hidden"
+      style="box-shadow:var(--shadow-md)">
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      <!-- Left: Navigation Sidebar -->
-      <div class="lg:col-span-1">
-        <div class="sticky top-8 flex flex-col gap-2">
-          <button v-for="tab in tabs" :key="tab.id"
-            @click="setTab(tab.id)"
-            :class="[
-              'w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-300 group',
-              activeTab === tab.id 
-                ? 'bg-[var(--color-primary)] text-white shadow-xl shadow-[var(--color-primary)]/20 translate-x-2' 
-                : 'bg-white border border-[var(--border-main)] text-[var(--text-muted)] hover:bg-[var(--bg-app)] hover:border-[var(--border-strong)]'
-            ]">
-            <div :class="['w-8 h-8 rounded-xl flex items-center justify-center transition-colors', activeTab === tab.id ? 'bg-white/20' : 'bg-[var(--bg-app)] group-hover:bg-white']">
-              <i :class="['pi text-xs', tab.icon]"></i>
-            </div>
-            <span class="text-xs font-black uppercase tracking-widest">{{ tab.label }}</span>
-            <i v-if="activeTab === tab.id" class="pi pi-chevron-right ml-auto text-[10px] opacity-50"></i>
+      <!-- ── Profile banner ───────────────────────────────── -->
+      <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4 border-b border-[var(--border-main)]"
+        style="background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 5%, white) 0%, white 70%)">
+
+        <!-- Avatar -->
+        <img :src="avatarSrc" :alt="fullName"
+          class="w-14 h-14 rounded-2xl object-cover border-2 border-[var(--color-primary-light)] shadow-sm shrink-0" />
+
+        <!-- Identity -->
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)] mb-0.5">CS Form 212 — Personal Data Sheet</p>
+          <p class="text-base font-black text-[var(--text-main)] leading-tight">{{ fullName }}</p>
+          <p class="text-xs text-[var(--text-muted)] truncate">{{ authStore.user?.email }}</p>
+        </div>
+
+        <!-- Completeness + save -->
+        <div class="flex flex-col sm:items-end gap-2 shrink-0">
+          <button
+            @click="saveProfile"
+            :disabled="saving"
+            class="btn-primary h-9 px-5 text-xs flex items-center gap-2 disabled:opacity-50 self-start sm:self-auto">
+            <i :class="['pi text-[10px]', saving ? 'pi-spin pi-spinner' : 'pi-save']"></i>
+            {{ saving ? 'Saving…' : 'Save All Changes' }}
           </button>
-          
-          <div class="mt-6 p-6 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col gap-4">
-             <div class="flex items-center gap-2 text-emerald-700">
-                <i class="pi pi-shield text-xs"></i>
-                <span class="text-[10px] font-black uppercase tracking-widest">Compliance</span>
-             </div>
-             <p class="text-[11px] text-emerald-800 leading-relaxed font-medium">Your data is stored securely and processed according to DepEd meritocracy standards.</p>
+          <div class="flex items-center gap-2 min-w-[160px]">
+            <div class="flex-1 h-1.5 bg-[var(--bg-app)] rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500"
+                :class="completenessPercent === 100 ? 'bg-green-500' : 'bg-[var(--color-primary)]'"
+                :style="{ width: completenessPercent + '%' }" />
+            </div>
+            <span class="text-[10px] font-black shrink-0"
+              :class="completenessPercent === 100 ? 'text-green-600' : 'text-[var(--color-primary)]'">
+              {{ completenessPercent }}%
+            </span>
           </div>
+          <p class="text-[10px] text-[var(--text-faint)]">
+            {{ completenessSteps.filter(s => s.done).length }}/{{ completenessSteps.length }} sections filled
+          </p>
         </div>
       </div>
 
-      <!-- Right: Form Content -->
-      <div class="lg:col-span-3">
-        <div class="bg-white border border-[var(--border-main)] rounded-3xl shadow-sm min-h-[600px] overflow-hidden">
-           <!-- Tab Header -->
-           <div class="px-8 py-5 border-b border-[var(--border-main)] bg-[var(--surface-2)] flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                 <h2 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">
-                   {{ tabs.find(t => t.id === activeTab)?.label }} Section
-                 </h2>
-                 <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-tighter">Draft</span>
-              </div>
-              <div class="flex items-center gap-2 text-[var(--text-faint)]">
-                 <i class="pi pi-lock text-[10px]"></i>
-                 <span class="text-[10px] font-bold uppercase tracking-widest">Encrypted Field</span>
-              </div>
-           </div>
-
-           <!-- Tab Viewport -->
-           <div class="p-8">
-              <PersonalTab    v-if="activeTab === 'personal'"    v-model="form" />
-              <FamilyTab      v-if="activeTab === 'family'"      v-model="form.family" />
-              <EducationTab   v-if="activeTab === 'education'"   v-model="form.education" @upload="(e, i, f) => handleUpload(e, 'education', i, f)" @preview="openViewer" />
-              <EligibilityTab v-if="activeTab === 'eligibility'" v-model="form.eligibility" @upload="(e, i) => handleUpload(e, 'eligibility', i)" @preview="openViewer" />
-              <ExperienceTab  v-if="activeTab === 'experience'"  v-model="form.experience" @upload="(e, i) => handleUpload(e, 'experience', i)" @preview="openViewer" />
-              <TrainingTab    v-if="activeTab === 'training'"    v-model="form.training" @upload="(e, i) => handleUpload(e, 'training', i)" @preview="openViewer" />
-              <OthersTab      v-if="activeTab === 'others'"      v-model="form" />
-           </div>
-
-           <!-- Sticky Footer inside card -->
-           <div class="px-8 py-5 border-t border-[var(--border-main)] bg-[var(--bg-app)] flex items-center justify-between">
-              <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">End of {{ activeTab }} section</p>
-              <AppButton @click="saveProfile" :loading="saving" size="sm" variant="secondary" icon="pi-check">
-                 Quick Save
-              </AppButton>
-           </div>
-        </div>
+      <!-- ── Horizontal tab bar ───────────────────────────── -->
+      <div class="flex overflow-x-auto border-b border-[var(--border-main)] bg-[var(--surface)] scrollbar-none">
+        <button
+          v-for="tab in tabs" :key="tab.id"
+          @click="setTab(tab.id)"
+          :class="[
+            'relative flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap',
+            'transition-colors duration-150 shrink-0',
+            activeTab === tab.id
+              ? 'text-[var(--color-primary)] bg-[var(--color-primary-light)]/40'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-app)]',
+          ]">
+          <i :class="['pi text-[11px]', tab.icon]"></i>
+          {{ tab.label }}
+          <!-- Done dot -->
+          <span v-if="isDone(tab.id)"
+            class="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></span>
+          <!-- Active underline -->
+          <span v-if="activeTab === tab.id"
+            class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-primary)] rounded-t-full"></span>
+        </button>
       </div>
+
+      <!-- ── Tab content ──────────────────────────────────── -->
+      <div class="p-6">
+        <PersonalTab    v-if="activeTab === 'personal'"    v-model="form" />
+        <FamilyTab      v-if="activeTab === 'family'"      v-model="form.family" />
+        <EducationTab   v-if="activeTab === 'education'"   v-model="form.education"
+          @upload="(e, i, f) => handleUpload(e, 'education', i, f)" @preview="openViewer" />
+        <EligibilityTab v-if="activeTab === 'eligibility'" v-model="form.eligibility"
+          @upload="(e, i) => handleUpload(e, 'eligibility', i)" @preview="openViewer" />
+        <ExperienceTab  v-if="activeTab === 'experience'"  v-model="form.experience"
+          @upload="(e, i) => handleUpload(e, 'experience', i)" @preview="openViewer" />
+        <TrainingTab    v-if="activeTab === 'training'"    v-model="form.training"
+          @upload="(e, i) => handleUpload(e, 'training', i)" @preview="openViewer" />
+        <OthersTab      v-if="activeTab === 'others'"      v-model="form" />
+      </div>
+
     </div>
 
-    <!-- Modals -->
     <AppFileViewer v-model="showViewer" :url="viewerUrl" :title="viewerTitle" />
-
   </div>
 </template>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.4s var(--ease-out) both;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
 </style>

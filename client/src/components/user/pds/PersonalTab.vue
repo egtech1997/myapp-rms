@@ -1,5 +1,5 @@
 <script setup>
-import { AppInput, AppSelect, AppRadio, AppCheckbox } from '@/components/ui'
+import { AppInput, AppSelect, AppCheckbox } from '@/components/ui'
 
 defineOptions({ name: 'PersonalTab' })
 
@@ -7,165 +7,227 @@ const props = defineProps({
   modelValue: { type: Object, required: true },
 })
 
-const emit = defineEmits(['update:modelValue'])
-
-const religions = [
-  'Roman Catholicism', 'Islam', 'Protestantism', 'Iglesia ni Cristo',
-  'Philippine Independent Church (Aglipayan Church)', 'Seventh-day Adventist Church',
-  'Jehovah’s Witnesses', 'Buddhism', 'Hinduism', 'Judaism', 'Baháʼí Faith', 'Other'
-]
+defineEmits(['update:modelValue', 'upload', 'preview'])
 
 const civilStatusOptions = [
-  { label: 'Single', value: 'Single' },
-  { label: 'Married', value: 'Married' },
-  { label: 'Widowed', value: 'Widowed' },
+  { label: 'Single',    value: 'Single'    },
+  { label: 'Married',   value: 'Married'   },
+  { label: 'Widowed',   value: 'Widowed'   },
   { label: 'Separated', value: 'Separated' },
-  { label: 'Other', value: 'Other' }
+  { label: 'Other',     value: 'Other'     },
 ]
 
 const sexOptions = [
-  { label: 'Male', value: 'male' },
-  { label: 'Female', value: 'female' },
-  { label: 'Other/LGBTQ+', value: 'LGBTQ+' },
-  { label: 'Prefer not to say', value: 'prefer_not_to_say' }
+  { label: 'Male',              value: 'male'             },
+  { label: 'Female',            value: 'female'           },
+  { label: 'LGBTQ+',            value: 'LGBTQ+'           },
+  { label: 'Prefer not to say', value: 'prefer_not_to_say' },
 ]
+
+const religionOptions = [
+  'Roman Catholicism', 'Islam', 'Protestantism', 'Iglesia ni Cristo',
+  'Philippine Independent Church (Aglipayan)', 'Seventh-day Adventist',
+  "Jehovah's Witnesses", 'Buddhism', 'Hinduism', 'Other',
+]
+
+const addPhone   = () => props.modelValue.contact.phones.push('')
+const removePhone = (i) => props.modelValue.contact.phones.splice(i, 1)
+const addEmail   = () => props.modelValue.contact.emails.push('')
+const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
 </script>
 
 <template>
-  <div class="flex flex-col gap-10 py-6 animate-fade-in">
-    
-    <!-- 1. Full Name -->
-    <section class="space-y-6">
-      <div class="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-2">
-         <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)]">
-           <i class="pi pi-user text-xs"></i>
-         </div>
-         <h3 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">Legal Full Name</h3>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <AppInput v-model="modelValue.name.lastName" label="Surname" placeholder="e.g. DELA CRUZ" />
-        <AppInput v-model="modelValue.name.firstName" label="First Name" placeholder="e.g. JUAN" />
-        <AppInput v-model="modelValue.name.middleName" label="Middle Name" placeholder="e.g. MERCADO" />
-        <AppInput v-model="modelValue.name.suffix" label="Name Suffix" placeholder="e.g. JR., III" />
-      </div>
-    </section>
+  <div class="flex flex-col gap-8 animate-fade-in">
 
-    <!-- 2. Demographics -->
-    <section class="space-y-6">
-      <div class="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-2">
-         <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-           <i class="pi pi-id-card text-xs"></i>
-         </div>
-         <h3 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">Demographics & Identity</h3>
-      </div>
+    <!-- ── Section header helper ───────────────────────── -->
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
-        <AppInput v-model="modelValue.birthDate" type="date" label="Date of Birth" />
-        
-        <div class="space-y-2">
-          <label class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] ml-1">Sex</label>
-          <div class="flex items-center gap-4 h-9 px-3 rounded-lg border border-[var(--border-main)] bg-[var(--surface-2)]">
-            <AppRadio 
-              v-model="modelValue.sex" 
-              :options="sexOptions" 
-              name="user-sex" 
-              direction="horizontal"
-            />
+    <!-- ── 1. Full Name ─────────────────────────────────── -->
+    <div>
+      <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-user text-xs text-[var(--color-primary)]"></i>
+        </div>
+        <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Legal Full Name</h3>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <AppInput v-model="modelValue.name.lastName"   label="Surname"     hint="e.g. DELA CRUZ" />
+        <AppInput v-model="modelValue.name.firstName"  label="First Name"  hint="e.g. JUAN" />
+        <AppInput v-model="modelValue.name.middleName" label="Middle Name" hint="e.g. MERCADO" />
+        <AppInput v-model="modelValue.name.suffix"     label="Suffix"      hint="e.g. JR., III" />
+      </div>
+    </div>
+
+    <!-- ── 2. Demographics ──────────────────────────────── -->
+    <div>
+      <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-id-card text-xs text-[var(--color-primary)]"></i>
+        </div>
+        <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Demographics &amp; Identity</h3>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <AppInput  v-model="modelValue.birthDate"   type="date" label="Date of Birth" />
+        <AppSelect v-model="modelValue.sex"         label="Sex"          :options="sexOptions" />
+        <AppSelect v-model="modelValue.civilStatus" label="Civil Status" :options="civilStatusOptions" />
+        <AppSelect v-model="modelValue.religion"    label="Religion"     :options="religionOptions" />
+        <AppInput  v-model="modelValue.disability"  label="Disability (if any)" hint="e.g. Visual Impairment — leave blank if none" />
+        <div class="flex flex-col gap-2 pt-1">
+          <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Special Identities</p>
+          <div class="flex items-center gap-6 h-11 px-4 border border-[var(--border-main)] rounded-xl bg-[var(--surface)]">
+            <AppCheckbox v-model="modelValue.isIndigenous" label="Indigenous People (IP)" />
+            <AppCheckbox v-model="modelValue.isSoloParent" label="Solo Parent" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. Government IDs ────────────────────────────── -->
+    <div class="bg-[var(--bg-app)] rounded-[var(--radius-xl)] border border-[var(--border-main)] p-5">
+      <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-shield text-xs text-[var(--color-primary)]"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Government-Issued IDs</h3>
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Required for appointment processing and payroll enrollment</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <AppInput v-model="modelValue.gsisNo"          label="GSIS BP No."         size="sm" />
+        <AppInput v-model="modelValue.pagibigNo"        label="Pag-IBIG No."        size="sm" />
+        <AppInput v-model="modelValue.philhealthNo"     label="PhilHealth No."      size="sm" />
+        <AppInput v-model="modelValue.tinNo"            label="TIN No."             size="sm" />
+        <AppInput v-model="modelValue.philSysNo"        label="PhilSys (National ID) No." size="sm" />
+        <AppInput v-model="modelValue.agencyEmployeeNo" label="Agency Employee No." size="sm" />
+      </div>
+    </div>
+
+    <!-- ── 4. Contact Information ───────────────────────── -->
+    <div>
+      <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-phone text-xs text-[var(--color-primary)]"></i>
+        </div>
+        <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Contact Information</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Phones -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Phone Numbers</p>
+            <button @click="addPhone" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+              <i class="pi pi-plus text-[9px]"></i> Add
+            </button>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div v-for="(_, i) in modelValue.contact.phones" :key="i" class="flex items-center gap-2">
+              <AppInput v-model="modelValue.contact.phones[i]"
+                :label="i === 0 ? 'Primary Phone' : `Phone ${i + 1}`"
+                prefixIcon="pi-phone" size="sm" class="flex-1" />
+              <button v-if="i > 0" @click="removePhone(i)"
+                class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                <i class="pi pi-trash text-xs"></i>
+              </button>
+            </div>
+            <p v-if="!modelValue.contact.phones.length" class="text-[11px] text-[var(--text-faint)] italic px-1">No phone numbers added.</p>
           </div>
         </div>
 
-        <AppSelect v-model="modelValue.civilStatus" label="Civil Status" :options="civilStatusOptions" />
-        <AppSelect v-model="modelValue.religion" label="Religion" :options="religions" />
-        <AppInput v-model="modelValue.disability" label="Disability (if any)" placeholder="e.g. Visual Impairment" />
-        
-        <div class="flex flex-col gap-4">
-           <label class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] ml-1">Special Identities</label>
-           <div class="grid grid-cols-2 gap-3">
-              <AppCheckbox v-model="modelValue.isIndigenous" label="Indigenous" />
-              <AppCheckbox v-model="modelValue.isSoloParent" label="Solo Parent" />
-           </div>
+        <!-- Emails -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Email Addresses</p>
+            <button @click="addEmail" class="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+              <i class="pi pi-plus text-[9px]"></i> Add
+            </button>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div v-for="(_, i) in modelValue.contact.emails" :key="i" class="flex items-center gap-2">
+              <AppInput v-model="modelValue.contact.emails[i]"
+                :label="i === 0 ? 'Primary Email' : `Email ${i + 1}`"
+                prefixIcon="pi-envelope" size="sm" class="flex-1" />
+              <button v-if="i > 0" @click="removeEmail(i)"
+                class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-[var(--text-faint)] hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                <i class="pi pi-trash text-xs"></i>
+              </button>
+            </div>
+            <p v-if="!modelValue.contact.emails.length" class="text-[11px] text-[var(--text-faint)] italic px-1">No email addresses added.</p>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- 3. Government IDs -->
-    <section class="space-y-6 bg-[var(--surface-2)] p-6 rounded-2xl border border-[var(--border-main)] shadow-inner">
-      <div class="flex items-center gap-3 border-b border-[var(--border-main)] pb-3">
-         <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-[var(--text-muted)]">
-           <i class="pi pi-shield text-xs"></i>
-         </div>
-         <h3 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">Government Issued IDs</h3>
-      </div>
-
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
-        <AppInput v-model="modelValue.gsisNo" label="GSIS BP NO." placeholder="—" size="sm" />
-        <AppInput v-model="modelValue.pagibigNo" label="PAG-IBIG NO." placeholder="—" size="sm" />
-        <AppInput v-model="modelValue.philhealthNo" label="PHILHEALTH NO." placeholder="—" size="sm" />
-        <AppInput v-model="modelValue.tinNo" label="TIN NO." placeholder="—" size="sm" />
-        <AppInput v-model="modelValue.philSysNo" label="PhilSys NO." placeholder="—" size="sm" />
-        <AppInput v-model="modelValue.agencyEmployeeNo" label="Agency Employee NO." placeholder="—" size="sm" />
-      </div>
-    </section>
-
-    <!-- 4. Contact Information -->
-    <section class="space-y-6">
-      <div class="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-2">
-         <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-           <i class="pi pi-phone text-xs"></i>
-         </div>
-         <h3 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">Contact & Address</h3>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="space-y-4">
-          <AppInput v-model="modelValue.contact.phones[0]" label="Primary Phone" icon="pi-phone" />
-          <AppInput v-model="modelValue.contact.emails[0]" label="Primary Email" icon="pi-envelope" />
+    <!-- ── 5. Current Residential Address ──────────────── -->
+    <div>
+      <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-home text-xs text-[var(--color-primary)]"></i>
         </div>
-        
-        <div class="p-5 rounded-2xl border border-[var(--border-main)] bg-[var(--surface)] flex flex-col gap-4">
-           <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Current Residential Address</p>
-           <div class="grid grid-cols-2 gap-3">
-              <AppInput v-model="modelValue.currentAddress.barangay" label="Barangay" size="sm" />
-              <AppInput v-model="modelValue.currentAddress.municipality" label="Municipality" size="sm" />
-           </div>
-           <div class="grid grid-cols-2 gap-3">
-              <AppInput v-model="modelValue.currentAddress.province" label="Province" size="sm" />
-              <AppInput v-model="modelValue.currentAddress.zipCode" label="Zip Code" size="sm" />
-           </div>
+        <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Current Residential Address</h3>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div class="col-span-2 md:col-span-3">
+          <AppInput v-model="modelValue.currentAddress.sitio" label="House No. / Street / Sitio" />
+        </div>
+        <AppInput v-model="modelValue.currentAddress.barangay"    label="Barangay"     size="sm" />
+        <AppInput v-model="modelValue.currentAddress.municipality" label="Municipality" size="sm" />
+        <AppInput v-model="modelValue.currentAddress.city"         label="City"         size="sm" />
+        <AppInput v-model="modelValue.currentAddress.province"     label="Province"     size="sm" />
+        <AppInput v-model="modelValue.currentAddress.zipCode"      label="ZIP Code"     size="sm" />
+        <AppInput v-model="modelValue.currentAddress.country"      label="Country"      size="sm" />
+      </div>
+    </div>
+
+    <!-- ── 6. COMELEC Registered Address ───────────────── -->
+    <div class="bg-[var(--bg-app)] rounded-[var(--radius-xl)] border border-[var(--border-main)] p-5">
+      <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
+        <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-map text-xs text-[var(--color-primary)]"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">COMELEC Registered Address</h3>
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Address on record with the Commission on Elections (for voting)</p>
         </div>
       </div>
-    </section>
-
-    <!-- 5. COMELEC Address -->
-    <section class="space-y-6 bg-[var(--surface-2)] p-6 rounded-2xl border border-[var(--border-main)]">
-      <div class="flex items-center gap-3 border-b border-[var(--border-main)] pb-3">
-         <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-blue-600">
-           <i class="pi pi-map text-xs"></i>
-         </div>
-         <h3 class="text-sm font-black uppercase tracking-widest text-[var(--text-main)]">COMELEC Registered Address</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        <div class="col-span-2 md:col-span-3">
+          <AppInput v-model="modelValue.comelecAddress.sitio" label="House No. / Street / Sitio" />
+        </div>
+        <AppInput v-model="modelValue.comelecAddress.barangay"    label="Barangay"     size="sm" />
+        <AppInput v-model="modelValue.comelecAddress.municipality" label="Municipality" size="sm" />
+        <AppInput v-model="modelValue.comelecAddress.city"         label="City"         size="sm" />
+        <AppInput v-model="modelValue.comelecAddress.province"     label="Province"     size="sm" />
+        <AppInput v-model="modelValue.comelecAddress.zipCode"      label="ZIP Code"     size="sm" />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="grid grid-cols-2 gap-3">
-           <AppInput v-model="modelValue.comelecAddress.barangay" label="Barangay" size="sm" />
-           <AppInput v-model="modelValue.comelecAddress.municipality" label="Municipality" size="sm" />
-           <AppInput v-model="modelValue.comelecAddress.province" label="Province" size="sm" />
-           <AppInput v-model="modelValue.comelecAddress.zipCode" label="Zip Code" size="sm" />
+      <!-- COMELEC Document -->
+      <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border-main)]">
+        <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
+          <i class="pi pi-file-pdf text-sm text-[var(--color-primary)]"></i>
         </div>
-        <div class="flex flex-col justify-center p-4 bg-white rounded-xl border border-[var(--border-main)]">
-           <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">Voter's Registration / ID Proof</p>
-           <div v-if="modelValue.comelecAddress.document" class="flex items-center justify-between">
-              <span class="text-xs font-bold text-blue-600">Document Uploaded</span>
-              <AppButton size="xs" variant="ghost" @click="$emit('preview', modelValue.comelecAddress.document, 'COMELEC ID')">View</AppButton>
-           </div>
-           <label v-else class="text-xs font-bold text-[var(--color-primary)] cursor-pointer hover:underline">
-              Upload Proof of Registration
-              <input type="file" class="hidden" @change="$emit('upload', $event, 'comelecAddress')" />
-           </label>
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] font-bold text-[var(--text-muted)]">Voter's ID / Certificate of Registration</p>
+          <button v-if="modelValue.comelecAddress.document"
+            @click="$emit('preview', modelValue.comelecAddress.document, 'COMELEC Registration')"
+            class="text-[11px] font-bold text-[var(--color-primary)] hover:underline">
+            View uploaded
+          </button>
+          <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer">
+            Upload
+            <input type="file" class="sr-only" accept=".pdf,image/*"
+              @change="$emit('upload', $event, 'comelecAddress')" />
+          </label>
         </div>
+        <label v-if="modelValue.comelecAddress.document"
+          class="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
+          title="Replace file">
+          <i class="pi pi-sync text-[10px]"></i>
+          <input type="file" class="sr-only" accept=".pdf,image/*"
+            @change="$emit('upload', $event, 'comelecAddress')" />
+        </label>
       </div>
-    </section>
+    </div>
 
   </div>
 </template>

@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { AppButton, AppFileViewer } from '@/components/ui'
-import ApplicantCoverPagePdf from '@/components/ApplicantCoverPagePdf.vue'
+import ApplicantCoverPagePdf from '@/components/user/ApplicantCoverPagePdf.vue'
 
 defineOptions({ name: 'ApplicationModal' })
 

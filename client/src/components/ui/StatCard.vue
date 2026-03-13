@@ -3,7 +3,7 @@ const props = defineProps({
     title:      String,
     value:      [String, Number],
     icon:       String,
-    iconColor:  { type: String, default: 'blue' }, // blue|green|purple|amber|red|slate|gold
+    iconColor:  { type: String, default: 'primary' }, // primary|blue|green|purple|amber|red|slate|gold|cyan|emerald
     trend:      Number,
     trendLabel: String,
     description: String,
@@ -14,6 +14,7 @@ const props = defineProps({
 })
 
 const ICON_COLORS = {
+    primary:'bg-[var(--color-primary-light)] text-[var(--color-primary)]   border-[var(--color-primary-ring)]',
     blue:   'bg-[var(--color-primary-light)] text-[var(--color-primary)]   border-[var(--color-primary-ring)]',
     green:  'bg-green-50 text-green-600 border-green-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-100',

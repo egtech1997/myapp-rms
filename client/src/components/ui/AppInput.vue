@@ -37,52 +37,29 @@ const formattedValue = computed(() => {
   return props.modelValue
 })
 
-const hasValue = computed(() => 
+const hasValue = computed(() =>
   props.modelValue !== null && props.modelValue !== undefined && props.modelValue.toString().length > 0
 )
 
-const isFloating = computed(() => isFocused.value || hasValue.value || props.type === 'date')
-const hasSuffix = computed(() => props.suffixIcon || props.clearable || props.toggleable || props.loading)
-
-// Sizing Maps
-const containerClasses = {
-  xs: 'min-h-[40px] px-3',
-  sm: 'min-h-[46px] px-3.5',
-  md: 'min-h-[52px] px-4',
-  lg: 'min-h-[60px] px-5',
+// Size configurations
+const sizeConfigs = {
+  xs: { h: 'h-8',  f: 'text-xs'  },
+  sm: { h: 'h-10', f: 'text-sm'  },
+  md: { h: 'h-11', f: 'text-sm'  },
+  lg: { h: 'h-12', f: 'text-base' },
 }
 
-const inputClasses = {
-  xs: 'text-xs pt-1',
-  sm: 'text-sm pt-1',
-  md: 'text-sm pt-1',
-  lg: 'text-base pt-1.5',
-}
-
-const labelClasses = {
-  xs: 'text-xs',
-  sm: 'text-sm',
-  md: 'text-sm',
-  lg: 'text-base',
-}
-
-// Floating offsets
-const floatingOffsets = {
-  xs: '-translate-y-5 scale-75',
-  sm: '-translate-y-5.5 scale-75',
-  md: '-translate-y-6.5 scale-75',
-  lg: '-translate-y-8 scale-75',
-}
+const config = computed(() => sizeConfigs[props.size] || sizeConfigs.md)
 
 const onInput = (e) => emit('update:modelValue', e.target.value)
 const onClear = () => { emit('update:modelValue', ''); emit('clear') }
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 w-full group">
-    
+  <div class="flex flex-col gap-1 w-full">
+
     <div class="relative flex items-center w-full">
-      
+
       <!-- NATIVE INPUT -->
       <input
         v-bind="$attrs"
@@ -93,54 +70,62 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
         :readonly="readonly"
         placeholder=" "
         :class="[
-          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 border peer',
-          containerClasses[size],
-          inputClasses[size],
-          'font-bold text-[var(--text-main)] rounded-xl',
-          error 
-            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5' 
+          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 peer',
+          config.h,
+          config.f,
+          error
+            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5'
             : 'border-[var(--border-main)] hover:border-[var(--border-strong)] focus:border-[var(--color-primary)] focus:ring-0',
-          disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'cursor-text',
-          isFocused ? 'border-2' : 'border-1'
+          disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-[var(--surface)]',
+          isFocused ? 'border-2' : 'border',
         ]"
         @input="onInput"
         @focus="isFocused = true; $emit('focus', $event)"
         @blur="isFocused = false; $emit('blur', $event)"
       />
 
-      <!-- FLOATING LABEL -->
-      <label 
+      <!-- FLOATING LABEL — Flowbite outlined approach -->
+      <label
         v-if="label"
         :for="id"
         :class="[
-          'absolute flex items-center gap-2 transition-all duration-300 pointer-events-none select-none origin-[0] start-4 px-1 bg-[var(--surface)]',
-          labelClasses[size],
-          'text-[var(--text-faint)] font-medium',
-          /* Floating State (Focus or Has Value) */
-          'peer-focus:px-1 peer-focus:font-black peer-focus:text-[var(--color-primary)]',
-          isFloating ? floatingOffsets[size] : 'top-1/2 -translate-y-1/2',
-          /* Placeholder shown state */
-          'peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2',
-          /* Transition to Floating */
-          'peer-focus:top-1/2 peer-focus:scale-75',
-          floatingOffsets[size].split(' ')[0].replace('-', 'peer-focus:-'), // Match the offset
-          error ? 'peer-focus:text-rose-500' : ''
+          'absolute inline-flex items-center gap-1.5 duration-300 transform origin-[0]',
+          'pointer-events-none select-none',
+          'start-4 px-1 bg-[var(--surface)]',
+          config.f,
+
+          // ── Floated (default — input has value) ───────────
+          'top-1.5 -translate-y-3.5 scale-75 font-black z-10',
+
+          // ── Resting (empty + unfocused via CSS peer) ───────
+          'peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2',
+          'peer-placeholder-shown:top-1/2 peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
+
+          // ── Re-float on focus (via CSS peer) ───────────────
+          'peer-focus:top-1.5 peer-focus:-translate-y-3.5 peer-focus:scale-75',
+          'peer-focus:font-black peer-focus:z-10',
+
+          // ── Colors ─────────────────────────────────────────
+          error
+            ? 'text-rose-500 peer-placeholder-shown:text-[var(--text-faint)] peer-focus:text-rose-500'
+            : 'text-[var(--color-primary)] peer-placeholder-shown:text-[var(--text-faint)] peer-focus:text-[var(--color-primary)]',
+          'max-w-[calc(100%-2.5rem)] overflow-hidden',
         ]"
       >
-        <i v-if="prefixIcon" :class="['pi', prefixIcon, isFloating ? 'hidden' : '']"></i>
-        {{ label }}
+        <i v-if="prefixIcon" :class="['pi text-[10px] shrink-0', prefixIcon]"></i>
+        <span class="min-w-0 truncate">{{ label }}</span>
       </label>
 
-      <!-- ICONS & SUFFIX (Absolute overlay to keep input clean) -->
+      <!-- SUFFIX ICONS -->
       <div class="absolute right-4 flex items-center gap-2 pointer-events-none">
         <i v-if="loading" class="pi pi-spin pi-spinner text-[var(--text-faint)] text-xs"></i>
-        
+
         <div class="flex items-center gap-2 pointer-events-auto">
-          <button v-if="clearable && hasValue" @click="onClear" 
+          <button v-if="clearable && hasValue" @click="onClear" type="button"
             class="w-6 h-6 rounded-full flex items-center justify-center hover:bg-[var(--bg-app)] text-[var(--text-faint)] hover:text-[var(--text-main)] transition-all">
             <i class="pi pi-times text-[10px]"></i>
           </button>
-          <button v-if="toggleable" @click="showPassword = !showPassword"
+          <button v-if="toggleable" @click="showPassword = !showPassword" type="button"
             class="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-faint)] hover:text-[var(--color-primary)] transition-colors">
             <i :class="['pi text-sm', showPassword ? 'pi-eye-slash' : 'pi-eye']"></i>
           </button>
@@ -150,13 +135,13 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
 
     </div>
 
-    <!-- ERROR / HINT -->
+    <!-- FEEDBACK -->
     <div class="px-1 min-h-[1.25rem]">
       <Transition name="slide-up">
         <p v-if="error" class="text-[10px] font-bold text-rose-500 flex items-center gap-1.5 tracking-wide uppercase">
           <i class="pi pi-exclamation-circle text-[10px]"></i> {{ error }}
         </p>
-        <p v-else-if="hint && isFocused" class="text-[10px] font-medium text-[var(--text-muted)] animate-fade-in tracking-wide uppercase">
+        <p v-else-if="hint && isFocused" class="text-[10px] font-medium text-[var(--text-muted)] animate-fade-in tracking-wide">
           {{ hint }}
         </p>
       </Transition>
@@ -168,9 +153,8 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
 <style scoped>
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s var(--ease-out); }
 .slide-up-enter-from { opacity: 0; transform: translateY(4px); }
-.slide-up-leave-to { opacity: 0; transform: translateY(-4px); }
+.slide-up-leave-to   { opacity: 0; transform: translateY(-4px); }
 
-/* Remove default webkit ring */
 input:focus {
   outline: none;
   box-shadow: none;

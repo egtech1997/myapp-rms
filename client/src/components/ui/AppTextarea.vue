@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, onMounted, computed } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
 
 defineOptions({ name: 'AppTextarea', inheritAttrs: false })
 
@@ -19,7 +19,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'focus', 'blur'])
-const el   = ref(null)
+const el        = ref(null)
 const isFocused = ref(false)
 
 const resize = () => {
@@ -31,32 +31,19 @@ const resize = () => {
 onMounted(() => { nextTick(resize) })
 watch(() => props.modelValue, () => nextTick(resize))
 
-const hasValue = computed(() => 
-  props.modelValue !== null && props.modelValue !== undefined && props.modelValue.toString().length > 0
-)
-
-const isFloating = computed(() => isFocused.value || hasValue.value)
-
-const labelClasses = {
-  xs: 'text-xs',
-  sm: 'text-sm',
-  md: 'text-sm',
-  lg: 'text-base',
-}
-
-const floatingOffsets = {
-  xs: '-translate-y-5 scale-75',
-  sm: '-translate-y-5.5 scale-75',
-  md: '-translate-y-6.5 scale-75',
-  lg: '-translate-y-8 scale-75',
+const sizeConfigs = {
+  xs: { f: 'text-xs'   },
+  sm: { f: 'text-sm'   },
+  md: { f: 'text-sm'   },
+  lg: { f: 'text-base' },
 }
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 w-full group">
-    
+  <div class="flex flex-col gap-1 w-full">
+
     <div class="relative flex w-full">
-      
+
       <!-- NATIVE TEXTAREA -->
       <textarea
         ref="el"
@@ -69,13 +56,13 @@ const floatingOffsets = {
         :readonly="readonly"
         placeholder=" "
         :class="[
-          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 border peer',
-          'px-4 pt-5 pb-2.5 font-bold text-[var(--text-main)] rounded-xl min-h-[80px]',
-          error 
-            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5' 
+          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 pt-6 pb-2.5 min-h-[72px] peer',
+          sizeConfigs[size]?.f || 'text-sm',
+          error
+            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5'
             : 'border-[var(--border-main)] hover:border-[var(--border-strong)] focus:border-[var(--color-primary)] focus:ring-0',
           disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-[var(--surface)]',
-          isFocused ? 'border-2' : 'border-1'
+          isFocused ? 'border-2' : 'border',
         ]"
         :style="autoResize ? 'overflow:hidden' : ''"
         @input="$emit('update:modelValue', $event.target.value)"
@@ -83,26 +70,35 @@ const floatingOffsets = {
         @blur="isFocused = false; $emit('blur', $event)"
       ></textarea>
 
-      <!-- FLOATING LABEL -->
-      <label 
+      <!-- FLOATING LABEL — Flowbite outlined approach -->
+      <label
         v-if="label"
         :for="id"
         :class="[
-          'absolute flex items-center gap-2 transition-all duration-300 pointer-events-none select-none origin-[0] start-4 px-1 bg-[var(--surface)]',
-          labelClasses[size],
-          'text-[var(--text-faint)] font-medium',
-          /* Floating State */
-          'peer-focus:px-1 peer-focus:font-black peer-focus:text-[var(--color-primary)]',
-          isFloating ? floatingOffsets[size] : 'top-4 translate-y-0',
-          /* Match placeholder-shown behavior */
-          'peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:top-4',
-          /* Transition */
-          'peer-focus:top-4 peer-focus:scale-75',
-          floatingOffsets[size].split(' ')[0].replace('-', 'peer-focus:-'),
-          error && isFloating ? '!text-rose-500' : ''
+          'absolute inline-flex items-center gap-1.5 duration-300 transform origin-[0]',
+          'pointer-events-none select-none start-4 px-1 bg-[var(--surface)]',
+          sizeConfigs[size]?.f || 'text-sm',
+
+          // ── Floated (default — textarea has value) ─────────
+          'top-1.5 -translate-y-3.5 scale-75 font-black z-10',
+
+          // ── Resting (empty + unfocused via CSS peer) ────────
+          // For textarea, resting = top-4 (near first text line), no translate
+          'peer-placeholder-shown:top-4 peer-placeholder-shown:translate-y-0',
+          'peer-placeholder-shown:scale-100 peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
+
+          // ── Re-float on focus ───────────────────────────────
+          'peer-focus:top-1.5 peer-focus:-translate-y-3.5 peer-focus:scale-75',
+          'peer-focus:font-black peer-focus:z-10',
+
+          // ── Colors ─────────────────────────────────────────
+          error
+            ? 'text-rose-500 peer-placeholder-shown:text-[var(--text-faint)] peer-focus:text-rose-500'
+            : 'text-[var(--color-primary)] peer-placeholder-shown:text-[var(--text-faint)] peer-focus:text-[var(--color-primary)]',
+          'max-w-[calc(100%-2.5rem)] overflow-hidden',
         ]"
       >
-        {{ label }}
+        <span class="min-w-0 truncate">{{ label }}</span>
       </label>
 
       <!-- CHAR COUNT -->
@@ -121,7 +117,7 @@ const floatingOffsets = {
         <p v-if="error" class="text-[10px] font-bold text-rose-500 flex items-center gap-1.5 tracking-wide uppercase">
           <i class="pi pi-exclamation-circle text-[10px]"></i> {{ error }}
         </p>
-        <p v-else-if="hint && isFocused" class="text-[10px] font-medium text-[var(--text-muted)] animate-fade-in tracking-wide uppercase">
+        <p v-else-if="hint && isFocused" class="text-[10px] font-medium text-[var(--text-muted)] animate-fade-in tracking-wide">
           {{ hint }}
         </p>
       </Transition>
@@ -133,10 +129,7 @@ const floatingOffsets = {
 <style scoped>
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s var(--ease-out); }
 .slide-up-enter-from { opacity: 0; transform: translateY(4px); }
-.slide-up-leave-to { opacity: 0; transform: translateY(-4px); }
+.slide-up-leave-to   { opacity: 0; transform: translateY(-4px); }
 
-textarea:focus {
-  outline: none;
-  box-shadow: none;
-}
+textarea:focus { outline: none; box-shadow: none; }
 </style>

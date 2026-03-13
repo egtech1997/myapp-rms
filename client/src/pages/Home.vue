@@ -4,15 +4,15 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 
-import HomeBulletin from '@/components/Home/HomeBulletin.vue';
-import HomeJob from '@/components/Home/HomeJob.vue';
-import HomeAboutUs from '@/components/Home/HomeAboutUs.vue';
-import HomeTeam from '@/components/Home/HomeTeam.vue';
-import HomeHelpCenter from '@/components/Home/HomeHelpCenter.vue';
+import HomeBulletin from '@/components/home/HomeBulletin.vue';
+import HomeJob from '@/components/home/HomeJob.vue';
+import HomeAboutUs from '@/components/home/HomeAboutUs.vue';
+import HomeTeam from '@/components/home/HomeTeam.vue';
+import HomeHelpCenter from '@/components/home/HomeHelpCenter.vue';
 
-import HomeJobModal from '@/components/Modals/HomeJobModal.vue';
-import HomeTeamModal from '@/components/Modals/HomeTeamModal.vue';
-import HomeBulletinModal from '@/components/Modals/HomeBulletinModal.vue';
+import HomeJobModal from '@/components/modals/HomeJobModal.vue';
+import HomeTeamModal from '@/components/modals/HomeTeamModal.vue';
+import HomeBulletinModal from '@/components/modals/HomeBulletinModal.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();

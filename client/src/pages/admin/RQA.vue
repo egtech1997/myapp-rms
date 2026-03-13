@@ -187,18 +187,28 @@ onMounted(fetchJobs)
         </div>
       </div>
 
-      <AppDataTable v-if="rqaData.rankings?.length" :columns="['Rank', 'Applicant', 'Score', 'Residency']" :rows="rqaData.rankings" class="flex-1">
+      <AppDataTable
+        v-if="rqaData.rankings?.length"
+        :columns="[
+          { label: 'Rank',      width: '3.5rem',  align: 'center' },
+          { label: 'Applicant', width: '1fr'                      },
+          { label: 'Score',     width: '6rem',    align: 'center' },
+          { label: 'Residency', width: '7rem',    align: 'center' },
+          { label: 'Action',    width: '8rem',    align: 'right'  },
+        ]"
+        :rows="rqaData.rankings"
+        class="flex-1">
         <template #default="{ item }">
-          <div class="col-span-1 text-center tabular-nums font-bold text-[var(--text-muted)]">{{ item.rank }}</div>
-          <div class="col-span-5 font-black text-[var(--text-main)] uppercase tracking-tight">{{ item.applicantName }}</div>
-          <div class="col-span-2 text-center">
+          <div class="text-center tabular-nums font-bold text-[var(--text-muted)]">{{ item.rank }}</div>
+          <div class="font-black text-[var(--text-main)] uppercase tracking-tight">{{ item.applicantName }}</div>
+          <div class="text-center">
             <span class="text-xl font-black text-[var(--color-primary)] tabular-nums">{{ item.totalPoints.toFixed(2) }}</span>
           </div>
-          <div class="col-span-2 flex justify-center">
+          <div class="flex justify-center">
             <AppBadge v-if="item.residencyPriority" variant="primary" size="xs">Local</AppBadge>
             <span v-else class="text-[9px] font-bold text-[var(--text-faint)] uppercase">Non-Local</span>
           </div>
-          <div class="col-span-2 text-right">
+          <div class="flex justify-end">
             <AppButton size="xs" variant="secondary" @click="openDecisionStation(item)" class="h-8 px-3">
               <i class="pi pi-search-plus mr-1.5 text-[10px]"></i> Details
             </AppButton>
