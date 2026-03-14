@@ -16,6 +16,8 @@ router.route("/")
 router.route("/application/:appId")
   .get(interviewController.getInterviewsByApplication);
 
+router.get("/job/:jobId", interviewController.getInterviewsByJob);
+
 router.route("/:id")
   .get(interviewController.getInterviewById)
   .patch(interviewController.updateInterview)

@@ -122,47 +122,129 @@ export const createIerAnnouncement = catchAsync(async (req, res, next) => {
   res.status(201).json({ status: "success", data: announcement });
 });
 
+// ── Helpers ───────────────────────────────────────────────────────────────
+const UPLOADS_BASE = "/uploads/announcements/";
+
+function mimeToFileType(mimetype = "") {
+  if (mimetype.startsWith("image/")) return "image";
+  if (mimetype === "application/pdf") return "pdf";
+  if (mimetype.includes("word")) return "word";
+  if (mimetype.includes("excel") || mimetype.includes("spreadsheet")) return "excel";
+  return "other";
+}
+
+function processUploadedFiles(req) {
+  const files = req.files || {};
+  const imageFile = (files.image || [])[0];
+  const attachmentFiles = files.attachments || [];
+
+  const imageUrl = imageFile
+    ? `${UPLOADS_BASE}${imageFile.filename}`
+    : undefined;
+
+  const attachments = attachmentFiles.map((f) => ({
+    fileName: f.originalname,
+    fileUrl:  `${UPLOADS_BASE}${f.filename}`,
+    fileType: mimeToFileType(f.mimetype),
+    fileSize: f.size,
+  }));
+
+  return { imageUrl, attachments };
+}
+
 // ── 2. Get Public Announcements ──────────────────────────────────────────
 export const getPublicAnnouncements = catchAsync(async (req, res) => {
   const data = await Announcement.find({ status: "published" })
+    .populate("postedBy", "username name")
     .sort("-createdAt")
-    .limit(20);
+    .limit(30);
   res.status(200).json({ status: "success", data });
 });
 
 // ── 3. Get All Announcements (Admin) ─────────────────────────────────────
 export const getAllAnnouncements = catchAsync(async (req, res) => {
   const data = await Announcement.find()
-    .populate("postedBy", "username")
+    .populate("postedBy", "username name")
     .sort("-createdAt");
   res.status(200).json({ status: "success", data });
 });
 
 // ── 4. Create Announcement (Admin) ───────────────────────────────────────
 export const createAnnouncement = catchAsync(async (req, res, next) => {
-  const { title, content, status, expiryDate } = req.body;
+  const {
+    title, content, type, status, expiryDate,
+    scheduledDate, scheduledTime, venue, job,
+    existingAttachments,
+  } = req.body;
+
   if (!title || !content) return next(new AppError("Title and content are required.", 400));
+
+  const { imageUrl, attachments } = processUploadedFiles(req);
+
+  // Support passing existing attachment list as JSON string (for updates)
+  let combinedAttachments = attachments;
+  if (existingAttachments) {
+    try {
+      const existing = JSON.parse(existingAttachments);
+      combinedAttachments = [...existing, ...attachments];
+    } catch {}
+  }
 
   const announcement = await Announcement.create({
     title,
     content,
-    type: "general",
-    status: status || "published",
-    expiryDate: expiryDate || null,
-    postedBy: req.user._id,
+    type:          type || "general",
+    status:        status || "published",
+    expiryDate:    expiryDate || null,
+    scheduledDate: scheduledDate || null,
+    scheduledTime: scheduledTime || "",
+    venue:         venue || "",
+    image:         imageUrl,
+    attachments:   combinedAttachments,
+    job:           job || undefined,
+    postedBy:      req.user._id,
   });
+
   res.status(201).json({ status: "success", data: announcement });
 });
 
 // ── 5. Update Announcement (Admin) ───────────────────────────────────────
 export const updateAnnouncement = catchAsync(async (req, res, next) => {
-  const { title, content, status, expiryDate } = req.body;
-  const announcement = await Announcement.findByIdAndUpdate(
-    req.params.id,
-    { title, content, status, expiryDate },
-    { new: true, runValidators: true }
-  );
+  const {
+    title, content, type, status, expiryDate,
+    scheduledDate, scheduledTime, venue,
+    existingAttachments, removeImage,
+  } = req.body;
+
+  const announcement = await Announcement.findById(req.params.id);
   if (!announcement) return next(new AppError("Announcement not found.", 404));
+
+  const { imageUrl, attachments: newAttachments } = processUploadedFiles(req);
+
+  // Merge attachment lists
+  let finalAttachments = newAttachments;
+  if (existingAttachments) {
+    try {
+      const existing = JSON.parse(existingAttachments);
+      finalAttachments = [...existing, ...newAttachments];
+    } catch {}
+  }
+
+  announcement.title         = title         ?? announcement.title;
+  announcement.content       = content       ?? announcement.content;
+  announcement.type          = type          ?? announcement.type;
+  announcement.status        = status        ?? announcement.status;
+  announcement.expiryDate    = expiryDate    !== undefined ? (expiryDate || null) : announcement.expiryDate;
+  announcement.scheduledDate = scheduledDate !== undefined ? (scheduledDate || null) : announcement.scheduledDate;
+  announcement.scheduledTime = scheduledTime ?? announcement.scheduledTime;
+  announcement.venue         = venue         ?? announcement.venue;
+  if (imageUrl)                  announcement.image = imageUrl;
+  if (removeImage === "true")    announcement.image = undefined;
+  if (existingAttachments !== undefined || newAttachments.length) {
+    announcement.attachments = finalAttachments;
+  }
+
+  await announcement.save();
   res.status(200).json({ status: "success", data: announcement });
 });
 

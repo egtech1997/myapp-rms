@@ -22,7 +22,7 @@ export const upsertMyProfile = catchAsync(async (req, res) => {
   const profile = await Profile.findOneAndUpdate(
     { user: req.user._id },
     { $set: { ...req.body, user: req.user._id } },
-    { new: true, upsert: true, runValidators: false },
+    { returnDocument: 'after', upsert: true, runValidators: false },
   );
 
   res.status(200).json({ status: "success", data: profile });
@@ -88,5 +88,5 @@ export const uploadProfileDocument = catchAsync(async (req, res, next) => {
     }
   }
 
-  res.status(200).json({ status: "success", fileUrl });
+  res.status(200).json({ status: "success", fileUrl, uploadedAt: new Date().toISOString() });
 });

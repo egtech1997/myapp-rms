@@ -38,3 +38,6 @@ export { default as AppSkeleton }    from './AppSkeleton.vue'
 // Toast system
 export { default as AppToaster }     from './AppToaster.vue'
 export { default as AppToast }       from './AppToast.vue'
+
+// Sound system
+export { default as AppSoundToggle } from './AppSoundToggle.vue'

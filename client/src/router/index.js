@@ -247,4 +247,14 @@ router.beforeEach(async (to, from) => {
   return true
 })
 
+// Play a subtle transition sound on navigation — skip the very first load
+// (initial navigation fires before any user gesture; AudioContext would be blocked)
+let _firstNav = true
+router.afterEach(() => {
+  if (_firstNav) { _firstNav = false; return }
+  import('@/services/soundManager').then(({ default: soundManager }) => {
+    soundManager.play('transition')
+  })
+})
+
 export default router

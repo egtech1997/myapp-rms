@@ -35,7 +35,7 @@ export const upsertRubric = catchAsync(async (req, res, next) => {
   const rubric = await Rubric.findOneAndUpdate(
     { category },
     { $set: { ...req.body, category } },
-    { upsert: true, new: true, runValidators: false },
+    { upsert: true, returnDocument: 'after', runValidators: false },
   );
 
   res.status(200).json({ status: "success", data: rubric });

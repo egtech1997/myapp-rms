@@ -1,7 +1,10 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { useSound } from '@/composables/useSound'
 
 defineOptions({ name: 'AppCheckbox' })
+
+const { play } = useSound()
 
 const props = defineProps({
   modelValue:    { type: [Boolean, Array], default: false },
@@ -27,6 +30,7 @@ const isChecked = () => {
 
 const toggle = () => {
   if (props.disabled) return
+  play('toggle')
   if (Array.isArray(props.modelValue) && props.value !== undefined) {
     const next = [...props.modelValue]
     const idx  = next.indexOf(props.value)

@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
+import soundManager from '@/services/soundManager'
 
 import Swal from 'sweetalert2'
 
@@ -29,11 +30,28 @@ const Toast = Swal.mixin({
   didOpen: (toast) => {
     toast.onmouseenter = Swal.stopTimer
     toast.onmouseleave = Swal.resumeTimer
+    // Play sound based on Swal icon type
+    const icon = toast.querySelector('.swal2-icon')
+    if (icon) {
+      if (icon.classList.contains('swal2-success')) soundManager.play('success')
+      else if (icon.classList.contains('swal2-error'))   soundManager.play('error')
+      else if (icon.classList.contains('swal2-warning')) soundManager.play('error')
+      else soundManager.play('notification')
+    } else {
+      soundManager.play('notification')
+    }
   },
 })
 
+// Swal full dialogs — play sounds on open/confirm/deny
+const SwalWithSound = Swal.mixin({
+  didOpen: () => soundManager.play('modal-open'),
+  willClose: () => soundManager.play('modal-close'),
+  preConfirm: () => soundManager.play('success'),
+})
+
 app.provide('$toast', Toast)
-app.provide('$swal', Swal)
+app.provide('$swal', SwalWithSound)
 
 // Global error handler — prevents silent white-screen crashes
 app.config.errorHandler = (err, instance, info) => {
@@ -88,3 +106,16 @@ app.directive('role', {
 app.mount('#app')
 
 useSettingsStore().init()
+
+// Initialize sound system after mount (restores persisted mute/volume settings).
+// AudioContext is created lazily on first user gesture — no autoplay policy issues.
+soundManager.init()
+
+// Global delegated click sound — fires for any <button> that is NOT an AppButton
+// (AppButton already plays its own sound via @click handler; data-ab marks those).
+// This covers all raw <button> elements in pages: delete trash icons, table actions, etc.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button')
+  if (!btn || btn.disabled || btn.dataset.ab !== undefined) return
+  soundManager.play('click')
+}, true)

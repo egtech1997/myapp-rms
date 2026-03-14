@@ -41,12 +41,12 @@ const hasValue = computed(() =>
   props.modelValue !== null && props.modelValue !== undefined && props.modelValue.toString().length > 0
 )
 
-// Size configurations
+// Size configurations — compact
 const sizeConfigs = {
-  xs: { h: 'h-8',  f: 'text-xs'  },
-  sm: { h: 'h-10', f: 'text-sm'  },
-  md: { h: 'h-11', f: 'text-sm'  },
-  lg: { h: 'h-12', f: 'text-base' },
+  xs: { h: 'h-8',  f: 'text-xs'   },
+  sm: { h: 'h-9',  f: 'text-sm'   },
+  md: { h: 'h-10', f: 'text-sm'   },
+  lg: { h: 'h-11', f: 'text-base' },
 }
 
 const config = computed(() => sizeConfigs[props.size] || sizeConfigs.md)
@@ -70,45 +70,45 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
         :readonly="readonly"
         placeholder=" "
         :class="[
-          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 peer',
+          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 peer border-2',
           config.h,
           config.f,
           error
-            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5'
-            : 'border-[var(--border-main)] hover:border-[var(--border-strong)] focus:border-[var(--color-primary)] focus:ring-0',
-          disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-[var(--surface)]',
-          isFocused ? 'border-2' : 'border',
+            ? 'border-rose-400'
+            : isFocused
+              ? 'border-[var(--color-primary)]'
+              : 'border-[var(--border-main)]',
+          disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-transparent',
         ]"
         @input="onInput"
         @focus="isFocused = true; $emit('focus', $event)"
         @blur="isFocused = false; $emit('blur', $event)"
       />
 
-      <!-- FLOATING LABEL — Flowbite outlined approach -->
+      <!-- FLOATING LABEL — centered on top border when floated -->
       <label
         v-if="label"
         :for="id"
         :class="[
-          'absolute inline-flex items-center gap-1.5 duration-300 transform origin-[0]',
+          'absolute inline-flex items-center gap-1.5 duration-200 transform origin-[0]',
           'pointer-events-none select-none',
-          'start-4 px-1 bg-[var(--surface)]',
-          config.f,
+          'start-3 px-1 bg-white/95',
 
-          // ── Floated (default — input has value) ───────────
-          'top-1.5 -translate-y-3.5 scale-75 font-black z-10',
+          // ── Floated: center of label sits on the top border ──
+          'top-0 -translate-y-1/2 scale-75 font-black z-10',
 
-          // ── Resting (empty + unfocused via CSS peer) ───────
-          'peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2',
-          'peer-placeholder-shown:top-1/2 peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
+          // ── Resting: centered vertically in the input ────────
+          'peer-placeholder-shown:top-1/2 peer-placeholder-shown:scale-100',
+          'peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
 
-          // ── Re-float on focus (via CSS peer) ───────────────
-          'peer-focus:top-1.5 peer-focus:-translate-y-3.5 peer-focus:scale-75',
-          'peer-focus:font-black peer-focus:z-10',
+          // ── Re-float on focus ────────────────────────────────
+          'peer-focus:top-0 peer-focus:scale-75 peer-focus:font-black peer-focus:z-10',
 
-          // ── Colors ─────────────────────────────────────────
+          // ── Colors ───────────────────────────────────────────
           error
             ? 'text-rose-500 peer-placeholder-shown:text-[var(--text-faint)] peer-focus:text-rose-500'
             : 'text-[var(--color-primary)] peer-placeholder-shown:text-[var(--text-faint)] peer-focus:text-[var(--color-primary)]',
+          config.f,
           'max-w-[calc(100%-2.5rem)] overflow-hidden',
         ]"
       >
@@ -117,26 +117,26 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
       </label>
 
       <!-- SUFFIX ICONS -->
-      <div class="absolute right-4 flex items-center gap-2 pointer-events-none">
+      <div class="absolute right-3 flex items-center gap-2 pointer-events-none">
         <i v-if="loading" class="pi pi-spin pi-spinner text-[var(--text-faint)] text-xs"></i>
 
         <div class="flex items-center gap-2 pointer-events-auto">
           <button v-if="clearable && hasValue" @click="onClear" type="button"
-            class="w-6 h-6 rounded-full flex items-center justify-center hover:bg-[var(--bg-app)] text-[var(--text-faint)] hover:text-[var(--text-main)] transition-all">
-            <i class="pi pi-times text-[10px]"></i>
+            class="w-5 h-5 rounded-full flex items-center justify-center hover:bg-[var(--bg-app)] text-[var(--text-faint)] hover:text-[var(--text-main)] transition-all">
+            <i class="pi pi-times text-[9px]"></i>
           </button>
           <button v-if="toggleable" @click="showPassword = !showPassword" type="button"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-faint)] hover:text-[var(--color-primary)] transition-colors">
-            <i :class="['pi text-sm', showPassword ? 'pi-eye-slash' : 'pi-eye']"></i>
+            class="w-5 h-5 rounded-lg flex items-center justify-center text-[var(--text-faint)] hover:text-[var(--color-primary)] transition-colors">
+            <i :class="['pi text-xs', showPassword ? 'pi-eye-slash' : 'pi-eye']"></i>
           </button>
-          <i v-else-if="suffixIcon && !loading" :class="['pi text-[var(--text-faint)] text-sm', suffixIcon]"></i>
+          <i v-else-if="suffixIcon && !loading" :class="['pi text-[var(--text-faint)] text-xs', suffixIcon]"></i>
         </div>
       </div>
 
     </div>
 
     <!-- FEEDBACK -->
-    <div class="px-1 min-h-[1.25rem]">
+    <div class="px-1 min-h-[1.1rem]">
       <Transition name="slide-up">
         <p v-if="error" class="text-[10px] font-bold text-rose-500 flex items-center gap-1.5 tracking-wide uppercase">
           <i class="pi pi-exclamation-circle text-[10px]"></i> {{ error }}

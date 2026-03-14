@@ -1,16 +1,10 @@
 import Joi from "joi";
 
 const nameSchema = Joi.object({
-  firstName: Joi.string().required().trim().messages({
-    'string.empty': 'First Name is required',
-    'any.required': 'First Name is required'
-  }),
+  firstName: Joi.string().allow("", null).trim(),
   middleName: Joi.string().allow("", null).trim(),
-  lastName: Joi.string().required().trim().messages({
-    'string.empty': 'Last Name is required',
-    'any.required': 'Last Name is required'
-  }),
-  suffix: Joi.string().allow("", null).trim(),
+  lastName:  Joi.string().allow("", null).trim(),
+  suffix:    Joi.string().allow("", null).trim(),
 });
 
 const contactSchema = Joi.object({
@@ -42,7 +36,7 @@ const familyMemberSchema = Joi.object({
 export const profileValidator = Joi.object({
   name: nameSchema,
   sex: Joi.string().valid("male", "female", "prefer_not_to_say", "LGBTQ+").allow("", null),
-  birthDate: Joi.date().allow(null),
+  birthDate: Joi.date().allow(null, ""),
   isIndigenous: Joi.boolean().default(false),
   isSoloParent: Joi.boolean().default(false),
   religion:    Joi.string().allow("", null),
@@ -59,7 +53,8 @@ export const profileValidator = Joi.object({
   contact: contactSchema,
   currentAddress: addressSchema,
   comelecAddress: addressSchema.append({
-    document: Joi.string().allow("", null),
+    document:           Joi.string().allow("", null),
+    documentUploadedAt: Joi.date().allow(null, ""),
   }),
 
   family: Joi.object({
@@ -71,26 +66,28 @@ export const profileValidator = Joi.object({
       middleName: Joi.string().allow("", null),
       lastName: Joi.string().allow("", null),
       suffix: Joi.string().allow("", null),
-      birthDate: Joi.date().allow(null),
+      birthDate: Joi.date().allow(null, ""),
     })),
   }),
 
   eligibility: Joi.array().items(Joi.object({
     code: Joi.string().allow("", null),
-    name: Joi.string().required(),
+    name: Joi.string().allow("", null),
     type: Joi.string().allow("", null),
     rating: Joi.string().allow("", null),
     dateOfExam: Joi.date().allow(null, ""),
     placeOfExam: Joi.string().allow("", null),
-    licenseNumber:   Joi.string().allow("", null),
-    licenseValidity: Joi.date().allow(null, ""),
-    document:        Joi.string().allow("", null),
-    licenseDocument: Joi.string().allow("", null),
+    licenseNumber:      Joi.string().allow("", null),
+    licenseValidity:    Joi.date().allow(null, ""),
+    document:           Joi.string().allow("", null),
+    documentUploadedAt: Joi.date().allow(null, ""),
+    licenseDocument:            Joi.string().allow("", null),
+    licenseDocumentUploadedAt:  Joi.date().allow(null, ""),
   })),
 
   education: Joi.array().items(Joi.object({
-    level: Joi.string().required(),
-    school: Joi.string().required(),
+    level: Joi.string().allow("", null),
+    school: Joi.string().allow("", null),
     degree: Joi.string().allow("", null),
     periodFrom: Joi.string().allow("", null),
     periodTo: Joi.string().allow("", null),
@@ -98,24 +95,29 @@ export const profileValidator = Joi.object({
     unitsEarned: Joi.string().allow("", null),
     yearGraduated: Joi.string().allow("", null),
     honorsReceived: Joi.string().allow("", null),
-    tor:     Joi.string().allow("", null),
-    diploma: Joi.string().allow("", null),
+    tor:            Joi.string().allow("", null),
+    torUploadedAt:  Joi.date().allow(null, ""),
+    torPending:     Joi.boolean().allow(null),
+    diploma:           Joi.string().allow("", null),
+    diplomaUploadedAt: Joi.date().allow(null, ""),
+    diplomaPending:    Joi.boolean().allow(null),
   })),
 
   training: Joi.array().items(Joi.object({
-    title: Joi.string().required(),
+    title: Joi.string().allow("", null),
     dateIssued: Joi.date().allow(null, ""),
     hours: Joi.number().min(0).allow(null),
     typeOfLD: Joi.string().allow("", null),
     provider: Joi.string().allow("", null),
-    document: Joi.string().allow("", null),
+    document:           Joi.string().allow("", null),
+    documentUploadedAt: Joi.date().allow(null, ""),
   })),
 
   experience: Joi.array().items(Joi.object({
     periodFrom: Joi.date().allow(null, ""),
     periodTo: Joi.date().allow(null, ""),
-    position: Joi.string().required(),
-    company: Joi.string().required(),
+    position: Joi.string().allow("", null),
+    company: Joi.string().allow("", null),
     monthlySalary: Joi.number().allow(null),
     salaryGrade: Joi.string().allow("", null),
     statusOfAppointment: Joi.string().allow("", null),
@@ -123,11 +125,12 @@ export const profileValidator = Joi.object({
     companyEmail: Joi.string().email().allow("", null),
     companyPhone: Joi.string().allow("", null),
     keyResponsibilities: Joi.array().items(Joi.string().allow("", null)),
-    document: Joi.string().allow("", null),
+    document:           Joi.string().allow("", null),
+    documentUploadedAt: Joi.date().allow(null, ""),
   })),
 
   voluntaryWork: Joi.array().items(Joi.object({
-    organization: Joi.string().required(),
+    organization: Joi.string().allow("", null),
     periodFrom: Joi.date().allow(null, ""),
     periodTo: Joi.date().allow(null, ""),
     hours: Joi.number().allow(null),
@@ -163,7 +166,7 @@ export const profileValidator = Joi.object({
   })),
   
   performanceRating: Joi.object({
-    score: Joi.number().allow(null),
+    score: Joi.number().allow(null).empty('').optional(),
     adjective: Joi.string().allow("", null),
     periodCovered: Joi.string().allow("", null),
   }),

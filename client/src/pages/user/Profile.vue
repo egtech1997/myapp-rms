@@ -163,11 +163,27 @@ const handleUpload = async (event, section, index, field) => {
 
   try {
     const { data } = await apiClient.post('/v1/profile/upload-doc', formData)
-    if (section === 'education')      form.education[index][field]      = data.fileUrl
-    if (section === 'eligibility')    form.eligibility[index][field]    = data.fileUrl
-    if (section === 'experience')     form.experience[index].document   = data.fileUrl
-    if (section === 'training')       form.training[index].document     = data.fileUrl
-    if (section === 'comelecAddress') form.comelecAddress.document      = data.fileUrl
+    const at = data.uploadedAt || new Date().toISOString()
+    if (section === 'education') {
+      form.education[index][field] = data.fileUrl
+      form.education[index][field === 'diploma' ? 'diplomaUploadedAt' : 'torUploadedAt'] = at
+    }
+    if (section === 'eligibility') {
+      form.eligibility[index][field] = data.fileUrl
+      form.eligibility[index][field === 'document' ? 'documentUploadedAt' : 'licenseDocumentUploadedAt'] = at
+    }
+    if (section === 'experience') {
+      form.experience[index].document = data.fileUrl
+      form.experience[index].documentUploadedAt = at
+    }
+    if (section === 'training') {
+      form.training[index].document = data.fileUrl
+      form.training[index].documentUploadedAt = at
+    }
+    if (section === 'comelecAddress') {
+      form.comelecAddress.document = data.fileUrl
+      form.comelecAddress.documentUploadedAt = at
+    }
     // Auto-save so file URLs persist across page refreshes
     await apiClient.put('/v1/profile/me', form)
     toast.fire({ icon: 'success', title: 'Document uploaded and saved' })

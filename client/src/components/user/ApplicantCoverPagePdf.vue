@@ -129,9 +129,7 @@ function printCover() {
 
           <!-- Header band -->
           <div style="background:#001F3F; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:16px;">
-            <div style="width:48px; height:48px; border:2px solid rgba(255,255,255,0.35); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">
-              &#127973;
-            </div>
+            <img src="/deped-national-logo.png" alt="DepEd" style="width:48px; height:48px; object-fit:contain; flex-shrink:0;" />
             <div style="flex:1;">
               <div style="font-size:8pt; letter-spacing:0.1em; opacity:0.7; text-transform:uppercase;">Republic of the Philippines</div>
               <div style="font-size:14pt; font-weight:800; letter-spacing:0.04em; line-height:1.2;">Department of Education</div>

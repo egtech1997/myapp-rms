@@ -69,7 +69,7 @@ export const updateJob = catchAsync(async (req, res, next) => {
   }
 
   const job = await Job.findByIdAndUpdate(req.params.id, { $set: updateData }, {
-    new: true,
+    returnDocument: 'after',
   });
 
   if (!job) return next(new AppError("Job not found", 404));

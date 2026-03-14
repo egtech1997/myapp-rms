@@ -61,7 +61,8 @@ const profileSchema = new mongoose.Schema(
       province: String,
       zipCode: String,
       country: { type: String, default: "Philippines" },
-      document: String, // Path to uploaded Comelec ID or Certificate
+      document:           String, // Path to uploaded Comelec ID or Certificate
+      documentUploadedAt: Date,
     },
 
     // --- Family Background ---
@@ -88,8 +89,10 @@ const profileSchema = new mongoose.Schema(
         placeOfExam:    { type: String, trim: true },
         licenseNumber:   String,
         licenseValidity: Date,
-        document:        String, // Rating certificate / board exam result
-        licenseDocument: String, // PRC license card / license document
+        document:               String, // Rating certificate / board exam result
+        documentUploadedAt:     Date,
+        licenseDocument:        String, // PRC license card / license document
+        licenseDocumentUploadedAt: Date,
       },
     ],
 
@@ -112,8 +115,12 @@ const profileSchema = new mongoose.Schema(
         unitsEarned: String,
         yearGraduated: String,
         honorsReceived: String,
-        diploma: String, // Path to uploaded diploma
-        tor: String,     // Path to uploaded transcript of records
+        diploma:           String, // Path to uploaded diploma
+        diplomaUploadedAt: Date,
+        diplomaPending:    Boolean,
+        tor:               String, // Path to uploaded transcript of records
+        torUploadedAt:     Date,
+        torPending:        Boolean,
       },
     ],
 
@@ -125,7 +132,8 @@ const profileSchema = new mongoose.Schema(
         hours: { type: Number, required: true },
         typeOfLD: { type: String, enum: ["Technical", "Managerial", "Supervisory", "Academic", "Foundation", "Other"] },
         provider: String,
-        document: String, // Path to uploaded training certificate
+        document:           String, // Path to uploaded training certificate
+        documentUploadedAt: Date,
       },
     ],
 
@@ -143,7 +151,8 @@ const profileSchema = new mongoose.Schema(
         companyEmail: String,
         companyPhone: String,
         keyResponsibilities: [{ type: String }],
-        document: String, // Path to uploaded Certificate of Employment
+        document:           String, // Path to uploaded Certificate of Employment
+        documentUploadedAt: Date,
       },
     ],
 

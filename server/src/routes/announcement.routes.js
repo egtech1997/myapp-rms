@@ -1,6 +1,7 @@
 import express from "express";
 import * as c from "../controllers/announcement.controller.js";
 import { protect, restrictTo } from "../middlewares/auth.middleware.js";
+import { uploadAnnouncementFiles } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -10,9 +11,9 @@ router.get("/", c.getPublicAnnouncements);
 // Admin-only
 router.use(protect);
 router.get("/admin", restrictTo("admin", "hr", "Super Admin"), c.getAllAnnouncements);
-router.post("/", restrictTo("admin", "hr", "Super Admin"), c.createAnnouncement);
+router.post("/",   restrictTo("admin", "hr", "Super Admin"), uploadAnnouncementFiles, c.createAnnouncement);
 router.post("/ier", restrictTo("admin", "hr", "Super Admin"), c.createIerAnnouncement);
-router.patch("/:id", restrictTo("admin", "hr", "Super Admin"), c.updateAnnouncement);
+router.patch("/:id", restrictTo("admin", "hr", "Super Admin"), uploadAnnouncementFiles, c.updateAnnouncement);
 router.delete("/:id", restrictTo("admin", "hr", "Super Admin"), c.deleteAnnouncement);
 
 export default router;

@@ -31,7 +31,7 @@ export const updateTemplate = catchAsync(async (req, res) => {
     if (eligibility           !== undefined) update["qualifications.eligibility"]           = eligibility;
     if (competencyRequirements !== undefined) update["qualifications.competencyRequirements"] = competencyRequirements;
   }
-  const template = await JobTemplate.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+  const template = await JobTemplate.findByIdAndUpdate(req.params.id, update, { returnDocument: 'after', runValidators: true });
   if (!template) return next(new AppError("Template not found", 404));
   res.status(200).json({ status: "success", data: template });
 });

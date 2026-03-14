@@ -1,561 +1,301 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'; 
+import { ref, computed, onMounted } from 'vue'
+import apiClient from '@/api/axios'
+import { resolveUrl } from '@/utils/url'
 
-const emit = defineEmits(['open-bulletin']);
+const emit = defineEmits(['open-bulletin'])
 
-const expandedId = ref(null); 
+const showAll      = ref(false)
+const activeType   = ref('all')
+const announcements = ref([])
+const loading      = ref(true)
 
-const toggleExpand = (id) => {
-    expandedId.value = expandedId.value === id ? null : id;
-};
+// ── Type metadata — mirrors server enum ──────────────────────────────────────
+const TYPE_META = {
+  general:            { label: 'General',           icon: 'pi-bell',         badge: 'bg-slate-100 text-slate-600 border-slate-200',         grad: 'from-slate-500 to-slate-700' },
+  interview_schedule: { label: 'Interview',         icon: 'pi-calendar',     badge: 'bg-sky-100 text-sky-700 border-sky-200',               grad: 'from-sky-500 to-sky-700' },
+  results:            { label: 'Results',           icon: 'pi-check-circle', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200',   grad: 'from-emerald-500 to-emerald-700' },
+  memorandum:         { label: 'Memorandum',        icon: 'pi-file',         badge: 'bg-rose-100 text-rose-700 border-rose-200',            grad: 'from-rose-400 to-rose-600' },
+  event:              { label: 'Event',             icon: 'pi-star',         badge: 'bg-violet-100 text-violet-700 border-violet-200',      grad: 'from-violet-500 to-violet-700' },
+  award:              { label: 'Award',             icon: 'pi-trophy',       badge: 'bg-amber-100 text-amber-700 border-amber-200',         grad: 'from-amber-400 to-amber-600' },
+  policy:             { label: 'Policy',            icon: 'pi-book',         badge: 'bg-indigo-100 text-indigo-700 border-indigo-200',      grad: 'from-indigo-500 to-indigo-700' },
+  training:           { label: 'Training',          icon: 'pi-desktop',      badge: 'bg-teal-100 text-teal-700 border-teal-200',            grad: 'from-teal-500 to-teal-700' },
+  system:             { label: 'System Update',     icon: 'pi-cog',          badge: 'bg-orange-100 text-orange-700 border-orange-200',      grad: 'from-orange-400 to-orange-600' },
+  ier_release:        { label: 'IER Release',       icon: 'pi-list',         badge: 'bg-purple-100 text-purple-700 border-purple-200',      grad: 'from-purple-500 to-purple-700' },
+  rqa_release:        { label: 'RQA Release',       icon: 'pi-chart-bar',    badge: 'bg-cyan-100 text-cyan-700 border-cyan-200',            grad: 'from-cyan-500 to-cyan-700' },
+}
 
-const announcements = ref([
-    {
-        id: 1,
-        title: "PRIME-HRM Level 2 Accreditation",
-        date: "October 24, 2025",
-        time: "09:00 AM - 11:30 AM",
-        location: "Division Office Main Hall",
-        category: "Achievement",
-        overview: "A milestone achievement reflecting our commitment to recruitment excellence and standardized systems.",
-        content: "We are proud to announce that the Division of Guihulngan City has successfully achieved PRIME-HRM Level 2 Accreditation.\n\nThis milestone reflects our commitment to excellence in recruitment, selection, and placement processes. This accreditation ensures that our human resource management systems meet the highest standards of merit and fitness.\n\nAll division personnel are invited to attend the ceremonial awarding and Thanksgiving event.",
-        icon: "pi pi-trophy",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1523050335392-9bef867a0578?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "HRMO Guihulngan"
-    },
-    {
-        id: 2,
-        title: "Upcoming Teacher Induction Program",
-        date: "November 05, 2025",
-        time: "08:00 AM - 05:00 PM",
-        location: "Virtual Meeting (Zoom)",
-        category: "Event",
-        overview: "A mandatory orientation session for all newly hired Teacher I personnel.",
-        content: "All newly hired Teacher I personnel are required to attend the virtual induction program. The session will cover professional ethics, DepEd core values, and RSP portal navigation.\n\nThis program is designed to support our new educators as they begin their journey with the Division of Guihulngan City. Please ensure you have stable internet connection and are dressed in appropriate business attire.",
-        icon: "pi pi-calendar",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "Personnel Unit"
-    },
-    {
-        id: 3,
-        title: "System Maintenance Notice",
-        date: "October 30, 2025",
-        time: "10:00 PM - 02:00 AM",
-        location: "Online RSP Portal",
-        category: "System",
-        overview: "Scheduled downtime to upgrade our server capabilities and security protocols.",
-        content: "The RSP Portal will undergo scheduled maintenance on Saturday from 10:00 PM to 2:00 AM. Users may experience temporary downtime.\n\nWe are performing these updates to ensure the stability, speed, and security of our online recruitment systems. Please ensure you have saved all draft applications before the maintenance window begins.",
-        icon: "pi pi-cog",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "IT Support Staff"
-    },
-    {
-        id: 4,
-        title: "Quarterly Performance Review",
-        date: "November 15, 2025",
-        time: "08:00 AM - 04:00 PM",
-        location: "SDO Conference Room",
-        category: "Review",
-        overview: "Mandatory performance evaluation and target setting for all department heads.",
-        content: "The 3rd quarter performance review will commence for all SDO unit heads and supervisors. This review will focus on the alignment of departmental outputs with our annual strategic goals.\n\nPlease ensure all your RPMS (Results-Based Performance Management System) portfolios are updated and ready for presentation during your scheduled timeslot.",
-        icon: "pi pi-chart-line",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "Office of the SDS"
-    },
-    {
-        id: 5,
-        title: "Regional Sports Meet Preparation",
-        date: "December 01, 2025",
-        time: "01:00 PM - 05:00 PM",
-        location: "City Sports Complex",
-        category: "Event",
-        overview: "Planning and delegation of tasks for the upcoming CVIRAA regional sports meet.",
-        content: "All district sports coordinators and assigned tournament managers are required to attend the final coordination meeting for the upcoming Central Visayas Regional Athletic Association (CVIRAA) meet.\n\nAgenda includes budget allocation, athlete screening procedures, and transportation logistics.",
-        icon: "pi pi-flag",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "Sports & Development"
-    },
-    {
-        id: 6,
-        title: "New Policy: Digital Records",
-        date: "December 10, 2025",
-        time: "09:00 AM",
-        location: "Division Wide",
-        category: "Policy",
-        overview: "Implementation of the new paperless policy for all internal communications.",
-        content: "In our continuous effort to modernize the SDO and promote environmentally sustainable practices, we are officially rolling out the 'Digital First' records policy.\n\nEffective immediately, all memorandums, division letters, and internal routing forms must be processed through the central Document Tracking System. Physical copies will only be required for final archival.",
-        icon: "pi pi-file-pdf",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1568051243851-f9b15330ce11?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "Records Section"
-    },
-    {
-        id: 7,
-        title: "Digital Literacy Training",
-        date: "January 10, 2026",
-        time: "08:30 AM - 04:30 PM",
-        location: "IT Lab, Main SDO",
-        category: "Training",
-        overview: "Upskilling workshop focusing on modern educational tools and portal usage.",
-        content: "As part of our commitment to continuous learning, the ICT Unit will be conducting a 2-day Digital Literacy Workshop for selected school administrators.\n\nThis hands-on training will cover advanced usage of the Google Workspace for Education, LIS data management, and securing online credentials.",
-        icon: "pi pi-desktop",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "ICT Unit"
-    },
-    {
-        id: 8,
-        title: "Annual Yearend Gala",
-        date: "December 20, 2025",
-        time: "06:00 PM - 11:00 PM",
-        location: "Guihulngan City Gym",
-        category: "Event",
-        overview: "Annual gathering to celebrate the division's achievements and honor awardees.",
-        content: "Join us for a night of celebration, camaraderie, and Thanksgiving at the Annual DepEd Guihulngan Yearend Gala.\n\nWe will be recognizing outstanding teachers, highly effective schools, and dedicated non-teaching personnel who have shown exemplary service throughout the year. Formal attire is required.",
-        icon: "pi pi-star",
-        color: "text-slate-700",
-        bg: "bg-amber-100",
-        image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&q=80&w=800",
-        publisherImage: "https://i.ibb.co/7dHhWCpp/images.png",
-        publisherName: "Social Committee"
-    }
-]);
+const typeMeta = (type) => TYPE_META[type] || TYPE_META.general
 
-const spreads = computed(() => {
-    const arr = [];
-    for (let i = 0; i < announcements.value.length; i += 2) {
-        arr.push({
-            left: announcements.value[i],
-            right: announcements.value[i + 1] || null 
-        });
-    }
-    return arr;
-});
+// Filter pills: only types that appear in the fetched data
+const availableTypes = computed(() => {
+  const seen = new Set(announcements.value.map(a => a.type))
+  return ['all', ...Object.keys(TYPE_META).filter(t => seen.has(t))]
+})
 
-const getPageNum = (item) => {
-    if (!item) return '';
-    const idx = announcements.value.findIndex(a => a.id === item.id);
-    return idx + 1;
-};
-const getSpreadIndex = (item) => {
-    if (!item) return 0;
-    const idx = announcements.value.findIndex(a => a.id === item.id);
-    return Math.floor(idx / 2);
-};
+const filteredAnnouncements = computed(() => {
+  if (activeType.value === 'all') return announcements.value
+  return announcements.value.filter(a => a.type === activeType.value)
+})
 
-const currentSpreadIndex = ref(0);
-const isFlipping = ref(false);
-const flipDirection = ref('next');
+const displayedAnnouncements = computed(() =>
+  showAll.value ? filteredAnnouncements.value : filteredAnnouncements.value.slice(0, 6)
+)
 
-const baseLeftItem = ref(null);
-const baseRightItem = ref(null);
-const flipperFrontItem = ref(null);
-const flipperBackItem = ref(null);
+const typeCount = (type) => {
+  if (type === 'all') return announcements.value.length
+  return announcements.value.filter(a => a.type === type).length
+}
 
-const turnPage = (direction, targetIndex = null) => {
-    if (isFlipping.value) return;
-    if (direction === 'next' && currentSpreadIndex.value >= spreads.value.length - 1 && targetIndex === null) return;
-    if (direction === 'prev' && currentSpreadIndex.value <= 0 && targetIndex === null) return;
+const formatDate = (d) => {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
-    expandedId.value = null; 
+const excerpt = (content) => {
+  if (!content) return ''
+  return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 110)
+}
 
-    let nextIndex;
-    if (targetIndex !== null) {
-        if (targetIndex === currentSpreadIndex.value) return; 
-        nextIndex = targetIndex;
-        flipDirection.value = targetIndex > currentSpreadIndex.value ? 'next' : 'prev';
-    } else {
-        nextIndex = direction === 'next' ? currentSpreadIndex.value + 1 : currentSpreadIndex.value - 1;
-        flipDirection.value = direction;
-    }
+async function fetchAnnouncements() {
+  try {
+    const { data } = await apiClient.get('/v1/announcements')
+    announcements.value = data.data || []
+  } catch (e) {
+    console.error('Failed to load announcements', e)
+  } finally {
+    loading.value = false
+  }
+}
 
-    if (flipDirection.value === 'next') {
-        baseLeftItem.value = spreads.value[currentSpreadIndex.value].left;
-        baseRightItem.value = spreads.value[nextIndex].right;
-        flipperFrontItem.value = spreads.value[currentSpreadIndex.value].right;
-        flipperBackItem.value = spreads.value[nextIndex].left;
-    } else {
-        baseLeftItem.value = spreads.value[nextIndex].left;
-        baseRightItem.value = spreads.value[currentSpreadIndex.value].right;
-        flipperFrontItem.value = spreads.value[currentSpreadIndex.value].left;
-        flipperBackItem.value = spreads.value[nextIndex].right;
-    }
+onMounted(async () => {
+  await fetchAnnouncements()
 
-    isFlipping.value = true;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('emerge-visible')
+        observer.unobserve(entry.target)
+      }
+    })
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' })
 
-    setTimeout(() => {
-        currentSpreadIndex.value = nextIndex;
-        isFlipping.value = false;
-    }, 1000); 
-};
-
-const renderedLeft = computed(() => isFlipping.value ? baseLeftItem.value : spreads.value[currentSpreadIndex.value].left);
-const renderedRight = computed(() => isFlipping.value ? baseRightItem.value : spreads.value[currentSpreadIndex.value].right);
-
-onMounted(() => {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('emerge-visible');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
-
-    setTimeout(() => {
-        document.querySelectorAll('#bullet .emerge-hidden').forEach((el) => {
-            observer.observe(el);
-        });
-    }, 100);
-});
+  setTimeout(() => {
+    document.querySelectorAll('#announcements .emerge-hidden').forEach(el => {
+      observer.observe(el)
+    })
+  }, 150)
+})
 </script>
 
 <template>
-    <section id="bullet" class="py-32 px-8 max-w-[95rem] mx-auto w-full relative">
-        <div class="mb-16 flex flex-col items-start border-l-4 border-slate-900 pl-6 emerge-hidden">
-            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Corporate Updates</span>
-            <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Bulletin Board</h2>
+  <section id="announcements" class="py-20 px-8" style="background: #FAFAFA;">
+    <div class="max-w-[1400px] mx-auto w-full">
+
+      <!-- Section header -->
+      <div class="text-center mb-12 emerge-hidden">
+        <div class="inline-flex items-center gap-3 mb-4">
+          <div class="h-px w-10" style="background:#D6A5B0;"></div>
+          <span class="text-[10px] font-black uppercase tracking-[0.22em]" style="color:#B07080;">DepEd Updates</span>
+          <div class="h-px w-10" style="background:#D6A5B0;"></div>
+        </div>
+        <h2 class="text-4xl lg:text-5xl font-black leading-tight" style="color:#2D3748;">DepEd Announcements</h2>
+        <p class="text-sm font-medium mt-3 max-w-md mx-auto" style="color:#607080;">
+          Stay informed with the latest official news, events, and updates from DepEd SDO Guihulngan City.
+        </p>
+      </div>
+
+      <!-- Skeleton loader -->
+      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        <div v-for="i in 6" :key="i" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="h-44 bg-slate-100 animate-pulse"></div>
+          <div class="p-5 space-y-3">
+            <div class="h-3 bg-slate-100 rounded animate-pulse w-1/3"></div>
+            <div class="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
+            <div class="h-3 bg-slate-100 rounded animate-pulse w-full"></div>
+            <div class="h-3 bg-slate-100 rounded animate-pulse w-2/3"></div>
+          </div>
+        </div>
+      </div>
+
+      <template v-else>
+        <!-- Category filter pills -->
+        <div
+          v-if="availableTypes.length > 1"
+          class="flex flex-wrap items-center justify-center gap-2 mb-10 emerge-hidden"
+          style="transition-delay: 80ms;"
+        >
+          <button
+            v-for="type in availableTypes"
+            :key="type"
+            @click="activeType = type; showAll = false"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all duration-200 outline-none"
+            :style="activeType === type
+              ? 'background:#2D3748; color:#fff; border-color:#2D3748; box-shadow:0 2px 8px rgba(45,55,72,0.25);'
+              : 'background:#fff; color:#607080; border-color:#DDE1EC;'"
+          >
+            <i v-if="type !== 'all'" :class="['pi text-[10px]', typeMeta(type).icon]"></i>
+            <i v-else class="pi pi-th-large text-[10px]"></i>
+            {{ type === 'all' ? 'All' : typeMeta(type).label }}
+            <span
+              class="ml-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full"
+              :style="activeType === type ? 'background:rgba(255,255,255,0.2); color:#fff;' : 'background:#EEF1F7; color:#9DAABB;'"
+            >{{ typeCount(type) }}</span>
+          </button>
         </div>
 
-        <div class="relative w-full max-w-6xl h-[650px] mx-auto perspective-book emerge-hidden" style="transition-delay: 200ms;">
-            
-            <div class="relative w-full h-full transform-3d border border-slate-300 shadow-lg rounded-[var(--radius-md)] bg-[#fcf5e5] flex overflow-visible notebook-lines"
-                 :class="{ 'pointer-events-none': isFlipping }">
-                
-                <div class="w-1/2 h-full border-r border-slate-300 p-12 bg-[#fcf5e5] rounded-l-[var(--radius-md)] overflow-hidden relative z-10 cursor-pointer hover:bg-[#f3e9d2] transition-colors duration-300 flex flex-col" @click="turnPage('prev')" @mouseleave="expandedId = null">
-                    <div v-if="renderedLeft" class="flex flex-col h-full relative">
-                        <div class="flex items-center gap-3 mb-8">
-                            <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
-                                <i :class="[renderedLeft.icon, 'text-slate-700 text-lg']"></i>
-                            </div>
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ renderedLeft.date }}</span>
-                        </div>
-                        
-                        <h3 @mouseenter="!isFlipping && (expandedId = renderedLeft.id)" @click.stop class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-default group flex items-start justify-between hover:text-slate-700 transition-colors">
-                            <span class="pr-4">{{ renderedLeft.title }}</span>
-                            <div class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 bg-[#fffbf2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                                <i class="pi pi-arrow-up-right text-slate-700 text-xs"></i>
-                            </div>
-                        </h3>
-                        <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ renderedLeft.overview }}</p>
-                        
-                        <div class="mt-auto flex flex-col">
-                            <img :src="renderedLeft.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
-                            
-                            <div class="flex justify-between items-end pt-2">
-                                <div class="flex items-center gap-2 relative z-20">
-                                    <button v-if="getSpreadIndex(renderedLeft) > 0" @click.stop="turnPage('prev', 0)" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-sm" title="First Page">
-                                        <i class="pi pi-angle-double-left text-xs"></i>
-                                    </button>
-                                </div>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(renderedLeft) }} of {{ announcements.length }}</span>
-                            </div>
-                        </div>
+        <!-- Cards grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 emerge-hidden" style="transition-delay: 120ms;">
 
-                        <div @click.stop class="bulletin-drawer" :class="{ 'is-open': expandedId === renderedLeft.id }">
-                            <div class="mb-8 pb-4 border-b border-slate-200">
-                                <h4 class="font-bold text-slate-900 text-lg tracking-tight">Announcement Details</h4>
-                            </div>
-                            <div class="flex flex-col gap-4 mb-8">
-                                <div class="flex items-center gap-3">
-                                    <img :src="renderedLeft.publisherImage" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 object-cover" />
-                                    <div class="flex flex-col leading-none">
-                                        <span class="text-xs font-bold text-slate-900">{{ renderedLeft.publisherName }}</span>
-                                        <span class="text-[9px] text-slate-500 font-semibold uppercase tracking-widest mt-1">Publisher</span>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4 text-xs text-slate-600 font-medium bg-[#fffbf2] p-4 rounded-[var(--radius-sm)] border border-slate-200">
-                                    <div class="flex items-center gap-2"><i class="pi pi-calendar text-slate-400"></i> {{ renderedLeft.date }}</div>
-                                    <div class="flex items-center gap-2"><i class="pi pi-clock text-slate-400"></i> {{ renderedLeft.time }}</div>
-                                    <div class="flex items-center gap-2 col-span-2"><i class="pi pi-map-marker text-slate-400"></i> {{ renderedLeft.location }}</div>
-                                </div>
-                            </div>
-                            <div class="overflow-y-auto pr-2 custom-scrollbar pb-6 flex-grow">
-                                <p class="text-slate-600 leading-relaxed font-medium whitespace-pre-line text-sm">{{ renderedLeft.content }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+          <div
+            v-for="item in displayedAnnouncements"
+            :key="item._id"
+            class="rounded-2xl border shadow-sm flex flex-col overflow-hidden bulletin-card"
+            style="background:#fff; border-color:#E8EBF3;"
+          >
+            <!-- Thumbnail or gradient placeholder -->
+            <div class="relative overflow-hidden shrink-0" style="height:176px;">
+              <img
+                v-if="item.image"
+                :src="resolveUrl(item.image)"
+                :alt="item.title"
+                class="w-full h-full object-cover bulletin-img"
+              />
+              <div
+                v-else
+                :class="['w-full h-full bg-gradient-to-br flex items-center justify-center', typeMeta(item.type).grad]"
+              >
+                <i :class="['pi text-5xl text-white/40', typeMeta(item.type).icon]"></i>
+              </div>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
 
-                <div class="w-1/2 h-full p-12 bg-[#fcf5e5] rounded-r-[var(--radius-md)] overflow-hidden relative z-10 cursor-pointer hover:bg-[#f3e9d2] transition-colors duration-300 flex flex-col" @click="turnPage('next')" @mouseleave="expandedId = null">
-                    <div v-if="renderedRight" class="flex flex-col h-full relative">
-                        <div class="flex items-center gap-3 mb-8">
-                            <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
-                                <i :class="[renderedRight.icon, 'text-slate-700 text-lg']"></i>
-                            </div>
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ renderedRight.date }}</span>
-                        </div>
-                        
-                        <h3 @mouseenter="!isFlipping && (expandedId = renderedRight.id)" @click.stop class="text-2xl font-bold text-slate-900 mb-4 leading-tight cursor-default group flex items-start justify-between hover:text-slate-700 transition-colors">
-                            <span class="pr-4">{{ renderedRight.title }}</span>
-                            <div class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 bg-[#fffbf2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                                <i class="pi pi-arrow-up-right text-slate-700 text-xs"></i>
-                            </div>
-                        </h3>
-                        <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ renderedRight.overview }}</p>
-                        
-                        <div class="mt-auto flex flex-col">
-                            <img :src="renderedRight.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
-                            
-                            <div class="flex justify-between items-end pt-2">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(renderedRight) }} of {{ announcements.length }}</span>
-                                <div class="flex items-center gap-2 relative z-20">
-                                    <button v-if="getSpreadIndex(renderedRight) < spreads.length - 1" @click.stop="turnPage('next', spreads.length - 1)" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 hover:bg-white hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-sm" title="Last Page">
-                                        <i class="pi pi-angle-double-right text-xs"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+              <!-- Type badge -->
+              <div class="absolute top-3 left-3">
+                <span :class="['flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border', typeMeta(item.type).badge]">
+                  <i :class="['pi text-[8px]', typeMeta(item.type).icon]"></i>
+                  {{ typeMeta(item.type).label }}
+                </span>
+              </div>
 
-                        <div @click.stop class="bulletin-drawer" :class="{ 'is-open': expandedId === renderedRight.id }">
-                            <div class="mb-8 pb-4 border-b border-slate-200">
-                                <h4 class="font-bold text-slate-900 text-lg tracking-tight">Announcement Details</h4>
-                            </div>
-                            <div class="flex flex-col gap-4 mb-8">
-                                <div class="flex items-center gap-3">
-                                    <img :src="renderedRight.publisherImage" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-200 object-cover" />
-                                    <div class="flex flex-col leading-none">
-                                        <span class="text-xs font-bold text-slate-900">{{ renderedRight.publisherName }}</span>
-                                        <span class="text-[9px] text-slate-500 font-semibold uppercase tracking-widest mt-1">Publisher</span>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4 text-xs text-slate-600 font-medium bg-[#fffbf2] p-4 rounded-[var(--radius-sm)] border border-slate-200">
-                                    <div class="flex items-center gap-2"><i class="pi pi-calendar text-slate-400"></i> {{ renderedRight.date }}</div>
-                                    <div class="flex items-center gap-2"><i class="pi pi-clock text-slate-400"></i> {{ renderedRight.time }}</div>
-                                    <div class="flex items-center gap-2 col-span-2"><i class="pi pi-map-marker text-slate-400"></i> {{ renderedRight.location }}</div>
-                                </div>
-                            </div>
-                            <div class="overflow-y-auto pr-2 custom-scrollbar pb-6 flex-grow">
-                                <p class="text-slate-600 leading-relaxed font-medium whitespace-pre-line text-sm">{{ renderedRight.content }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center h-full space-y-4">
-                        <i class="pi pi-stop text-4xl text-slate-300"></i>
-                        <p class="text-sm font-semibold text-slate-400 uppercase tracking-widest">End of Entries</p>
-                    </div>
-                </div>
-
-                <div v-if="isFlipping && flipDirection === 'next'" class="flipper-next transform-3d z-50">
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-r-[var(--radius-md)] border-y border-r border-slate-300 shadow-[-5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
-                        <div v-if="flipperFrontItem" class="flex flex-col h-full relative">
-                            <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
-                                    <i :class="[flipperFrontItem.icon, 'text-slate-700 text-lg']"></i>
-                                </div>
-                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperFrontItem.date }}</span>
-                            </div>
-                            <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
-                                <span class="pr-4">{{ flipperFrontItem.title }}</span>
-                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
-                            </h3>
-                            <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperFrontItem.overview }}</p>
-                            
-                            <div class="mt-auto flex flex-col">
-                                <img :src="flipperFrontItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
-                                <div class="flex justify-between items-end pt-2">
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperFrontItem) }} of {{ announcements.length }}</span>
-                                    <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperFrontItem) < spreads.length - 1" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-right text-xs"></i></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-l-[var(--radius-md)] border-y border-l border-slate-300 rotate-y-180 shadow-[5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
-                        <div v-if="flipperBackItem" class="flex flex-col h-full relative">
-                            <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
-                                    <i :class="[flipperBackItem.icon, 'text-slate-700 text-lg']"></i>
-                                </div>
-                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperBackItem.date }}</span>
-                            </div>
-                            <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
-                                <span class="pr-4">{{ flipperBackItem.title }}</span>
-                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
-                            </h3>
-                            <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperBackItem.overview }}</p>
-                            
-                            <div class="mt-auto flex flex-col">
-                                <img :src="flipperBackItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
-                                <div class="flex justify-between items-end pt-2">
-                                    <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperBackItem) > 0" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-left text-xs"></i></div>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperBackItem) }} of {{ announcements.length }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="isFlipping && flipDirection === 'prev'" class="flipper-prev transform-3d z-50">
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-l-[var(--radius-md)] border-y border-l border-slate-300 shadow-[5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
-                        <div v-if="flipperFrontItem" class="flex flex-col h-full relative">
-                            <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
-                                    <i :class="[flipperFrontItem.icon, 'text-slate-700 text-lg']"></i>
-                                </div>
-                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperFrontItem.date }}</span>
-                            </div>
-                            <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
-                                <span class="pr-4">{{ flipperFrontItem.title }}</span>
-                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
-                            </h3>
-                            <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperFrontItem.overview }}</p>
-                            
-                            <div class="mt-auto flex flex-col">
-                                <img :src="flipperFrontItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
-                                <div class="flex justify-between items-end pt-2">
-                                    <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperFrontItem) > 0" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-left text-xs"></i></div>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperFrontItem) }} of {{ announcements.length }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="absolute inset-0 bg-[#fcf5e5] notebook-lines backface-hidden p-12 overflow-hidden rounded-r-[var(--radius-md)] border-y border-r border-slate-300 rotate-y-180 shadow-[-5px_0_15px_rgba(0,0,0,0.05)] flex flex-col">
-                        <div v-if="flipperBackItem" class="flex flex-col h-full relative">
-                            <div class="flex items-center gap-3 mb-8">
-                                <div class="w-10 h-10 bg-[#fffbf2] border border-slate-200 rounded-[var(--radius-sm)] flex items-center justify-center shadow-inner">
-                                    <i :class="[flipperBackItem.icon, 'text-slate-700 text-lg']"></i>
-                                </div>
-                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ flipperBackItem.date }}</span>
-                            </div>
-                            <h3 class="text-2xl font-bold text-slate-900 mb-4 leading-tight flex justify-between">
-                                <span class="pr-4">{{ flipperBackItem.title }}</span>
-                                <div class="w-8 h-8 rounded-[var(--radius-sm)] bg-transparent flex items-center justify-center opacity-0 shrink-0"></div>
-                            </h3>
-                            <p class="text-sm text-slate-600 line-clamp-2 leading-relaxed font-medium">{{ flipperBackItem.overview }}</p>
-                            
-                            <div class="mt-auto flex flex-col">
-                                <img :src="flipperBackItem.image" class="w-full h-64 object-cover rounded-[var(--radius-sm)] border border-slate-300 mb-6 grayscale-[25%]" />
-                                <div class="flex justify-between items-end pt-2">
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pb-1">Page {{ getPageNum(flipperBackItem) }} of {{ announcements.length }}</span>
-                                    <div class="flex items-center gap-2 relative z-20">
-                                        <div v-if="getSpreadIndex(flipperBackItem) < spreads.length - 1" class="w-8 h-8 rounded-[var(--radius-sm)] border border-slate-300 bg-[#fffbf2] text-slate-700 flex items-center justify-center shadow-sm"><i class="pi pi-angle-double-right text-xs"></i></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="absolute left-1/2 top-0 bottom-0 w-[1px] bg-slate-300 z-[60] pointer-events-none"></div>
+              <!-- Attachment count badge -->
+              <div v-if="item.attachments?.length" class="absolute top-3 right-3">
+                <span class="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black bg-black/40 text-white backdrop-blur-sm border border-white/20">
+                  <i class="pi pi-paperclip text-[8px]"></i>
+                  {{ item.attachments.length }}
+                </span>
+              </div>
             </div>
+
+            <!-- Card body -->
+            <div class="flex flex-col flex-1 p-5">
+              <!-- Date + venue meta -->
+              <div class="flex items-center gap-2 text-[10px] font-semibold mb-3" style="color:#9DAABB;">
+                <template v-if="item.scheduledDate">
+                  <i class="pi pi-calendar text-[10px]"></i>
+                  <span>{{ formatDate(item.scheduledDate) }}</span>
+                  <span v-if="item.scheduledTime" class="opacity-60">· {{ item.scheduledTime }}</span>
+                </template>
+                <template v-else>
+                  <i class="pi pi-clock text-[10px]"></i>
+                  <span>{{ formatDate(item.createdAt) }}</span>
+                </template>
+                <template v-if="item.venue">
+                  <span class="mx-1" style="color:#DDE1EC;">|</span>
+                  <i class="pi pi-map-marker text-[10px]"></i>
+                  <span class="truncate max-w-[100px]">{{ item.venue }}</span>
+                </template>
+              </div>
+
+              <!-- Title -->
+              <h3 class="font-black text-base leading-snug mb-2 line-clamp-2" style="color:#2D3748;">{{ item.title }}</h3>
+
+              <!-- Excerpt -->
+              <p class="text-sm leading-relaxed line-clamp-2 flex-grow mb-4" style="color:#607080;">
+                {{ excerpt(item.content) }}
+              </p>
+
+              <!-- Footer -->
+              <div class="flex items-center justify-between pt-4 mt-auto" style="border-top:1px solid #EEF1F7;">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0" style="background:#7EA9D7; font-size:9px; font-weight:900;">
+                    {{ (item.postedBy?.username || 'D')[0].toUpperCase() }}
+                  </div>
+                  <span class="text-[10px] font-bold" style="color:#9DAABB;">
+                    {{ item.postedBy?.username || 'DepEd SDO' }}
+                  </span>
+                </div>
+                <button
+                  @click="emit('open-bulletin', item)"
+                  class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all duration-200 outline-none bulletin-link"
+                  style="color:#7EA9D7;"
+                >
+                  Read More
+                  <i class="pi pi-arrow-right text-[9px]"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div
+            v-if="displayedAnnouncements.length === 0"
+            class="col-span-full py-16 flex flex-col items-center justify-center"
+            style="color:#9DAABB;"
+          >
+            <i class="pi pi-inbox text-4xl mb-4 opacity-40"></i>
+            <p class="text-sm font-semibold">No announcements in this category.</p>
+          </div>
         </div>
-    </section>
+
+        <!-- See All / Show Less -->
+        <div v-if="filteredAnnouncements.length > 6" class="flex justify-center mt-10 emerge-hidden" style="transition-delay: 200ms;">
+          <button
+            @click="showAll = !showAll"
+            class="flex items-center gap-2.5 px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 outline-none bulletin-see-all"
+            style="border:2px solid #DDE1EC; color:#607080; background:#fff;"
+          >
+            <i :class="['pi text-sm', showAll ? 'pi-angle-up' : 'pi-angle-down']"></i>
+            {{ showAll ? 'Show Less' : 'See All Announcements' }}
+          </button>
+        </div>
+      </template>
+
+    </div>
+  </section>
 </template>
 
 <style scoped>
-@reference "@/assets/main.css";
-
-.notebook-lines {
-    background-image: linear-gradient(#e1d9c6 1px, transparent 1px);
-    background-size: 100% 2.25rem;
-    background-attachment: local;
-}
-
 .emerge-hidden {
-    opacity: 0;
-    transform: translateY(50px);
-    transition: opacity 1.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .emerge-visible {
-    opacity: 1;
-    transform: translateY(0);
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.bulletin-drawer {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 96%;
-    background-color: rgba(252, 245, 229, 0.98);
-    backdrop-filter: blur(8px);
-    padding: 2.5rem;
-    border-top: 1px solid #e1d9c6;
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-    cursor: auto;
-    
-    opacity: 0;
-    transform: translateY(60px);
-    pointer-events: none;
-    visibility: hidden;
-    transition: opacity 1.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 1.5s;
+.bulletin-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.bulletin-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(45, 55, 72, 0.08);
+  border-color: #C7D8EE;
+}
+.bulletin-card:hover .bulletin-img {
+  transform: scale(1.05);
+}
+.bulletin-img {
+  transition: transform 0.5s ease;
 }
 
-.bulletin-drawer.is-open {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-    visibility: visible;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.06);
+.bulletin-link:hover {
+  color: #5B84BA;
 }
 
-.perspective-book { perspective: 2500px; }
-.transform-3d { transform-style: preserve-3d; }
-.backface-hidden { backface-visibility: hidden; }
-.rotate-y-180 { transform: rotateY(180deg); }
-
-.flipper-next {
-    position: absolute;
-    top: 0; right: 0; bottom: 0; width: 50%;
-    transform-origin: left center;
-    animation: flipNextAnim 1.5s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
-    will-change: transform;
-}
-@keyframes flipNextAnim {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(-180deg); }
-}
-
-.flipper-prev {
-    position: absolute;
-    top: 0; left: 0; bottom: 0; width: 50%;
-    transform-origin: right center;
-    animation: flipPrevAnim 1.5s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
-    will-change: transform;
-}
-@keyframes flipPrevAnim {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(180deg); }
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: var(--radius-sm);
-}
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-    background-color: #94a3b8;
+.bulletin-see-all:hover {
+  border-color: #7EA9D7;
+  color: #2D3748;
 }
 </style>

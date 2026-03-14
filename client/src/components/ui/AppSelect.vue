@@ -36,18 +36,12 @@ const normalizedOptions = computed(() =>
   props.grouped ? props.options : normalizeFlat(props.options)
 )
 
-const hasValue = computed(() =>
-  props.modelValue !== null && props.modelValue !== undefined && props.modelValue.toString().length > 0
-)
-
-// CSS peer-placeholder-shown doesn't work on <select>, use JS
-const isFloating = computed(() => isFocused.value || hasValue.value)
-
+// Compact size configs — matches AppInput
 const sizeConfigs = {
   xs: { h: 'h-8',  f: 'text-xs'   },
-  sm: { h: 'h-10', f: 'text-sm'   },
-  md: { h: 'h-11', f: 'text-sm'   },
-  lg: { h: 'h-12', f: 'text-base' },
+  sm: { h: 'h-9',  f: 'text-sm'   },
+  md: { h: 'h-10', f: 'text-sm'   },
+  lg: { h: 'h-11', f: 'text-base' },
 }
 
 const config = computed(() => sizeConfigs[props.size] || sizeConfigs.md)
@@ -60,21 +54,22 @@ const onChange = (e) => emit('update:modelValue', e.target.value)
 
     <div class="relative flex items-center w-full">
 
-      <!-- NATIVE SELECT -->
+      <!-- NATIVE SELECT — pt-3 pushes text below the always-floated label -->
       <select
         v-bind="$attrs"
         :id="id"
         :value="modelValue"
         :disabled="disabled"
         :class="[
-          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl pr-10 cursor-pointer px-4 peer',
+          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl pr-8 cursor-pointer px-4 peer border-2',
           config.h,
           config.f,
           error
             ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5'
-            : 'border-[var(--border-main)] hover:border-[var(--border-strong)] focus:border-[var(--color-primary)] focus:ring-0',
-          disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-[var(--surface)]',
-          isFocused ? 'border-2' : 'border',
+            : isFocused
+              ? 'border-[var(--color-primary)]'
+              : 'border-[var(--border-main)] hover:border-[var(--border-main)] focus:ring-0',
+          disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-transparent',
         ]"
         @change="onChange"
         @focus="isFocused = true; $emit('focus', $event)"
@@ -102,34 +97,30 @@ const onChange = (e) => emit('update:modelValue', e.target.value)
 
       </select>
 
-      <!-- FLOATING LABEL — JS-driven (CSS peer-placeholder-shown doesn't apply to <select>) -->
+      <!-- FLOATING LABEL — always on top border (select always has a value/placeholder) -->
       <label
         v-if="label"
         :for="id"
         :class="[
-          'absolute inline-flex items-center gap-1.5 duration-300 transform origin-[0]',
-          'pointer-events-none select-none start-4 px-1 bg-[var(--surface)]',
+          'absolute inline-flex items-center gap-1.5 duration-200 transform origin-[0]',
+          'pointer-events-none select-none start-3 px-1 bg-white/95',
           config.f,
-          isFloating
-            ? 'top-1.5 -translate-y-3.5 scale-75 font-black z-10'
-            : 'top-1/2 -translate-y-1/2 scale-100 font-medium z-0',
-          isFloating
-            ? (error ? 'text-rose-500' : 'text-[var(--color-primary)]')
-            : 'text-[var(--text-faint)]',
+          'top-0 -translate-y-1/2 scale-75 font-black z-10 bg-white/95',
+          error ? 'text-rose-500' : 'text-[var(--color-primary)]',
           'max-w-[calc(100%-3rem)] overflow-hidden',
         ]">
         <span class="min-w-0 truncate">{{ label }}</span>
       </label>
 
       <!-- CHEVRON -->
-      <div class="absolute right-4 pointer-events-none flex items-center">
-        <i class="pi pi-chevron-down text-[11px] text-[var(--text-muted)]"></i>
+      <div class="absolute right-3 pointer-events-none flex items-center">
+        <i class="pi pi-chevron-down text-[10px] text-[var(--text-muted)]"></i>
       </div>
 
     </div>
 
     <!-- ERROR / HINT -->
-    <div class="px-1 min-h-[1.25rem]">
+    <div class="px-1 min-h-[1.1rem]">
       <Transition name="slide-up">
         <p v-if="error" class="text-[10px] font-bold text-rose-500 flex items-center gap-1.5 tracking-wide uppercase">
           <i class="pi pi-exclamation-circle text-[10px]"></i> {{ error }}

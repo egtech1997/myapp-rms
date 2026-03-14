@@ -93,7 +93,8 @@ export const applyToJob = catchAsync(async (req, res, next) => {
 // ── 2. Get My Applications (User) ──────────────────────────────────────────
 export const getMyApplications = catchAsync(async (req, res, next) => {
   const applications = await Application.find({ submittedBy: req.user._id })
-    .populate("submittedTo", "positionTitle positionCode placeOfAssignment hiringTrack status deadline salary salaryGrade")
+    .populate("submittedTo", "positionTitle positionCode placeOfAssignment hiringTrack status deadline salary salaryGrade qualifications itemNumbers")
+    .populate("verifiedBy", "username email avatarUrl")
     .sort("-createdAt")
     .lean();
 

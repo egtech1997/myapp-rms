@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings'
 import SaaSSidebar from '@/components/layout/SaaSSidebar.vue'
 import AccountSettingsModal from '@/components/layout/AccountSettingsModal.vue'
 import NotificationCenter from '@/components/layout/NotificationCenter.vue'
-import { AppToaster } from '@/components/ui'
+import { AppToaster, AppSoundToggle } from '@/components/ui'
 
 const authStore     = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -71,6 +71,7 @@ onMounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
+          <AppSoundToggle />
           <NotificationCenter />
           <div class="h-6 w-px bg-[var(--border-main)] mx-1"></div>
 

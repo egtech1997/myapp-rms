@@ -22,7 +22,14 @@ const selectedMember = ref(null);
 const isBulletinDialogOpen = ref(false);
 const selectedAnnouncement = ref(null);
 
-const handleOpenJob = (job) => { activeJob.value = job; isModalOpen.value = true; };
+const handleOpenJob = (job) => {
+    if (job) {
+        activeJob.value = job;
+        isModalOpen.value = true;
+    } else {
+        scrollTo('jobs');
+    }
+};
 const handleOpenBulletin = (item) => { selectedAnnouncement.value = item; isBulletinDialogOpen.value = true; };
 
 // ── Navbar ───────────────────────────────────────────────────────
@@ -30,14 +37,15 @@ const navScrolled = ref(false);
 const mobileMenuOpen = ref(false);
 
 const navLinks = [
-    { id: 'home',    label: 'Home' },
-    { id: 'about',   label: 'About' },
-    { id: 'mission', label: 'Vision & Mission' },
-    { id: 'bullet',  label: 'Bulletin' },
-    { id: 'jobs',    label: 'Vacancies' },
-    { id: 'hrmpsb', label: 'HRMPSB' },
-    { id: 'team',    label: 'Team' },
-    { id: 'faq',     label: 'FAQ' },
+    { id: 'home',          label: 'Home' },
+    { id: 'jobs',          label: 'Vacancies' },
+    { id: 'about',         label: 'About' },
+    { id: 'map',           label: 'Location' },
+    { id: 'announcements', label: 'DepEd Updates' },
+    { id: 'mission',       label: 'Vision & Mission' },
+    { id: 'hrmpsb',        label: 'HRMPSB' },
+    { id: 'team',          label: 'Team' },
+    { id: 'faq',           label: 'FAQ' },
 ];
 
 const scrollTo = (id) => {
@@ -258,7 +266,7 @@ onUnmounted(() => {
 
 <template>
     <div
-        class="min-h-screen flex flex-col bg-[var(--surface)] text-[var(--text-main)]"
+        class="min-h-screen flex flex-col bg-white text-slate-900"
         style="font-family: 'Avenir', 'Segoe UI', sans-serif;"
     >
 
@@ -268,8 +276,8 @@ onUnmounted(() => {
         <nav
             class="fixed top-0 left-0 right-0 z-[200] transition-all duration-300"
             :class="navScrolled
-                ? 'bg-white/95 backdrop-blur-md shadow-md border-b border-[var(--border-main)]'
-                : 'bg-[var(--color-navy)]/95 backdrop-blur-sm border-b border-white/10'"
+                ? 'nav-scrolled-glass border-b border-pink-100/50'
+                : 'bg-transparent border-b border-white/10'"
         >
             <div class="max-w-[1400px] mx-auto px-6 flex items-center justify-between h-16 gap-4">
 
@@ -278,7 +286,7 @@ onUnmounted(() => {
                     class="flex items-center gap-3 shrink-0 group outline-none"
                     @click="scrollTo('home')"
                 >
-                    <div class="w-9 h-9 rounded-lg overflow-hidden border-2 border-white/20 group-hover:border-[var(--color-gold)] transition-all duration-300 shadow-lg">
+                    <div class="w-9 h-9 rounded-lg overflow-hidden border-2 border-white/20 group-hover:border-pink-400 transition-all duration-300 shadow-lg">
                         <img
                             v-if="settingsStore.resolvedLogoUrl"
                             :src="settingsStore.resolvedLogoUrl"
@@ -390,7 +398,7 @@ onUnmounted(() => {
                             class="px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all duration-200 shadow-lg outline-none"
                             :class="navScrolled
                                 ? 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] shadow-indigo-200'
-                                : 'bg-[var(--color-gold)] text-[var(--color-navy)] hover:brightness-110 shadow-yellow-900/30'"
+                                : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-pink-900/30'"
                         >
                             Register
                         </button>
@@ -411,7 +419,7 @@ onUnmounted(() => {
             <Transition name="slide-down">
                 <div
                     v-if="mobileMenuOpen"
-                    class="lg:hidden bg-[var(--color-navy)] border-t border-white/10 px-6 py-4 flex flex-col gap-1"
+                    class="lg:hidden border-t border-white/10 px-6 py-4 flex flex-col gap-1" style="background: linear-gradient(135deg, #2D0B3E, #0A1A5C);"
                 >
                     <button
                         v-for="link in navLinks"
@@ -428,7 +436,7 @@ onUnmounted(() => {
         <!-- ══════════════════════════════════════════════════════════
              2. HERO SECTION
         ══════════════════════════════════════════════════════════ -->
-        <section id="home" class="relative w-full min-h-screen flex flex-col overflow-hidden" style="background-color: var(--color-navy);">
+        <section id="home" class="relative w-full min-h-screen flex flex-col overflow-hidden hero-wave-bg">
 
             <!-- Animated background blobs -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -440,8 +448,8 @@ onUnmounted(() => {
                 <div class="particle-grid"></div>
             </div>
 
-            <!-- Gold accent left rail -->
-            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-transparent via-[var(--color-gold)] to-transparent opacity-80 z-10"></div>
+            <!-- Rose/blue left rail accent -->
+            <div class="absolute left-0 top-0 bottom-0 w-1.5 z-10" style="background: linear-gradient(to bottom, transparent, #fb7185, #60a5fa, transparent); opacity: 0.8;"></div>
 
             <!-- Hero content area -->
             <div class="relative z-10 flex-1 flex items-center pt-20 pb-12">
@@ -450,8 +458,8 @@ onUnmounted(() => {
                     <!-- Slide text panel -->
                     <div class="space-y-7">
                         <div class="flex items-center gap-3">
-                            <div class="h-px w-10 bg-[var(--color-gold)]"></div>
-                            <span class="text-[var(--color-gold)] text-[10px] font-black uppercase tracking-[0.25em]">
+                            <div class="h-px w-10" style="background: linear-gradient(to right, #fb7185, #f9a8d4);"></div>
+                            <span class="text-[10px] font-black uppercase tracking-[0.25em]" style="color: #fb7185;">
                                 {{ heroSlides[activeHeroSlide].tag }}
                             </span>
                         </div>
@@ -478,10 +486,10 @@ onUnmounted(() => {
                             <button
                                 @click="scrollTo('jobs')"
                                 class="flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95"
-                                style="background: var(--color-gold); color: var(--color-navy); box-shadow: 0 8px 32px rgba(239,191,4,0.35);"
+                                style="background: linear-gradient(135deg, #fb7185, #e11d48); color: white; box-shadow: 0 8px 32px rgba(251,113,133,0.4);"
                             >
                                 <i class="pi pi-briefcase text-sm"></i>
-                                Browse Open Positions
+                                Browse Vacancies
                             </button>
                             <button
                                 @click="router.push('/auth/register')"
@@ -500,8 +508,8 @@ onUnmounted(() => {
                                 @click="goToSlide(i)"
                                 class="rounded-full transition-all duration-500 outline-none"
                                 :class="activeHeroSlide === i
-                                    ? 'w-8 h-2.5 bg-[var(--color-gold)]'
-                                    : 'w-2.5 h-2.5 bg-white/25 hover:bg-white/50'"
+                                    ? 'w-8 h-2.5 bg-pink-400 dot-glow'
+                                    : 'w-2.5 h-2.5 bg-white/25 hover:bg-pink-300/60'"
                             ></button>
                         </div>
                     </div>
@@ -513,8 +521,8 @@ onUnmounted(() => {
                             <!-- Main card -->
                             <div class="rounded-2xl border border-white/15 p-8 space-y-6 hero-glass">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <div class="w-10 h-10 rounded-xl bg-[var(--color-gold)] flex items-center justify-center shadow-lg">
-                                        <i class="pi pi-chart-bar text-[var(--color-navy)] text-lg font-black"></i>
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, #fb7185, #e11d48);">
+                                        <i class="pi pi-chart-bar text-white text-lg font-black"></i>
                                     </div>
                                     <div>
                                         <p class="text-white font-black text-sm">Live Recruitment Stats</p>
@@ -524,36 +532,33 @@ onUnmounted(() => {
 
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="stat-glass rounded-xl p-4 text-center">
-                                        <p class="text-3xl font-black text-[var(--color-gold)]">12</p>
-                                        <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Active Positions</p>
+                                        <p class="text-3xl font-black" style="color: #fb7185;">12</p>
+                                        <p class="text-white/50 text-[9px] font-bold uppercase tracking-widest mt-1">Open Positions</p>
                                     </div>
                                     <div class="stat-glass rounded-xl p-4 text-center">
-                                        <p class="text-3xl font-black text-white">847</p>
-                                        <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Registered Users</p>
+                                        <p class="text-3xl font-black" style="color: #60a5fa;">847</p>
+                                        <p class="text-white/50 text-[9px] font-bold uppercase tracking-widest mt-1">Total Applicants</p>
                                     </div>
                                     <div class="stat-glass rounded-xl p-4 text-center">
                                         <p class="text-3xl font-black text-white">3</p>
-                                        <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Hiring Tracks</p>
+                                        <p class="text-white/50 text-[9px] font-bold uppercase tracking-widest mt-1">Hiring Tracks</p>
                                     </div>
                                     <div class="stat-glass rounded-xl p-4 text-center">
-                                        <p class="text-3xl font-black text-[var(--color-gold)]">98%</p>
-                                        <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Satisfaction Rate</p>
+                                        <p class="text-3xl font-black text-emerald-400">100%</p>
+                                        <p class="text-white/50 text-[9px] font-bold uppercase tracking-widest mt-1">Digital Process</p>
                                     </div>
                                 </div>
 
-                                <div class="border-t border-white/10 pt-4">
-                                    <div class="flex items-center gap-2 text-white/50 text-xs font-semibold">
-                                        <i class="pi pi-map-marker text-[var(--color-gold)]"></i>
-                                        Poblacion, Guihulngan City, Negros Oriental 6214
-                                    </div>
+                                <!-- Badge -->
+                                <div class="hero-badge rounded-xl px-4 py-3 flex items-center gap-3">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
+                                    <p class="text-white/80 text-xs font-semibold">Portal is live and accepting applications</p>
                                 </div>
                             </div>
 
-                            <!-- Floating badge -->
-                            <div class="absolute -top-4 -right-4 hero-badge rounded-xl px-4 py-2 flex items-center gap-2 shadow-xl">
-                                <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                                <span class="text-[10px] font-black uppercase tracking-widest text-white">Portal Online</span>
-                            </div>
+                            <!-- Floating accent orb -->
+                            <div class="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-xl pointer-events-none opacity-40" style="background: radial-gradient(circle, #60a5fa, transparent);"></div>
+                            <div class="absolute -bottom-4 -left-4 w-16 h-16 rounded-full blur-xl pointer-events-none opacity-40" style="background: radial-gradient(circle, #fb7185, transparent);"></div>
                         </div>
                     </div>
                 </div>
@@ -569,54 +574,59 @@ onUnmounted(() => {
 
             <!-- Wave bottom -->
             <svg class="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="height: 60px;">
-                <path d="M0,40 C360,80 1080,0 1440,40 L1440,60 L0,60 Z" fill="var(--bg-app)" />
+                <path d="M0,40 C360,80 1080,0 1440,40 L1440,60 L0,60 Z" fill="#fff1f2" />
             </svg>
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             3. QUICK STATS STRIP
+             3. ACTIVE VACANCIES (moved right after hero)
         ══════════════════════════════════════════════════════════ -->
-        <section id="stats-strip" class="bg-[var(--bg-app)] py-12 px-8 border-b border-[var(--border-main)]">
+        <HomeJob @open-job="handleOpenJob" />
+
+        <!-- ══════════════════════════════════════════════════════════
+             4. QUICK STATS STRIP
+        ══════════════════════════════════════════════════════════ -->
+        <section id="stats-strip" class="bg-white py-12 px-8 border-b border-slate-100">
             <div class="max-w-[1400px] mx-auto">
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-5">
 
-                    <div class="emerge-hidden bg-[var(--surface)] rounded-2xl border border-[var(--border-main)] p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style="background: var(--color-primary-light);">
-                            <i class="pi pi-briefcase text-xl text-[var(--color-primary)]"></i>
+                    <div class="emerge-hidden bg-white rounded-2xl border border-slate-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 icon-glow-on-hover" style="background: #eff6ff;">
+                            <i class="pi pi-briefcase text-xl text-blue-500"></i>
                         </div>
                         <div>
-                            <p class="text-3xl font-black text-[var(--text-main)] tabular-nums">{{ statValues[0] }}</p>
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Active Positions</p>
+                            <p class="text-3xl font-black text-slate-900 tabular-nums">{{ statValues[0] }}</p>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Active Positions</p>
                         </div>
                     </div>
 
-                    <div class="emerge-hidden bg-[var(--surface)] rounded-2xl border border-[var(--border-main)] p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group" style="transition-delay: 80ms;">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style="background: #e7f9f0;">
-                            <i class="pi pi-users text-xl text-emerald-600"></i>
+                    <div class="emerge-hidden bg-white rounded-2xl border border-slate-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group" style="transition-delay: 80ms;">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 icon-glow-on-hover" style="background: #fdf2f8;">
+                            <i class="pi pi-users text-xl text-rose-500"></i>
                         </div>
                         <div>
-                            <p class="text-3xl font-black text-[var(--text-main)] tabular-nums">{{ statValues[1] }}</p>
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Applicants</p>
+                            <p class="text-3xl font-black text-slate-900 tabular-nums">{{ statValues[1] }}</p>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Applicants</p>
                         </div>
                     </div>
 
-                    <div class="emerge-hidden bg-[var(--surface)] rounded-2xl border border-[var(--border-main)] p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group" style="transition-delay: 160ms;">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style="background: #fff8e1;">
-                            <i class="pi pi-sitemap text-xl text-[var(--color-gold)]" style="color: #b8930a;"></i>
+                    <div class="emerge-hidden bg-white rounded-2xl border border-slate-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group" style="transition-delay: 160ms;">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 icon-glow-on-hover" style="background: #f0fdf4;">
+                            <i class="pi pi-sitemap text-xl text-emerald-500"></i>
                         </div>
                         <div>
-                            <p class="text-3xl font-black text-[var(--text-main)] tabular-nums">{{ statValues[2] }}</p>
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Hiring Tracks</p>
+                            <p class="text-3xl font-black text-slate-900 tabular-nums">{{ statValues[2] }}</p>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Hiring Tracks</p>
                         </div>
                     </div>
 
-                    <div class="emerge-hidden bg-[var(--surface)] rounded-2xl border border-[var(--border-main)] p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group" style="transition-delay: 240ms;">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style="background: #f0f0ff;">
-                            <i class="pi pi-verified text-xl" style="color: var(--color-primary);"></i>
+                    <div class="emerge-hidden bg-white rounded-2xl border border-slate-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300 group" style="transition-delay: 240ms;">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 icon-glow-on-hover" style="background: #fdf2f8;">
+                            <i class="pi pi-verified text-xl text-rose-500"></i>
                         </div>
                         <div>
-                            <p class="text-3xl font-black text-[var(--text-main)] tabular-nums">{{ statValues[3] }}%</p>
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-0.5">100% Digital</p>
+                            <p class="text-3xl font-black text-slate-900 tabular-nums">{{ statValues[3] }}%</p>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">100% Digital</p>
                         </div>
                     </div>
 
@@ -625,9 +635,9 @@ onUnmounted(() => {
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             4. ABOUT SDO GUIHULNGAN CITY
+             5. ABOUT SDO GUIHULNGAN CITY
         ══════════════════════════════════════════════════════════ -->
-        <section id="about" class="py-24 px-8 bg-[var(--surface)]">
+        <section id="about" class="py-24 px-8 bg-white">
             <div class="max-w-[1400px] mx-auto">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
@@ -635,35 +645,35 @@ onUnmounted(() => {
                     <div class="space-y-7 emerge-hidden">
                         <div>
                             <div class="flex items-center gap-3 mb-4">
-                                <div class="h-px w-8 bg-[var(--color-gold)]"></div>
-                                <span class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--color-primary)]">About the Division</span>
+                                <div class="h-px w-8" style="background:#D6A5B0;"></div>
+                                <span class="text-[10px] font-black uppercase tracking-[0.22em]" style="color:#B07080;">About the Division</span>
                             </div>
-                            <h2 class="text-4xl lg:text-5xl font-black text-[var(--text-main)] leading-tight tracking-tight">
+                            <h2 class="text-4xl lg:text-5xl font-black text-slate-900 leading-tight tracking-tight">
                                 Schools Division of<br/>
-                                <span style="color: var(--color-primary);">Guihulngan City</span>
+                                <span style="background: linear-gradient(135deg, #E91E8C, #4361EE); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Guihulngan City</span>
                             </h2>
                         </div>
 
-                        <p class="text-[var(--text-sub)] text-base leading-relaxed">
-                            The Schools Division of Guihulngan City, led by the Schools Division Superintendent, oversees the administration of public elementary and secondary schools in Guihulngan City, Negros Oriental. As part of DepEd Region VII (Central Visayas) — Negros Island Region (NIR), the Division is committed to upholding the highest standards of basic education, human resource development, and public service.
+                        <p class="text-slate-600 text-base leading-relaxed">
+                            The Schools Division of Guihulngan City, led by the Schools Division Superintendent, oversees the administration of public elementary and secondary schools in Guihulngan City, Negros Oriental. As part of DepEd Region VII (Central Visayas) - Negros Island Region (NIR), the Division is committed to upholding the highest standards of basic education, human resource development, and public service.
                         </p>
 
-                        <div class="flex items-start gap-3 p-4 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)]">
-                            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-                                <i class="pi pi-map-marker text-sm text-[var(--color-primary)]"></i>
+                        <div class="flex items-start gap-3 p-4 rounded-xl border border-rose-100 bg-rose-50">
+                            <div class="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center shrink-0">
+                                <i class="pi pi-map-marker text-sm text-rose-500"></i>
                             </div>
                             <div>
-                                <p class="text-[var(--text-main)] font-bold text-sm">Poblacion, Guihulngan City</p>
-                                <p class="text-[var(--text-muted)] text-xs font-medium">Negros Oriental, Negros Island Region (NIR), 6214</p>
+                                <p class="text-slate-800 font-bold text-sm">Poblacion, Guihulngan City</p>
+                                <p class="text-slate-500 text-xs font-medium">Negros Oriental, Negros Island Region (NIR), 6214</p>
                             </div>
                         </div>
 
                         <!-- Info chips -->
                         <div class="flex flex-wrap gap-3 pt-1">
                             <span v-for="chip in ['Region VII (NIR)', 'Negros Oriental', 'Established 2020', 'SDS Office']" :key="chip"
-                                class="flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border-main)] bg-[var(--bg-app)] text-[11px] font-bold text-[var(--text-sub)] tracking-wider hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] transition-all duration-200 cursor-default"
+                                class="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600 tracking-wider hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 cursor-default"
                             >
-                                <i class="pi pi-check-circle text-[var(--color-primary)] text-xs"></i>
+                                <i class="pi pi-check-circle text-blue-400 text-xs"></i>
                                 {{ chip }}
                             </span>
                         </div>
@@ -677,38 +687,174 @@ onUnmounted(() => {
                                 alt="School building"
                                 class="w-full h-80 lg:h-96 object-cover"
                             />
-                            <div class="absolute inset-0 bg-gradient-to-t from-[var(--color-navy)]/50 to-transparent rounded-2xl"></div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent rounded-2xl"></div>
                         </div>
 
                         <!-- Floating badge on image -->
-                        <div class="absolute bottom-6 left-6 bg-[var(--color-navy)]/90 backdrop-blur-sm border border-white/15 text-white rounded-xl px-4 py-3 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-[var(--color-gold)] flex items-center justify-center">
-                                <i class="pi pi-building text-[var(--color-navy)] text-sm"></i>
+                        <div class="absolute bottom-6 left-6 bg-slate-900/90 backdrop-blur-sm border border-white/15 text-white rounded-xl px-4 py-3 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #fb7185, #e11d48);">
+                                <i class="pi pi-building text-white text-sm"></i>
                             </div>
                             <div>
                                 <p class="text-xs font-black">SDO Guihulngan City</p>
-                                <p class="text-[9px] text-white/55 font-semibold uppercase tracking-widest">DepEd Region VII · NIR</p>
+                                <p class="text-[9px] text-white/55 font-semibold uppercase tracking-widest">DepEd Region VII - NIR</p>
                             </div>
                         </div>
 
-                        <!-- Gold corner accent -->
-                        <div class="absolute -top-3 -right-3 w-16 h-16 rounded-2xl border-4 border-[var(--color-gold)] opacity-40 pointer-events-none"></div>
+                        <!-- Blue corner accent -->
+                        <div class="absolute -top-3 -right-3 w-16 h-16 rounded-2xl border-4 border-blue-300 opacity-50 pointer-events-none"></div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             5. DEPED VISION & MISSION
+             6. MAP - FIND US
         ══════════════════════════════════════════════════════════ -->
-        <section id="mission" class="py-24 px-8" style="background: var(--color-navy);">
+        <section id="map" class="py-24 px-8 bg-white">
+            <div class="max-w-[1400px] mx-auto">
+
+                <div class="text-center mb-14 emerge-hidden">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <div class="h-px w-10 bg-rose-300"></div>
+                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-rose-500">Location</span>
+                        <div class="h-px w-10 bg-rose-300"></div>
+                    </div>
+                    <h2 class="text-4xl lg:text-5xl font-black text-slate-900 leading-tight">Find Us</h2>
+                    <p class="text-slate-500 text-sm font-medium mt-3">Division Office Location &amp; Contact Information</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch emerge-hidden" style="transition-delay: 100ms;">
+
+                    <!-- Address card -->
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col gap-6">
+
+                        <!-- Office details -->
+                        <div>
+                            <div class="flex items-center gap-3 mb-5">
+                                <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, #fdf2f8, #fce7f3);">
+                                    <i class="pi pi-building text-rose-500 text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-slate-900 font-black text-lg leading-tight">Schools Division Office</h3>
+                                    <p class="text-slate-400 text-xs font-semibold">SDO Guihulngan City - DepEd NIR</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="pi pi-map-marker text-rose-500 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Address</p>
+                                        <p class="text-slate-700 font-semibold text-sm leading-relaxed">Poblacion, Guihulngan City</p>
+                                        <p class="text-slate-500 text-xs">Negros Oriental, Negros Island Region (NIR), 6214</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="pi pi-phone text-blue-500 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Phone</p>
+                                        <p class="text-slate-700 font-semibold text-sm">(035) 400-0000</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="pi pi-envelope text-rose-500 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Email</p>
+                                        <a href="mailto:guihulngancity@deped.gov.ph" class="text-blue-600 font-semibold text-sm hover:underline">guihulngancity@deped.gov.ph</a>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="pi pi-clock text-blue-500 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Office Hours</p>
+                                        <p class="text-slate-700 font-semibold text-sm">Monday - Friday</p>
+                                        <p class="text-slate-500 text-xs">8:00 AM - 5:00 PM (PST)</p>
+                                        <p class="text-slate-400 text-[10px] mt-1 italic">Closed on weekends and public holidays</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="h-px bg-slate-100"></div>
+
+                        <!-- Quick contact CTA -->
+                        <div class="flex flex-wrap gap-3">
+                            <a
+                                href="mailto:guihulngancity@deped.gov.ph"
+                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white transition-all duration-200 hover:scale-105 shadow-md outline-none"
+                                style="background: linear-gradient(135deg, #fb7185, #e11d48); box-shadow: 0 4px 14px rgba(225,29,72,0.25);"
+                            >
+                                <i class="pi pi-envelope text-xs"></i>
+                                Send Email
+                            </a>
+                            <a
+                                href="https://www.facebook.com/DepEdGuihulngan"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all duration-200 outline-none"
+                            >
+                                <i class="pi pi-facebook text-xs"></i>
+                                Facebook Page
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- OpenStreetMap embed -->
+                    <div class="rounded-2xl overflow-hidden border border-slate-100 shadow-sm" style="min-height: 420px;">
+                        <iframe
+                            src="https://www.openstreetmap.org/export/embed.html?bbox=123.24%2C10.09%2C123.32%2C10.16&layer=mapnik&marker=10.1234%2C123.2777"
+                            width="100%"
+                            height="420"
+                            style="border:0; border-radius:16px; display:block;"
+                            loading="lazy"
+                            title="SDO Guihulngan City Location Map"
+                        ></iframe>
+                        <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
+                            <i class="pi pi-map text-slate-400 text-xs"></i>
+                            <span class="text-[10px] font-semibold text-slate-400">Poblacion, Guihulngan City, Negros Oriental</span>
+                            <a
+                                href="https://www.openstreetmap.org/?mlat=10.1234&mlon=123.2777#map=14/10.1234/123.2777"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="ml-auto text-[10px] font-bold text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors"
+                            >
+                                Open in Map <i class="pi pi-external-link text-[9px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════
+             7. DEPED ANNOUNCEMENTS
+        ══════════════════════════════════════════════════════════ -->
+        <HomeBulletin @open-bulletin="handleOpenBulletin" />
+
+        <!-- ══════════════════════════════════════════════════════════
+             8. DEPED VISION & MISSION
+        ══════════════════════════════════════════════════════════ -->
+        <section id="mission" class="py-24 px-8 mission-wave-bg">
             <div class="max-w-[1400px] mx-auto">
 
                 <div class="text-center mb-14 emerge-hidden">
                     <div class="inline-flex items-center gap-3 mb-4">
-                        <div class="h-px w-12 bg-[var(--color-gold)]"></div>
-                        <span class="text-[var(--color-gold)] text-[10px] font-black uppercase tracking-[0.22em]">DepEd Philippines</span>
-                        <div class="h-px w-12 bg-[var(--color-gold)]"></div>
+                        <div class="h-px w-12" style="background: #fb7185;"></div>
+                        <span class="text-[10px] font-black uppercase tracking-[0.22em]" style="color: #fb7185;">DepEd Philippines</span>
+                        <div class="h-px w-12" style="background: #fb7185;"></div>
                     </div>
                     <h2 class="text-4xl lg:text-5xl font-black text-white leading-tight">Vision &amp; Mission</h2>
                 </div>
@@ -717,10 +863,10 @@ onUnmounted(() => {
 
                     <!-- Vision -->
                     <div class="emerge-hidden rounded-2xl p-8 border border-white/10 mission-card relative overflow-hidden" style="transition-delay: 100ms;">
-                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--color-gold)] to-transparent"></div>
+                        <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(to right, #fb7185, transparent);"></div>
                         <div class="flex items-center gap-3 mb-5">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(239,191,4,0.15);">
-                                <i class="pi pi-eye text-[var(--color-gold)] text-lg"></i>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(251,113,133,0.15);">
+                                <i class="pi pi-eye text-lg" style="color: #fb7185;"></i>
                             </div>
                             <h3 class="text-white font-black text-xl tracking-tight">Vision</h3>
                         </div>
@@ -731,10 +877,10 @@ onUnmounted(() => {
 
                     <!-- Mission -->
                     <div class="emerge-hidden rounded-2xl p-8 border border-white/10 mission-card relative overflow-hidden" style="transition-delay: 200ms;">
-                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--color-primary-ring)] to-transparent"></div>
+                        <div class="absolute top-0 left-0 right-0 h-1" style="background: linear-gradient(to right, #60a5fa, transparent);"></div>
                         <div class="flex items-center gap-3 mb-5">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(91,132,186,0.15);">
-                                <i class="pi pi-heart text-[var(--color-primary-ring)] text-lg"></i>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(96,165,250,0.15);">
+                                <i class="pi pi-heart text-lg" style="color: #60a5fa;"></i>
                             </div>
                             <h3 class="text-white font-black text-xl tracking-tight">Mission</h3>
                         </div>
@@ -756,8 +902,8 @@ onUnmounted(() => {
                         ]" :key="val.label"
                             class="rounded-xl p-5 border border-white/10 text-center flex flex-col items-center gap-3 core-value-card transition-all duration-300 cursor-default"
                         >
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: rgba(239,191,4,0.15);">
-                                <i :class="val.icon" class="text-[var(--color-gold)] text-base"></i>
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: rgba(251,113,133,0.15);">
+                                <i :class="val.icon" class="text-base" style="color: #fb7185;"></i>
                             </div>
                             <div>
                                 <p class="text-white font-black text-sm">{{ val.label }}</p>
@@ -770,39 +916,39 @@ onUnmounted(() => {
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             6. HRMPSB & SYSTEM OBJECTIVES
+             9. HRMPSB & SYSTEM OBJECTIVES
         ══════════════════════════════════════════════════════════ -->
-        <section id="hrmpsb" class="py-24 px-8 bg-[var(--bg-app)]">
+        <section id="hrmpsb" class="py-24 px-8" style="background: #f8fafc;">
             <div class="max-w-[1400px] mx-auto">
 
                 <div class="text-center mb-14 emerge-hidden">
                     <div class="flex items-center justify-center gap-3 mb-4">
-                        <div class="h-px w-10 bg-[var(--color-primary)]"></div>
-                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--color-primary)]">Governance</span>
-                        <div class="h-px w-10 bg-[var(--color-primary)]"></div>
+                        <div class="h-px w-10 bg-blue-300"></div>
+                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-blue-500">Governance</span>
+                        <div class="h-px w-10 bg-blue-300"></div>
                     </div>
-                    <h2 class="text-4xl lg:text-5xl font-black text-[var(--text-main)] leading-tight">HRMPSB &amp; System Goals</h2>
+                    <h2 class="text-4xl lg:text-5xl font-black text-slate-900 leading-tight">HRMPSB &amp; System Goals</h2>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
                     <!-- HRMPSB info -->
-                    <div class="emerge-hidden bg-[var(--surface)] rounded-2xl border border-[var(--border-main)] p-8 shadow-sm">
-                        <div class="flex items-center gap-3 mb-6 pb-5 border-b border-[var(--border-main)]">
-                            <div class="w-11 h-11 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-                                <i class="pi pi-shield text-[var(--color-primary)] text-lg"></i>
+                    <div class="emerge-hidden bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
+                        <div class="flex items-center gap-3 mb-6 pb-5 border-b border-slate-100">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background: #eff6ff;">
+                                <i class="pi pi-shield text-blue-500 text-lg"></i>
                             </div>
                             <div>
-                                <h3 class="text-[var(--text-main)] font-black text-lg leading-tight">HRMPSB</h3>
-                                <p class="text-[var(--text-muted)] text-[11px] font-semibold">Human Resource Merit Promotion &amp; Selection Board</p>
+                                <h3 class="text-slate-900 font-black text-lg leading-tight">HRMPSB</h3>
+                                <p class="text-slate-400 text-[11px] font-semibold">Human Resource Merit Promotion &amp; Selection Board</p>
                             </div>
                         </div>
 
-                        <p class="text-[var(--text-sub)] text-sm leading-relaxed mb-7">
+                        <p class="text-slate-600 text-sm leading-relaxed mb-7">
                             The HRMPSB ensures that appointments to vacant positions in DepEd SDO Guihulngan City are made in accordance with the principle of merit and fitness, consistent with CSC rules and DepEd guidelines.
                         </p>
 
-                        <h4 class="text-[var(--text-muted)] text-[10px] font-black uppercase tracking-[0.2em] mb-4">Board Composition</h4>
+                        <h4 class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4">Board Composition</h4>
                         <div class="space-y-3">
                             <div v-for="member in [
                                 { role: 'Chairperson', name: 'Schools Division Superintendent', icon: 'pi pi-crown' },
@@ -811,14 +957,14 @@ onUnmounted(() => {
                                 { role: 'Member', name: 'Representative Employee', icon: 'pi pi-user' },
                                 { role: 'Member', name: 'Division Planning Officer', icon: 'pi pi-chart-line' },
                             ]" :key="member.name"
-                                class="flex items-center gap-3 p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)]"
+                                class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"
                             >
-                                <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
-                                    <i :class="member.icon" class="text-[var(--color-primary)] text-xs"></i>
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background: #eff6ff;">
+                                    <i :class="member.icon" class="text-blue-500 text-xs"></i>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-[var(--text-main)] font-bold text-xs leading-none">{{ member.name }}</p>
-                                    <p class="text-[var(--text-faint)] text-[10px] font-semibold uppercase tracking-wider mt-1">{{ member.role }}</p>
+                                    <p class="text-slate-800 font-bold text-xs leading-none">{{ member.name }}</p>
+                                    <p class="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mt-1">{{ member.role }}</p>
                                 </div>
                             </div>
                         </div>
@@ -826,8 +972,8 @@ onUnmounted(() => {
 
                     <!-- System objectives -->
                     <div class="emerge-hidden space-y-4" style="transition-delay: 150ms;">
-                        <h3 class="text-[var(--text-main)] font-black text-xl mb-6 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
+                        <h3 class="text-slate-900 font-black text-xl mb-6 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                 <i class="pi pi-bullseye text-white text-sm"></i>
                             </div>
                             System Objectives
@@ -841,12 +987,12 @@ onUnmounted(() => {
                                 'Preserve complete digital records of all recruitment activities',
                             ]"
                             :key="i"
-                            class="flex items-start gap-4 p-5 bg-[var(--surface)] rounded-xl border border-[var(--border-main)] shadow-sm hover:border-[var(--color-primary)] hover:shadow-md transition-all duration-300 group cursor-default"
+                            class="flex items-start gap-4 p-5 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-blue-200 hover:shadow-md transition-all duration-300 group cursor-default"
                         >
-                            <div class="w-9 h-9 rounded-xl bg-[var(--color-primary)] text-white font-black text-sm flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                            <div class="w-9 h-9 rounded-xl text-white font-black text-sm flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                 {{ i + 1 }}
                             </div>
-                            <p class="text-[var(--text-sub)] text-sm font-semibold leading-relaxed pt-1.5">{{ obj }}</p>
+                            <p class="text-slate-600 text-sm font-semibold leading-relaxed pt-1.5">{{ obj }}</p>
                         </div>
                     </div>
                 </div>
@@ -854,41 +1000,18 @@ onUnmounted(() => {
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             7. ANNOUNCEMENTS / BULLETIN
+             10. ORGANIZATIONAL CHART
         ══════════════════════════════════════════════════════════ -->
-        <section class="bg-[var(--surface)]">
-            <div class="max-w-[1400px] mx-auto px-8 pt-14 pb-0">
-                <div class="flex items-center gap-4 mb-0 emerge-hidden">
-                    <div class="w-10 h-10 rounded-xl bg-[var(--color-primary-light)] flex items-center justify-center">
-                        <i class="pi pi-megaphone text-[var(--color-primary)] text-base"></i>
-                    </div>
-                    <div>
-                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--color-primary)] block mb-0.5">Corporate Updates</span>
-                        <h2 class="text-3xl font-black text-[var(--text-main)] leading-none">Bulletin Board</h2>
-                    </div>
-                </div>
-            </div>
-            <HomeBulletin @open-bulletin="handleOpenBulletin" />
-        </section>
-
-        <!-- ══════════════════════════════════════════════════════════
-             8. OPEN POSITIONS
-        ══════════════════════════════════════════════════════════ -->
-        <HomeJob @open-job="handleOpenJob" />
-
-        <!-- ══════════════════════════════════════════════════════════
-             9. ORGANIZATIONAL CHART
-        ══════════════════════════════════════════════════════════ -->
-        <section id="org" class="py-24 px-8 bg-[var(--surface)]">
+        <section id="org" class="py-24 px-8" style="background: #f8fafc;">
             <div class="max-w-[1400px] mx-auto">
                 <div class="text-center mb-14 emerge-hidden">
                     <div class="flex items-center justify-center gap-3 mb-4">
-                        <div class="h-px w-10 bg-[var(--color-gold)]"></div>
-                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Leadership</span>
-                        <div class="h-px w-10 bg-[var(--color-gold)]"></div>
+                        <div class="h-px w-10 bg-rose-300"></div>
+                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-rose-400">Leadership</span>
+                        <div class="h-px w-10 bg-rose-300"></div>
                     </div>
-                    <h2 class="text-4xl lg:text-5xl font-black text-[var(--text-main)] leading-tight">Organizational Structure</h2>
-                    <p class="text-[var(--text-muted)] text-sm font-medium mt-3">SDO Guihulngan City</p>
+                    <h2 class="text-4xl lg:text-5xl font-black text-slate-900 leading-tight">Organizational Structure</h2>
+                    <p class="text-slate-500 text-sm font-medium mt-3">SDO Guihulngan City</p>
                 </div>
 
                 <!-- Org chart tree -->
@@ -897,54 +1020,54 @@ onUnmounted(() => {
                     <!-- Level 1: SDS -->
                     <div class="flex justify-center mb-0">
                         <div class="org-node org-node-top">
-                            <div class="w-14 h-14 rounded-full bg-[var(--color-navy)] flex items-center justify-center mx-auto mb-3 ring-4 ring-[var(--color-gold)] ring-offset-2">
-                                <i class="pi pi-crown text-[var(--color-gold)] text-xl"></i>
+                            <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ring-4 ring-rose-300 ring-offset-2" style="background: linear-gradient(135deg, #0f172a, #1e3a5f);">
+                                <i class="pi pi-crown text-lg" style="color: #fb7185;"></i>
                             </div>
                             <p class="text-white font-black text-sm leading-tight">Dr. Maria C. Santos</p>
                             <p class="text-white/55 text-[10px] font-bold uppercase tracking-wider mt-1">CESO V</p>
-                            <div class="mt-2 inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest" style="background: rgba(239,191,4,0.2); color: var(--color-gold);">Schools Division Superintendent</div>
+                            <div class="mt-2 inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest" style="background: rgba(251,113,133,0.2); color: #fb7185;">Schools Division Superintendent</div>
                         </div>
                     </div>
 
                     <!-- Connector line -->
                     <div class="flex justify-center">
-                        <div class="w-0.5 h-8 bg-[var(--border-main)]"></div>
+                        <div class="w-0.5 h-8 bg-slate-200"></div>
                     </div>
 
                     <!-- Level 2 -->
                     <div class="flex flex-col lg:flex-row justify-center gap-4 lg:gap-6 mb-0">
                         <div class="flex justify-center">
                             <div class="org-node org-node-l2">
-                                <div class="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center mx-auto mb-2">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                     <i class="pi pi-user text-white text-sm"></i>
                                 </div>
-                                <p class="text-[var(--text-main)] font-black text-xs leading-tight">Dr. Jose R. Dela Cruz</p>
-                                <p class="text-[var(--text-muted)] text-[9px] font-bold uppercase tracking-wider mt-1">Asst. SDS</p>
+                                <p class="text-slate-900 font-black text-xs leading-tight">Dr. Jose R. Dela Cruz</p>
+                                <p class="text-slate-400 text-[9px] font-bold uppercase tracking-wider mt-1">Asst. SDS</p>
                             </div>
                         </div>
                         <div class="flex justify-center">
                             <div class="org-node org-node-l2">
-                                <div class="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center mx-auto mb-2">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                     <i class="pi pi-book text-white text-sm"></i>
                                 </div>
-                                <p class="text-[var(--text-main)] font-black text-xs leading-tight">Dr. Lourdes B. Enriquez</p>
-                                <p class="text-[var(--text-muted)] text-[9px] font-bold uppercase tracking-wider mt-1">CID Chief</p>
+                                <p class="text-slate-900 font-black text-xs leading-tight">Dr. Lourdes B. Enriquez</p>
+                                <p class="text-slate-400 text-[9px] font-bold uppercase tracking-wider mt-1">CID Chief</p>
                             </div>
                         </div>
                         <div class="flex justify-center">
                             <div class="org-node org-node-l2">
-                                <div class="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center mx-auto mb-2">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                     <i class="pi pi-building text-white text-sm"></i>
                                 </div>
-                                <p class="text-[var(--text-main)] font-black text-xs leading-tight">Dr. Fernando A. Lim</p>
-                                <p class="text-[var(--text-muted)] text-[9px] font-bold uppercase tracking-wider mt-1">SGOD Chief</p>
+                                <p class="text-slate-900 font-black text-xs leading-tight">Dr. Fernando A. Lim</p>
+                                <p class="text-slate-400 text-[9px] font-bold uppercase tracking-wider mt-1">SGOD Chief</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Connector lines -->
                     <div class="flex justify-center">
-                        <div class="w-0.5 h-8 bg-[var(--border-main)]"></div>
+                        <div class="w-0.5 h-8 bg-slate-200"></div>
                     </div>
 
                     <!-- Level 3 -->
@@ -956,11 +1079,11 @@ onUnmounted(() => {
                         ]" :key="member.name"
                             class="org-node org-node-l3"
                         >
-                            <div class="w-9 h-9 rounded-full bg-[var(--bg-app)] border-2 border-[var(--border-main)] flex items-center justify-center mx-auto mb-2">
-                                <i :class="member.icon" class="text-[var(--color-primary)] text-sm"></i>
+                            <div class="w-9 h-9 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center mx-auto mb-2">
+                                <i :class="member.icon" class="text-blue-500 text-sm"></i>
                             </div>
-                            <p class="text-[var(--text-main)] font-bold text-[11px] leading-tight">{{ member.name }}</p>
-                            <p class="text-[var(--text-muted)] text-[9px] font-bold uppercase tracking-wider mt-1">{{ member.title }}</p>
+                            <p class="text-slate-900 font-bold text-[11px] leading-tight">{{ member.name }}</p>
+                            <p class="text-slate-400 text-[9px] font-bold uppercase tracking-wider mt-1">{{ member.title }}</p>
                         </div>
                     </div>
                 </div>
@@ -968,19 +1091,19 @@ onUnmounted(() => {
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             10. ICT TEAM
+             11. ICT TEAM
         ══════════════════════════════════════════════════════════ -->
-        <section id="team" class="py-24 px-8" style="background: var(--bg-app);">
+        <section id="team" class="py-24 px-8 bg-white">
             <div class="max-w-[1400px] mx-auto">
 
                 <div class="text-center mb-14 emerge-hidden">
                     <div class="flex items-center justify-center gap-3 mb-4">
-                        <div class="h-px w-10 bg-[var(--color-primary)]"></div>
-                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--color-primary)]">ICT Unit</span>
-                        <div class="h-px w-10 bg-[var(--color-primary)]"></div>
+                        <div class="h-px w-10 bg-blue-300"></div>
+                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-blue-500">ICT Unit</span>
+                        <div class="h-px w-10 bg-blue-300"></div>
                     </div>
-                    <h2 class="text-4xl lg:text-5xl font-black text-[var(--text-main)] leading-tight">People Behind the System</h2>
-                    <p class="text-[var(--text-muted)] text-sm font-medium mt-3 max-w-lg mx-auto">The dedicated ICT professionals who designed, built, and maintain the Guih-Ranking recruitment portal.</p>
+                    <h2 class="text-4xl lg:text-5xl font-black text-slate-900 leading-tight">People Behind the System</h2>
+                    <p class="text-slate-500 text-sm font-medium mt-3 max-w-lg mx-auto">The dedicated ICT professionals who designed, built, and maintain the Guih-Ranking recruitment portal.</p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -988,7 +1111,7 @@ onUnmounted(() => {
                         v-for="(member, i) in teamMembers"
                         :key="member.name"
                         @click="openTeamMember(member)"
-                        class="emerge-hidden bg-[var(--surface)] rounded-2xl border border-[var(--border-main)] overflow-hidden shadow-sm cursor-pointer team-card group"
+                        class="emerge-hidden bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm cursor-pointer team-card-enhanced group"
                         :style="{ transitionDelay: (i * 80) + 'ms' }"
                     >
                         <!-- Photo -->
@@ -998,10 +1121,10 @@ onUnmounted(() => {
                                 :alt="member.name"
                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                            <div class="absolute inset-0 bg-gradient-to-t from-[var(--color-navy)]/80 via-transparent to-transparent"></div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
                             <div class="absolute bottom-3 left-3 right-3">
-                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider" style="background: rgba(239,191,4,0.9); color: var(--color-navy);">
-                                    <i class="pi pi-desktop text-[var(--color-navy)] text-[9px]"></i>
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider" style="background: rgba(251,113,133,0.9); color: white;">
+                                    <i class="pi pi-desktop text-white text-[9px]"></i>
                                     ICT Unit
                                 </div>
                             </div>
@@ -1009,11 +1132,11 @@ onUnmounted(() => {
 
                         <!-- Info -->
                         <div class="p-5">
-                            <h3 class="text-[var(--text-main)] font-black text-base leading-tight">{{ member.name }}</h3>
-                            <p class="text-[var(--color-primary)] text-xs font-bold mt-1 leading-snug">{{ member.role }}</p>
-                            <p class="text-[var(--text-faint)] text-[10px] font-semibold uppercase tracking-wider mt-2">{{ member.unit }}</p>
+                            <h3 class="text-slate-900 font-black text-base leading-tight">{{ member.name }}</h3>
+                            <p class="text-blue-600 text-xs font-bold mt-1 leading-snug">{{ member.role }}</p>
+                            <p class="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mt-2">{{ member.unit }}</p>
 
-                            <div class="mt-4 flex items-center gap-2 text-[var(--color-primary)] text-xs font-black opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
+                            <div class="mt-4 flex items-center gap-2 text-rose-500 text-xs font-black opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
                                 <i class="pi pi-arrow-up-right text-[10px]"></i>
                                 View Profile
                             </div>
@@ -1024,57 +1147,58 @@ onUnmounted(() => {
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             11. FAQ
+             12. FAQ
         ══════════════════════════════════════════════════════════ -->
-        <section id="faq" class="py-24 px-8 bg-[var(--surface)]">
+        <section id="faq" class="py-24 px-8" style="background: #f8fafc;">
             <div class="max-w-[900px] mx-auto">
 
                 <div class="text-center mb-14 emerge-hidden">
                     <div class="flex items-center justify-center gap-3 mb-4">
-                        <div class="h-px w-10 bg-[var(--color-gold)]"></div>
-                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Help Center</span>
-                        <div class="h-px w-10 bg-[var(--color-gold)]"></div>
+                        <div class="h-px w-10 bg-rose-300"></div>
+                        <span class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Help Center</span>
+                        <div class="h-px w-10 bg-rose-300"></div>
                     </div>
-                    <h2 class="text-4xl lg:text-5xl font-black text-[var(--text-main)] leading-tight">Frequently Asked Questions</h2>
-                    <p class="text-[var(--text-muted)] text-sm font-medium mt-3">Everything you need to know about the recruitment process.</p>
+                    <h2 class="text-4xl lg:text-5xl font-black text-slate-900 leading-tight">Frequently Asked Questions</h2>
+                    <p class="text-slate-500 text-sm font-medium mt-3">Everything you need to know about the recruitment process.</p>
                 </div>
 
                 <div class="space-y-3">
                     <div
                         v-for="(faq, i) in faqs"
                         :key="i"
-                        class="emerge-hidden rounded-xl border border-[var(--border-main)] overflow-hidden transition-all duration-200"
-                        :class="activeFaq === i ? 'border-[var(--color-primary)] shadow-md' : 'hover:border-[var(--text-faint)]'"
-                        :style="{ transitionDelay: (i * 40) + 'ms' }"
+                        class="emerge-hidden rounded-xl border faq-item"
+                        :class="[activeFaq === i ? 'faq-active' : 'border-slate-200']"
                     >
                         <button
                             @click="toggleFaq(i)"
                             class="w-full flex items-center justify-between gap-4 px-6 py-5 text-left outline-none transition-colors duration-200"
-                            :class="activeFaq === i ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--surface)] hover:bg-[var(--bg-app)]'"
+                            :style="activeFaq === i ? 'background: linear-gradient(to right, #FDF7FA, #F5F3FF);' : ''"
+                            :class="activeFaq === i ? '' : 'bg-white hover:bg-pink-50/30'"
                         >
                             <div class="flex items-center gap-4">
                                 <span
                                     class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 transition-colors duration-200"
-                                    :class="activeFaq === i ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--bg-app)] text-[var(--text-muted)]'"
+                                    :class="activeFaq === i ? 'text-white faq-num-active' : 'bg-slate-100 text-slate-400'"
                                 >
                                     {{ i + 1 }}
                                 </span>
                                 <span
                                     class="text-sm font-bold leading-snug transition-colors duration-200"
-                                    :class="activeFaq === i ? 'text-[var(--color-primary)]' : 'text-[var(--text-main)]'"
+                                    :style="activeFaq === i ? 'color:#B05090;' : 'color:#2D3748;'"
                                 >
                                     {{ faq.q }}
                                 </span>
                             </div>
                             <i
                                 class="pi text-lg shrink-0 transition-all duration-300"
-                                :class="activeFaq === i ? 'pi-angle-up text-[var(--color-primary)]' : 'pi-angle-down text-[var(--text-faint)]'"
+                                :class="activeFaq === i ? 'pi-angle-up' : 'pi-angle-down text-slate-300'"
+                                :style="activeFaq === i ? 'color:#D4739A;' : ''"
                             ></i>
                         </button>
                         <Transition name="faq-expand">
-                            <div v-if="activeFaq === i" class="px-6 pb-5 pt-1">
+                            <div v-if="activeFaq === i" class="px-6 pb-5 pt-1 bg-white">
                                 <div class="pl-11">
-                                    <p class="text-[var(--text-sub)] text-sm leading-relaxed font-medium">{{ faq.a }}</p>
+                                    <p class="text-slate-600 text-sm leading-relaxed font-medium">{{ faq.a }}</p>
                                 </div>
                             </div>
                         </Transition>
@@ -1083,11 +1207,11 @@ onUnmounted(() => {
 
                 <!-- CTA below FAQ -->
                 <div class="mt-12 text-center emerge-hidden">
-                    <p class="text-[var(--text-muted)] text-sm mb-5">Still have questions? Contact the Division HR Unit directly.</p>
+                    <p class="text-slate-500 text-sm mb-5">Still have questions? Contact the Division HR Unit directly.</p>
                     <a
                         href="mailto:guihulngancity@deped.gov.ph"
-                        class="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 hover:scale-105 active:scale-95"
-                        style="background: var(--color-primary); color: white; box-shadow: 0 8px 24px rgba(74,77,143,0.25);"
+                        class="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 text-white"
+                        style="background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 8px 24px rgba(37,99,235,0.25);"
                     >
                         <i class="pi pi-envelope text-sm"></i>
                         Contact HR Unit
@@ -1097,12 +1221,12 @@ onUnmounted(() => {
         </section>
 
         <!-- ══════════════════════════════════════════════════════════
-             12. FOOTER
+             13. FOOTER
         ══════════════════════════════════════════════════════════ -->
-        <footer style="background: var(--color-navy);">
+        <footer class="footer-gradient">
 
-            <!-- Gold top strip -->
-            <div class="h-1 w-full bg-gradient-to-r from-[var(--color-gold)] via-[var(--color-gold)]/50 to-transparent"></div>
+            <!-- Rose-to-blue top strip -->
+            <div class="h-1 w-full" style="background: linear-gradient(to right, #fb7185, #f9a8d4, #bfdbfe, #60a5fa);"></div>
 
             <div class="max-w-[1400px] mx-auto px-8 py-16">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
@@ -1130,11 +1254,11 @@ onUnmounted(() => {
                             The official digital recruitment and selection portal of the Schools Division of Guihulngan City. Ensuring merit-based, transparent, and streamlined career opportunities for all.
                         </p>
                         <div class="flex items-start gap-2 text-white/45 text-xs font-medium">
-                            <i class="pi pi-map-marker text-[var(--color-gold)] mt-0.5"></i>
+                            <i class="pi pi-map-marker mt-0.5" style="color: #fb7185;"></i>
                             <span>Poblacion, Guihulngan City, Negros Oriental, Negros Island Region (NIR), 6214</span>
                         </div>
 
-                        <!-- Social links placeholder -->
+                        <!-- Social links -->
                         <div class="flex items-center gap-3 pt-1">
                             <a v-for="soc in [
                                 { icon: 'pi pi-facebook', label: 'Facebook' },
@@ -1158,7 +1282,7 @@ onUnmounted(() => {
                                     @click="scrollTo(link.id)"
                                     class="text-xs font-bold text-white/55 hover:text-white transition-colors duration-200 flex items-center gap-2 uppercase tracking-wider outline-none"
                                 >
-                                    <i class="pi pi-angle-right text-[var(--color-gold)] text-[10px]"></i>
+                                    <i class="pi pi-angle-right text-[10px]" style="color: #fb7185;"></i>
                                     {{ link.label }}
                                 </button>
                             </li>
@@ -1174,7 +1298,7 @@ onUnmounted(() => {
                                     @click="scrollTo(link.id)"
                                     class="text-xs font-bold text-white/55 hover:text-white transition-colors duration-200 flex items-center gap-2 uppercase tracking-wider outline-none"
                                 >
-                                    <i class="pi pi-angle-right text-[var(--color-gold)] text-[10px]"></i>
+                                    <i class="pi pi-angle-right text-[10px]" style="color: #60a5fa;"></i>
                                     {{ link.label }}
                                 </button>
                             </li>
@@ -1185,7 +1309,7 @@ onUnmounted(() => {
                                     @click="router.push('/auth/login')"
                                     class="text-xs font-bold text-white/55 hover:text-white transition-colors duration-200 flex items-center gap-2 uppercase tracking-wider outline-none"
                                 >
-                                    <i class="pi pi-sign-in text-[var(--color-gold)] text-[10px]"></i>
+                                    <i class="pi pi-sign-in text-[10px]" style="color: #fb7185;"></i>
                                     Sign In
                                 </button>
                             </li>
@@ -1194,7 +1318,7 @@ onUnmounted(() => {
                                     @click="router.push('/auth/register')"
                                     class="text-xs font-bold text-white/55 hover:text-white transition-colors duration-200 flex items-center gap-2 uppercase tracking-wider outline-none"
                                 >
-                                    <i class="pi pi-user-plus text-[var(--color-gold)] text-[10px]"></i>
+                                    <i class="pi pi-user-plus text-[10px]" style="color: #60a5fa;"></i>
                                     Register
                                 </button>
                             </li>
@@ -1208,7 +1332,7 @@ onUnmounted(() => {
                         &copy; 2025 Schools Division of Guihulngan City. All rights reserved.
                     </p>
                     <div class="flex items-center gap-3">
-                        <i class="pi pi-desktop text-[var(--color-gold)] text-xs"></i>
+                        <i class="pi pi-desktop text-xs" style="color: #fb7185;"></i>
                         <p class="text-[11px] font-bold text-white/30 uppercase tracking-widest">
                             Powered by DepEd ICT Unit &mdash; SDO Guihulngan City
                         </p>
@@ -1231,13 +1355,13 @@ onUnmounted(() => {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.18;
+    opacity: 0.2;
     pointer-events: none;
 }
 .blob-1 {
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, #4A4D8F 0%, transparent 70%);
+    background: radial-gradient(circle, #60a5fa 0%, transparent 70%);
     top: -150px;
     right: -100px;
     animation: blobFloat1 18s ease-in-out infinite;
@@ -1245,7 +1369,7 @@ onUnmounted(() => {
 .blob-2 {
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, #EFBF04 0%, transparent 70%);
+    background: radial-gradient(circle, #fb7185 0%, transparent 70%);
     bottom: 80px;
     left: 5%;
     animation: blobFloat2 22s ease-in-out infinite;
@@ -1253,7 +1377,7 @@ onUnmounted(() => {
 .blob-3 {
     width: 300px;
     height: 300px;
-    background: radial-gradient(circle, #5B84BA 0%, transparent 70%);
+    background: radial-gradient(circle, #a78bfa 0%, transparent 70%);
     top: 30%;
     left: 45%;
     animation: blobFloat3 16s ease-in-out infinite;
@@ -1261,11 +1385,11 @@ onUnmounted(() => {
 .blob-4 {
     width: 200px;
     height: 200px;
-    background: radial-gradient(circle, #EFBF04 0%, transparent 70%);
+    background: radial-gradient(circle, #f9a8d4 0%, transparent 70%);
     top: 15%;
     left: 25%;
     animation: blobFloat4 20s ease-in-out infinite;
-    opacity: 0.1;
+    opacity: 0.12;
 }
 
 @keyframes blobFloat1 {
@@ -1293,7 +1417,7 @@ onUnmounted(() => {
     position: absolute;
     inset: 0;
     background-image:
-        radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+        radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
 }
@@ -1309,10 +1433,10 @@ onUnmounted(() => {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .hero-badge {
-    background: rgba(74, 77, 143, 0.85);
+    background: rgba(96, 165, 250, 0.12);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* ── Mission cards ──────────────────────────────────────────────── */
@@ -1344,19 +1468,19 @@ onUnmounted(() => {
     gap: 0;
 }
 .org-node-top {
-    background: var(--color-navy);
-    border: 2px solid var(--color-gold);
+    background: linear-gradient(135deg, #0f172a, #1e3a5f);
+    border: 2px solid #fb7185;
     border-radius: 16px;
     padding: 20px 28px;
     text-align: center;
     min-width: 220px;
-    box-shadow: 0 8px 32px rgba(0,31,63,0.15);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.2);
     transition: transform 0.3s ease;
 }
 .org-node-top:hover { transform: translateY(-3px); }
 .org-node-l2 {
-    background: var(--surface);
-    border: 1.5px solid var(--border-main);
+    background: white;
+    border: 1.5px solid #e2e8f0;
     border-radius: 14px;
     padding: 16px 20px;
     text-align: center;
@@ -1366,11 +1490,11 @@ onUnmounted(() => {
 }
 .org-node-l2:hover {
     transform: translateY(-2px);
-    border-color: var(--color-primary);
+    border-color: #93c5fd;
 }
 .org-node-l3 {
-    background: var(--bg-app);
-    border: 1.5px solid var(--border-main);
+    background: white;
+    border: 1.5px solid #e2e8f0;
     border-radius: 12px;
     padding: 14px 18px;
     text-align: center;
@@ -1379,7 +1503,7 @@ onUnmounted(() => {
 }
 .org-node-l3:hover {
     transform: translateY(-2px);
-    border-color: var(--color-primary);
+    border-color: #93c5fd;
 }
 
 /* ── Team cards ─────────────────────────────────────────────────── */
@@ -1388,8 +1512,8 @@ onUnmounted(() => {
 }
 .team-card:hover {
     transform: translateY(-6px) scale(1.01);
-    box-shadow: 0 16px 48px rgba(74,77,143,0.15);
-    border-color: var(--color-primary);
+    box-shadow: 0 16px 48px rgba(251, 113, 133, 0.12);
+    border-color: #fecdd3;
 }
 
 /* ── Scroll bounce indicator ────────────────────────────────────── */
@@ -1455,17 +1579,100 @@ onUnmounted(() => {
     transform: translateY(-8px);
 }
 
-/* ── Scroll reveal (emerge) ─────────────────────────────────────── */
+/* ── Scrollbar utility ──────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ── Hero waving flag animation ─────────────────────────────────── */
+.hero-wave-bg {
+    background: linear-gradient(-45deg, #1A0030, #5C0E4A, #0A1460, #3D0A5A, #0D2A8F, #6B1550);
+    background-size: 400% 400%;
+    animation: flagWave 14s ease infinite;
+}
+@keyframes flagWave {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ── Mission waving gradient ────────────────────────────────────── */
+.mission-wave-bg {
+    background: linear-gradient(-45deg, #1A0030, #4A0E5A, #06164A, #2D0B42, #0A2060);
+    background-size: 400% 400%;
+    animation: flagWave 18s ease infinite;
+}
+
+/* ── Footer gradient ────────────────────────────────────────────── */
+.footer-gradient {
+    background: linear-gradient(135deg, #1A0030 0%, #3D0A5A 40%, #06104A 100%);
+}
+
+/* ── Navbar frosted glass when scrolled ─────────────────────────── */
+.nav-scrolled-glass {
+    background: rgba(253, 242, 248, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 4px 24px rgba(180, 100, 150, 0.12);
+}
+
+/* ── Glowing slide dot ──────────────────────────────────────────── */
+.dot-glow {
+    box-shadow: 0 0 10px rgba(244, 114, 182, 0.9), 0 0 20px rgba(244, 114, 182, 0.4);
+}
+
+/* ── Icon glow on hover ─────────────────────────────────────────── */
+.icon-glow-on-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.group:hover .icon-glow-on-hover {
+    box-shadow: 0 0 16px rgba(244, 114, 182, 0.45), 0 0 32px rgba(96, 165, 250, 0.2);
+}
+
+/* ── Enhanced team card ─────────────────────────────────────────── */
+.team-card-enhanced {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+}
+.team-card-enhanced:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 60px rgba(180, 60, 130, 0.18), 0 8px 24px rgba(96, 165, 250, 0.1);
+    border-color: #F9A8D4;
+}
+
+/* ── Card scroll-reveal enhanced ────────────────────────────────── */
 .emerge-hidden {
     opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform: translateY(36px);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .emerge-visible {
     opacity: 1;
     transform: translateY(0);
 }
 
-/* ── Scrollbar utility ──────────────────────────────────────────── */
-.no-scrollbar::-webkit-scrollbar { display: none; }
+/* ── Stat card glow on hover ────────────────────────────────────── */
+#stats-strip .group:hover {
+    box-shadow: 0 8px 32px rgba(244, 114, 182, 0.12), 0 2px 8px rgba(96, 165, 250, 0.08);
+}
+
+/* ── FAQ accordion styling ──────────────────────────────────────── */
+.faq-item {
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    background: white;
+}
+.faq-item:hover {
+    box-shadow: 0 4px 20px rgba(180, 100, 150, 0.09);
+    border-color: #F9C8D8 !important;
+}
+.faq-item.faq-active {
+    border-color: #E8B8D8 !important;
+    box-shadow: 0 6px 24px rgba(180, 80, 144, 0.12) !important;
+}
+.faq-num-active {
+    background: linear-gradient(135deg, #D4739A, #B05090);
+    box-shadow: 0 4px 12px rgba(176, 80, 144, 0.35);
+}
+
+/* ── Bulletin/Job card enhanced hover ───────────────────────────── */
+.bulletin-card:hover {
+    box-shadow: 0 16px 48px rgba(150, 80, 130, 0.12), 0 4px 16px rgba(96, 165, 250, 0.08) !important;
+}
 </style>

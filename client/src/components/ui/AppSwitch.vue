@@ -1,5 +1,9 @@
 <script setup>
+import { useSound } from '@/composables/useSound'
+
 defineOptions({ name: 'AppSwitch' })
+
+const { play } = useSound()
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -12,7 +16,10 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const toggle = () => {
-  if (!props.disabled) emit('update:modelValue', !props.modelValue)
+  if (!props.disabled) {
+    play('toggle')
+    emit('update:modelValue', !props.modelValue)
+  }
 }
 
 const trackSizes = { sm: 'w-7 h-4', md: 'w-10 h-5.5', lg: 'w-12 h-7' }

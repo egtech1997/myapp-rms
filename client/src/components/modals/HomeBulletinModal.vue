@@ -1,78 +1,208 @@
 <script setup>
-import Dialog from 'primevue/dialog';
-import Button from 'primevue/button';
+import { computed } from 'vue'
+import { resolveUrl } from '@/utils/url'
 
-defineProps({
-    visible: Boolean,
-    announcement: Object
-});
+defineOptions({ name: 'HomeBulletinModal' })
 
-defineEmits(['update:visible']);
+const props = defineProps({
+  visible:      { type: Boolean, default: false },
+  announcement: { type: Object,  default: null },
+})
+defineEmits(['update:visible'])
+
+// ── Type meta ────────────────────────────────────────────────────────────────
+const TYPE_META = {
+  general:            { label: 'General',             color: 'bg-slate-100 text-slate-700' },
+  interview_schedule: { label: 'Interview Schedule',  color: 'bg-blue-100 text-blue-700' },
+  results:            { label: 'Results Release',     color: 'bg-emerald-100 text-emerald-700' },
+  memorandum:         { label: 'Memorandum',          color: 'bg-rose-100 text-rose-700' },
+  event:              { label: 'Event',               color: 'bg-violet-100 text-violet-700' },
+  award:              { label: 'Award',               color: 'bg-amber-100 text-amber-700' },
+  policy:             { label: 'Policy',              color: 'bg-indigo-100 text-indigo-700' },
+  training:           { label: 'Training',            color: 'bg-teal-100 text-teal-700' },
+  system:             { label: 'System Update',       color: 'bg-orange-100 text-orange-700' },
+  ier_release:        { label: 'IER Release',         color: 'bg-purple-100 text-purple-700' },
+  rqa_release:        { label: 'RQA Release',         color: 'bg-cyan-100 text-cyan-700' },
+}
+
+const FILE_ICONS = {
+  pdf:   { icon: 'pi-file-pdf',   color: 'text-red-500',     bg: 'bg-red-50',     label: 'PDF' },
+  word:  { icon: 'pi-file-word',  color: 'text-blue-600',    bg: 'bg-blue-50',    label: 'Word' },
+  excel: { icon: 'pi-file-excel', color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Excel' },
+  image: { icon: 'pi-image',      color: 'text-violet-500',  bg: 'bg-violet-50',  label: 'Image' },
+  other: { icon: 'pi-file',       color: 'text-slate-500',   bg: 'bg-slate-50',   label: 'File' },
+}
+
+const typeMeta = computed(() => {
+  const t = props.announcement?.type
+  return TYPE_META[t] || TYPE_META.general
+})
+
+const scheduledDateLabel = computed(() => {
+  const d = props.announcement?.scheduledDate
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+})
+
+const postedDateLabel = computed(() => {
+  const d = props.announcement?.createdAt
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+})
+
+const fileIcon = (ft) => FILE_ICONS[ft] || FILE_ICONS.other
+const bannerUrl = computed(() => props.announcement?.image ? resolveUrl(props.announcement.image) : '')
 </script>
 
 <template>
-    <Dialog :visible="visible" @update:visible="$emit('update:visible', $event)" :focusTrap="false" modal dismissableMask :showHeader="false" contentClass="p-0 rounded-[var(--radius-3xl)] overflow-hidden shadow-[0_32px_80px_-20px_rgba(0,0,0,0.25)]" class="max-w-2xl w-full mx-4" style="font-family: 'Avenir', sans-serif;">
-        <div class="bg-white flex flex-col">
-            
-            <div class="relative w-full h-64 bg-slate-100 group">
-                <img :src="announcement?.image" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Announcement Banner" />
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
-                
-                <Button icon="pi pi-times" severity="secondary" rounded text class="absolute top-4 right-4 text-white/70 hover:text-rose-500 hover:bg-white/20 transition-all duration-300 hover:rotate-90 z-10" @click="$emit('update:visible', false)" />
-                
-                <div class="absolute bottom-6 left-8 right-8">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span :class="[announcement?.bg, announcement?.color, 'w-10 h-10 rounded-[var(--radius-xl)] flex items-center justify-center shadow-inner text-lg']">
-                            <i :class="announcement?.icon"></i>
-                        </span>
-                        <span class="text-xs font-bold text-white uppercase tracking-widest bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-sm">
-                            {{ announcement?.category }}
-                        </span>
-                    </div>
-                    <h2 class="text-3xl font-black text-white leading-tight drop-shadow-md tracking-tight">{{ announcement?.title }}</h2>
+  <Teleport to="body">
+    <Transition name="bulletin-fade">
+      <div
+        v-if="visible && announcement"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        style="background: rgba(10, 5, 30, 0.72); backdrop-filter: blur(6px);"
+        @click.self="$emit('update:visible', false)"
+      >
+        <!-- Panel -->
+        <div
+          class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden bm-panel"
+          style="max-height: 90vh;"
+          @click.stop
+        >
+          <!-- Hero image (if present) -->
+          <div v-if="bannerUrl" class="relative w-full h-52 bg-slate-100 shrink-0 overflow-hidden group">
+            <img :src="bannerUrl" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/30 to-transparent"></div>
+
+            <!-- Close button -->
+            <button @click="$emit('update:visible', false)"
+              class="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white flex items-center justify-center transition-all z-10 backdrop-blur-sm">
+              <i class="pi pi-times text-sm"></i>
+            </button>
+
+            <!-- Type badge + title overlay -->
+            <div class="absolute bottom-5 left-7 right-12">
+              <span class="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm bg-white/20 text-white border border-white/20 inline-block mb-2">
+                {{ typeMeta.label }}
+              </span>
+              <h2 class="text-xl font-black text-white leading-snug drop-shadow-md tracking-tight line-clamp-2">
+                {{ announcement.title }}
+              </h2>
+            </div>
+          </div>
+
+          <!-- Header (no image) -->
+          <div v-else class="px-7 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between gap-4 shrink-0">
+            <div class="flex-1 min-w-0">
+              <span :class="['text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block mb-2', typeMeta.color]">
+                {{ typeMeta.label }}
+              </span>
+              <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">{{ announcement.title }}</h2>
+            </div>
+            <button @click="$emit('update:visible', false)"
+              class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+              <i class="pi pi-times text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Body (scrollable) -->
+          <div class="flex-1 overflow-y-auto custom-scrollbar">
+
+            <!-- Meta strip: schedule + poster -->
+            <div class="flex flex-wrap gap-x-5 gap-y-3 px-7 py-4 border-b" style="background: linear-gradient(to right, #FDF7FA, #F5F3FF); border-color:#EEF1F7;">
+
+              <!-- Scheduled date / time / venue -->
+              <div v-if="scheduledDateLabel" class="flex items-start gap-2">
+                <i class="pi pi-calendar text-blue-500 text-sm mt-0.5 shrink-0"></i>
+                <div>
+                  <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Schedule</p>
+                  <p class="text-xs font-bold text-slate-700">{{ scheduledDateLabel }}</p>
+                  <p v-if="announcement.scheduledTime" class="text-[10px] text-slate-500">{{ announcement.scheduledTime }}</p>
                 </div>
+              </div>
+
+              <div v-if="announcement.venue" class="flex items-start gap-2">
+                <i class="pi pi-map-marker text-rose-400 text-sm mt-0.5 shrink-0"></i>
+                <div>
+                  <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Venue</p>
+                  <p class="text-xs font-bold text-slate-700">{{ announcement.venue }}</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-2">
+                <i class="pi pi-clock text-slate-400 text-sm mt-0.5 shrink-0"></i>
+                <div>
+                  <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Posted</p>
+                  <p class="text-xs font-bold text-slate-600">{{ postedDateLabel }}</p>
+                  <p v-if="announcement.postedBy?.username" class="text-[10px] text-slate-400">by {{ announcement.postedBy.username }}</p>
+                </div>
+              </div>
             </div>
 
-            <div class="p-8">
-                <div class="flex flex-col sm:flex-row gap-5 sm:gap-8 mb-8 bg-slate-50 p-5 rounded-[var(--radius-2xl)] border border-slate-100 shadow-inner">
-                    <div class="flex items-center gap-3">
-                        <img :src="announcement?.publisherImage" class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover" />
-                        <div class="flex flex-col leading-tight">
-                            <span class="text-sm font-black text-slate-800">{{ announcement?.publisherName || 'DepEd Guihulngan' }}</span>
-                            <span class="text-[10px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5">Publisher</span>
-                        </div>
-                    </div>
-                    
-                    <div class="hidden sm:block w-px bg-slate-200"></div>
-                    
-                    <div class="flex flex-col justify-center gap-2">
-                        <div class="flex items-center gap-2 text-xs text-slate-600 font-bold">
-                            <i class="pi pi-calendar text-indigo-500"></i> {{ announcement?.date }}
-                        </div>
-                        <div class="flex items-center gap-2 text-xs text-slate-600 font-bold">
-                            <i class="pi pi-clock text-indigo-500"></i> {{ announcement?.time }}
-                        </div>
-                    </div>
-                    
-                    <div class="hidden sm:block w-px bg-slate-200"></div>
-                    
-                    <div class="flex flex-col justify-center">
-                        <div class="flex items-start gap-2 text-xs text-slate-600 font-bold">
-                            <i class="pi pi-map-marker text-indigo-500 mt-0.5"></i> 
-                            <span class="leading-snug">{{ announcement?.location }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-slate-600 font-medium whitespace-pre-line leading-relaxed text-base">
-                    {{ announcement?.content }}
-                </div>
-                
-                <div class="mt-10 flex justify-end border-t border-slate-100 pt-6">
-                    <Button label="Close" class="bg-indigo-600 border-none px-8 py-3 rounded-[var(--radius-xl)] font-bold text-white shadow-md hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300" @click="$emit('update:visible', false)" />
-                </div>
+            <!-- Content -->
+            <div class="px-7 py-5">
+              <p class="text-sm text-slate-600 leading-relaxed font-medium whitespace-pre-line">
+                {{ announcement.content?.replace(/<[^>]*>/g, ' ') }}
+              </p>
             </div>
-            
+
+            <!-- Attachments -->
+            <div v-if="announcement.attachments?.length" class="px-7 pb-5 space-y-2">
+              <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Attached Files</p>
+              <a v-for="att in announcement.attachments" :key="att.fileUrl"
+                :href="resolveUrl(att.fileUrl)" target="_blank" download
+                class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 transition-all group">
+                <div :class="['w-9 h-9 rounded-xl flex items-center justify-center shrink-0', fileIcon(att.fileType).bg]">
+                  <i :class="['pi text-sm', fileIcon(att.fileType).icon, fileIcon(att.fileType).color]"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-bold text-slate-700 truncate group-hover:text-blue-700 transition-colors">{{ att.fileName }}</p>
+                  <p class="text-[9px] text-slate-400 font-bold uppercase">{{ fileIcon(att.fileType).label }}</p>
+                </div>
+                <i class="pi pi-download text-slate-400 group-hover:text-blue-500 transition-colors text-sm shrink-0"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="px-7 py-5 flex justify-between items-center shrink-0 bg-white" style="border-top: 1px solid #EEF1F7;">
+            <div class="text-[9px] font-bold uppercase tracking-widest" style="color:#9DAABB;">
+              <i class="pi pi-shield mr-1" style="color:#D4739A;"></i>
+              SDO Guihulngan City
+            </div>
+            <button @click="$emit('update:visible', false)"
+              class="px-7 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest text-white transition-all duration-300 hover:scale-105 active:scale-95 bm-close-btn">
+              Close
+            </button>
+          </div>
         </div>
-    </Dialog>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
+
+<style scoped>
+.bulletin-fade-enter-active,
+.bulletin-fade-leave-active { transition: opacity 0.3s ease; }
+.bulletin-fade-enter-from,
+.bulletin-fade-leave-to { opacity: 0; }
+
+.bm-panel {
+  animation: bmZoomIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes bmZoomIn {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.bm-close-btn {
+  background: linear-gradient(135deg, #D4739A, #B05090, #6B3AA0);
+  box-shadow: 0 6px 20px rgba(176, 80, 144, 0.3);
+}
+.bm-close-btn:hover {
+  box-shadow: 0 10px 28px rgba(176, 80, 144, 0.45);
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #EEF1F7; border-radius: 10px; }
+</style>

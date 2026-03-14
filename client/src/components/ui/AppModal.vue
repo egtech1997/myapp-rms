@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { useSound } from '@/composables/useSound'
 
 defineOptions({ name: 'AppModal' })
 
@@ -18,6 +19,8 @@ const props = defineProps({
   bodyClass:  { type: [String, Array, Object], default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'close'])
+
+const { play } = useSound()
 
 const panelRef   = ref(null)
 const previousEl = ref(null)
@@ -53,6 +56,7 @@ const trapFocus = (e) => {
 
 watch(() => props.modelValue, async (open) => {
   if (open) {
+    play('modal-open')
     previousEl.value = document.activeElement
     document.body.style.overflow = 'hidden'
     document.addEventListener('keydown', trapFocus)
@@ -61,6 +65,7 @@ watch(() => props.modelValue, async (open) => {
     const first = panelRef.value?.querySelector(FOCUSABLE)
     ;(first || panelRef.value)?.focus()
   } else {
+    play('modal-close')
     document.body.style.overflow = ''
     document.removeEventListener('keydown', trapFocus)
     nextTick(() => previousEl.value?.focus())

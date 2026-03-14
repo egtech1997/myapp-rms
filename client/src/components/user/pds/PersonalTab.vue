@@ -72,18 +72,15 @@ const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
         <AppSelect v-model="modelValue.civilStatus" label="Civil Status" :options="civilStatusOptions" />
         <AppSelect v-model="modelValue.religion"    label="Religion"     :options="religionOptions" />
         <AppInput  v-model="modelValue.disability"  label="Disability (if any)" hint="e.g. Visual Impairment — leave blank if none" />
-        <div class="flex flex-col gap-2 pt-1">
-          <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Special Identities</p>
-          <div class="flex items-center gap-6 h-11 px-4 border border-[var(--border-main)] rounded-xl bg-[var(--surface)]">
-            <AppCheckbox v-model="modelValue.isIndigenous" label="Indigenous People (IP)" />
-            <AppCheckbox v-model="modelValue.isSoloParent" label="Solo Parent" />
-          </div>
+        <div class="flex items-center gap-6 h-11 px-4 border border-[var(--border-main)] rounded-xl bg-[var(--surface)]">
+          <AppCheckbox v-model="modelValue.isIndigenous" label="Indigenous People (IP)" />
+          <AppCheckbox v-model="modelValue.isSoloParent" label="Solo Parent" />
         </div>
       </div>
     </div>
 
     <!-- ── 3. Government IDs ────────────────────────────── -->
-    <div class="bg-[var(--bg-app)] rounded-[var(--radius-xl)] border border-[var(--border-main)] p-5">
+    <div class="bg-[var(--surface)] rounded-[var(--radius-xl)] border border-[var(--border-main)] p-5">
       <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
         <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
           <i class="pi pi-shield text-xs text-[var(--color-primary)]"></i>
@@ -181,7 +178,7 @@ const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
     </div>
 
     <!-- ── 6. COMELEC Registered Address ───────────────── -->
-    <div class="bg-[var(--bg-app)] rounded-[var(--radius-xl)] border border-[var(--border-main)] p-5">
+    <div class="bg-[var(--surface)] rounded-[var(--radius-xl)] border border-[var(--border-main)] p-5">
       <div class="flex items-center gap-2.5 mb-4 pb-2 border-b border-[var(--border-main)]">
         <div class="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center shrink-0">
           <i class="pi pi-map text-xs text-[var(--color-primary)]"></i>

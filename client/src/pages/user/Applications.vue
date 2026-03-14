@@ -2,18 +2,17 @@
 import { ref, computed, onMounted, onActivated, inject } from 'vue'
 import apiClient from '@/api/axios'
 import ApplicantCoverPagePdf from '@/components/user/ApplicantCoverPagePdf.vue'
-import { AppBadge, AppModal, AppTabs, AppButton, AppFileViewer, AppSpinner } from '@/components/ui'
+import ApplicantIerPdf from '@/components/user/ApplicantIerPdf.vue'
+import { AppBadge, AppModal, AppButton, AppFileViewer, AppSpinner } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { resolveUrl } from '@/utils/url'
-
-// Components
 import ApplicationCard from '@/components/user/ApplicationCard.vue'
 
 defineOptions({ name: 'UserApplications' })
 
 const toast = inject('$toast')
 
-// ── STATE ──────────────────────────────────────────────────────────────────
+// ── State ───────────────────────────────────────────────────────────────────
 const applications = ref([])
 const loading      = ref(false)
 const searchQuery  = ref('')
@@ -22,36 +21,25 @@ const filterStatus = ref('')
 const selectedApp  = ref(null)
 const showModal    = ref(false)
 const showCoverPdf = ref(false)
-const activeTab    = ref('details')
+const showIerPdf   = ref(false)
+const activeTab    = ref('overview')
 
-// Snapshot Edit State
-const editMode    = ref(false)
-const editLoading = ref(false)
-const editSaving  = ref(false)
-const editProfile = ref(null)
-const selEdu      = ref([])
-const selElig     = ref([])
-const selTrn      = ref([])
-const selExp      = ref([])
-const perfRating  = ref({ score: '', adjective: '', periodCovered: '' })
-
-// File Viewer
-const showViewer  = ref(false)
-const viewerUrl   = ref('')
-const viewerTitle = ref('')
+const showViewer   = ref(false)
+const viewerUrl    = ref('')
+const viewerTitle  = ref('')
 
 const openViewer = (file) => {
-  viewerUrl.value = resolveUrl(file.fileUrl)
+  viewerUrl.value   = resolveUrl(file.fileUrl)
   viewerTitle.value = `Document: ${file.type.replace(/_/g, ' ').toUpperCase()}`
-  showViewer.value = true
+  showViewer.value  = true
 }
 
-// ── COMPUTED ───────────────────────────────────────────────────────────────
+// ── Computed ────────────────────────────────────────────────────────────────
 const filtered = computed(() => {
   let list = applications.value
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    list = list.filter(a => 
+    list = list.filter(a =>
       a.job?.positionTitle?.toLowerCase().includes(q) ||
       a.applicationCode?.toLowerCase().includes(q)
     )
@@ -60,25 +48,95 @@ const filtered = computed(() => {
   return list
 })
 
-const modalTabs = [
-  { key: 'details',   label: 'Overview',     icon: 'pi-compass' },
-  { key: 'documents', label: 'Requirements', icon: 'pi-file-pdf' }
+const isFinalIer = computed(() => !!selectedApp.value?.isVerified)
+
+// Journey steps with status mapping
+const journeySteps = [
+  { key: 'applied',                icon: 'pi-send',         label: 'Applied',      desc: 'Application submitted' },
+  { key: 'verifying',              icon: 'pi-search',       label: 'Under Review', desc: 'Documents being evaluated' },
+  { key: 'comparative_assessment', icon: 'pi-chart-bar',    label: 'Evaluated',    desc: 'Initial evaluation complete' },
+  { key: 'ranked',                 icon: 'pi-sort-amount-up', label: 'Ranked',     desc: 'Comparative assessment done' },
+  { key: 'appointed',              icon: 'pi-check-circle', label: 'Appointed',    desc: 'Appointment issued' },
 ]
 
-const canEdit = computed(() => 
-  selectedApp.value && 
-  !selectedApp.value.isVerified && 
-  ['applied', 'verifying'].includes(selectedApp.value.status)
-)
+const statusOrder = { applied: 1, verifying: 2, comparative_assessment: 3, ranked: 4, appointed: 5 }
 
-// ── ACTIONS ────────────────────────────────────────────────────────────────
+function stepState(step) {
+  if (!selectedApp.value) return 'pending'
+  const s = selectedApp.value.status
+  if (s === 'disqualified') return step.key === 'applied' ? 'done' : (step.key === 'verifying' ? 'failed' : 'pending')
+  const current = statusOrder[s] || 0
+  const stepIdx = statusOrder[step.key] || 0
+  if (current > stepIdx) return 'done'
+  if (current === stepIdx) return 'active'
+  return 'pending'
+}
+
+// Verification checklist helper
+const VC_KEYS = [
+  { key: 'education',   label: 'Education',    icon: 'pi-graduation-cap' },
+  { key: 'experience',  label: 'Experience',   icon: 'pi-briefcase' },
+  { key: 'training',    label: 'Training',     icon: 'pi-book' },
+  { key: 'eligibility', label: 'Eligibility',  icon: 'pi-id-card' },
+  { key: 'performance', label: 'Performance',  icon: 'pi-star' },
+]
+
+function vcItem(key) {
+  return selectedApp.value?.verificationChecklist?.[key] || {}
+}
+
+function auditList(category) {
+  return selectedApp.value?.applicantData?.[category] || []
+}
+
+// Format helpers
+const formatDate = (d) => d
+  ? new Date(d).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+  : '—'
+
+const formatShort = (d) => d
+  ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+  : '—'
+
+// Flatten submissionDocs object into array for display
+const DOC_LABELS = {
+  pds:                        'Personal Data Sheet (PDS)',
+  applicationLetter:          'Application Letter',
+  performanceRatingDoc:       'Performance Rating Document',
+  latestAppointment:          'Latest Appointment',
+  workExperienceSheet:        'Work Experience Sheet',
+  outstandingAccomplishments: 'Outstanding Accomplishments',
+  movs:                       'MOVs',
+  research:                   'Research',
+  awards:                     'Awards',
+  others:                     'Others',
+}
+
+const submissionDocsList = computed(() => {
+  const sd = selectedApp.value?.submissionDocs || {}
+  const result = []
+  for (const [key, val] of Object.entries(sd)) {
+    if (!val) continue
+    const label = DOC_LABELS[key] || key
+    if (Array.isArray(val)) {
+      val.forEach((item, i) => {
+        if (item?.fileUrl) result.push({ type: label, index: i + 1, ...item })
+      })
+    } else if (val.fileUrl) {
+      result.push({ type: label, ...val })
+    }
+  }
+  return result
+})
+
+// ── Actions ─────────────────────────────────────────────────────────────────
 const fetchApplications = async () => {
   loading.value = true
   try {
     const { data } = await apiClient.get('/v1/applications/my-applications')
     applications.value = data.data || []
-  } catch (err) {
-    toast.fire({ icon: 'error', title: 'Failed to sync applications' })
+  } catch {
+    toast.fire({ icon: 'error', title: 'Failed to load applications' })
   } finally {
     loading.value = false
   }
@@ -86,70 +144,9 @@ const fetchApplications = async () => {
 
 const openApp = (app) => {
   selectedApp.value = app
-  editMode.value    = false
-  activeTab.value   = 'details'
+  activeTab.value   = 'overview'
   showModal.value   = true
 }
-
-const startEdit = async () => {
-  editLoading.value = true
-  try {
-    const { data } = await apiClient.get('/v1/profile/me')
-    editProfile.value = data.data
-    const p = editProfile.value
-    const ad = selectedApp.value.applicantData || {}
-
-    // Smart pre-selection based on existing snapshot
-    selEdu.value = (p?.education || []).map((e, i) => 
-      (ad.education || []).some(a => a.degree === e.degree) ? i : -1).filter(i => i !== -1)
-    selElig.value = (p?.eligibility || []).map((e, i) => 
-      (ad.eligibility || []).some(a => a.name === e.name) ? i : -1).filter(i => i !== -1)
-    selExp.value = (p?.experience || []).map((e, i) => 
-      (ad.experience || []).some(a => a.positionTitle === e.positionTitle) ? i : -1).filter(i => i !== -1)
-    selTrn.value = (p?.training || []).map((e, i) => 
-      (ad.training || []).some(a => a.title === e.title) ? i : -1).filter(i => i !== -1)
-
-    perfRating.value = {
-      score: ad.performanceRating?.score || p?.performanceRating?.score || '',
-      adjective: ad.performanceRating?.adjective || p?.performanceRating?.adjective || '',
-      periodCovered: ad.performanceRating?.periodCovered || p?.performanceRating?.periodCovered || '',
-    }
-    editMode.value = true
-  } catch (err) {
-    toast.fire({ icon: 'error', title: 'Profile sync failed' })
-  } finally {
-    editLoading.value = false
-  }
-}
-
-const saveEdit = async () => {
-  editSaving.value = true
-  const p = editProfile.value
-  const applicantData = {
-    personalInfo: {
-      firstName: p.name.firstName, lastName: p.name.lastName, middleName: p.name.middleName,
-      email: p.contact.emails[0], phone: p.contact.phones[0], address: p.currentAddress
-    },
-    education:   p.education.filter((_, i) => selEdu.value.includes(i)),
-    eligibility: p.eligibility.filter((_, i) => selElig.value.includes(i)),
-    experience:  p.experience.filter((_, i) => selExp.value.includes(i)),
-    training:    p.training.filter((_, i) => selTrn.value.includes(i)),
-    performanceRating: perfRating.value
-  }
-
-  try {
-    const { data } = await apiClient.patch(`/v1/applications/${selectedApp.value._id}/applicant-data`, { applicantData })
-    selectedApp.value.applicantData = data.data.applicantData
-    editMode.value = false
-    toast.fire({ icon: 'success', title: 'Application snapshot updated' })
-  } catch (err) {
-    toast.fire({ icon: 'error', title: 'Update failed' })
-  } finally {
-    editSaving.value = false
-  }
-}
-
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 
 onMounted(fetchApplications)
 onActivated(fetchApplications)
@@ -157,181 +154,421 @@ onActivated(fetchApplications)
 
 <template>
   <div class="flex flex-col gap-8 pb-20 animate-fade-in">
-    
-    <!-- 1. Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
-       <div>
-          <p class="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--color-primary)] mb-2">Guih-Ranking Portfolio</p>
-          <h1 class="text-3xl font-black text-[var(--text-main)] tracking-tight">My Submissions</h1>
-          <p class="text-sm text-[var(--text-muted)] mt-1 font-medium">Track your application journey and recruitment progress.</p>
-       </div>
-       <div class="flex items-center gap-3">
-          <div class="h-12 px-5 rounded-2xl bg-white border border-[var(--border-main)] flex items-center gap-4 shadow-sm">
-             <div class="w-8 h-8 rounded-lg bg-[var(--bg-app)] flex items-center justify-center text-[var(--color-primary)]">
-                <i class="pi pi-folder-open text-xs"></i>
-             </div>
-             <div class="text-right">
-                <p class="text-lg font-black text-[var(--text-main)] leading-none">{{ filtered.length }}</p>
-                <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mt-1">Total</p>
-             </div>
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div>
+        <p class="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--color-primary)] mb-1.5">Recruitment Portal</p>
+        <h1 class="text-3xl font-black text-[var(--text-main)] tracking-tight">My Applications</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">Track your application journey and review verification results.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Stats -->
+        <div class="flex gap-2">
+          <template v-for="(cfg, key) in statusConfig" :key="key">
+            <div v-if="applications.filter(a => a.status === key).length"
+              class="h-10 px-3 rounded-xl bg-white border border-[var(--border-main)] flex items-center gap-2 shadow-sm">
+              <div class="w-2 h-2 rounded-full" :style="{ background: cfg.color }"></div>
+              <span class="text-xs font-black text-[var(--text-main)]">{{ applications.filter(a => a.status === key).length }}</span>
+              <span class="text-[9px] font-bold uppercase text-[var(--text-faint)]">{{ cfg.label }}</span>
+            </div>
+          </template>
+        </div>
+        <button @click="fetchApplications" :disabled="loading"
+          class="w-10 h-10 rounded-xl bg-white border border-[var(--border-main)] flex items-center justify-center text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all shadow-sm">
+          <i :class="['pi pi-sync text-sm', { 'animate-spin': loading }]"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Filters ─────────────────────────────────────────────────────────── -->
+    <div class="bg-white border border-[var(--border-main)] rounded-2xl p-4 flex flex-col md:flex-row gap-3 shadow-sm">
+      <div class="relative flex-1 group">
+        <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[var(--text-faint)] group-focus-within:text-[var(--color-primary)] transition-colors"></i>
+        <input v-model="searchQuery" type="text" placeholder="Search by position or application code..."
+          class="w-full h-11 pl-11 pr-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 outline-none transition-all" />
+      </div>
+      <select v-model="filterStatus"
+        class="h-11 px-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 transition-all cursor-pointer">
+        <option value="">All Statuses</option>
+        <option v-for="(cfg, key) in statusConfig" :key="key" :value="key">{{ cfg.label }}</option>
+      </select>
+    </div>
+
+    <!-- ── Cards ───────────────────────────────────────────────────────────── -->
+    <div v-if="loading && !applications.length" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div v-for="i in 4" :key="i" class="h-36 rounded-2xl bg-white border border-[var(--border-main)] animate-pulse"></div>
+    </div>
+
+    <div v-else-if="filtered.length === 0"
+      class="py-24 text-center bg-white border border-[var(--border-main)] rounded-3xl">
+      <div class="w-20 h-20 rounded-full bg-[var(--bg-app)] flex items-center justify-center mx-auto mb-4 text-[var(--text-faint)]">
+        <i class="pi pi-inbox text-3xl"></i>
+      </div>
+      <h3 class="text-lg font-black text-[var(--text-main)] uppercase">No applications found</h3>
+      <p class="text-xs text-[var(--text-muted)] mt-2">Try adjusting your filters or browse new vacancies.</p>
+      <router-link to="/user/vacancies"
+        class="mt-6 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)] bg-[var(--color-primary-light)] px-6 py-3 rounded-xl hover:shadow-lg transition-all">
+        Browse Vacancies <i class="pi pi-arrow-right"></i>
+      </router-link>
+    </div>
+
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <ApplicationCard v-for="app in filtered" :key="app._id" :app="app" @click="openApp" />
+    </div>
+
+    <!-- ── Detail Modal ────────────────────────────────────────────────────── -->
+    <AppModal v-model="showModal"
+      :title="selectedApp?.job?.positionTitle || 'Application Detail'"
+      :subtitle="selectedApp?.applicationCode"
+      size="xl" @close="showModal = false">
+
+      <template v-if="selectedApp">
+
+        <!-- ── Journey Bar ──────────────────────────────────────────────── -->
+        <div class="mb-6 p-5 rounded-2xl border border-[var(--border-main)] bg-[var(--bg-app)]">
+          <!-- Disqualified banner -->
+          <div v-if="selectedApp.status === 'disqualified'"
+            class="mb-4 flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-200">
+            <div class="w-7 h-7 rounded-lg bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <i class="pi pi-times-circle text-white text-xs"></i>
+            </div>
+            <div>
+              <p class="text-sm font-black text-red-700 uppercase tracking-tight">Application Disqualified</p>
+              <p v-if="selectedApp.disqualificationReason" class="text-xs text-red-600 mt-0.5">{{ selectedApp.disqualificationReason }}</p>
+            </div>
           </div>
-          <button @click="fetchApplications" :disabled="loading" class="w-12 h-12 rounded-2xl bg-white border border-[var(--border-main)] flex items-center justify-center text-[var(--text-faint)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all shadow-sm">
-             <i :class="['pi pi-sync', { 'animate-spin': loading }]"></i>
+
+          <!-- Steps -->
+          <div class="flex items-start justify-between relative">
+            <!-- Progress line -->
+            <div class="absolute top-5 left-0 right-0 h-0.5 bg-[var(--border-main)] mx-6 -z-0"></div>
+            <div v-for="step in journeySteps" :key="step.key" class="flex flex-col items-center gap-2 z-10 flex-1">
+              <!-- Icon bubble -->
+              <div :class="[
+                'w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shadow-sm',
+                stepState(step) === 'done'   ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' :
+                stepState(step) === 'active' ? 'bg-white border-[var(--color-primary)] text-[var(--color-primary)] shadow-lg ring-4 ring-[var(--color-primary-light)]' :
+                stepState(step) === 'failed' ? 'bg-red-500 border-red-500 text-white' :
+                'bg-white border-[var(--border-main)] text-[var(--text-faint)]'
+              ]">
+                <i :class="['pi text-sm', stepState(step) === 'done' ? 'pi-check' : step.icon]"></i>
+              </div>
+              <div class="text-center">
+                <p :class="[
+                  'text-[9px] font-black uppercase tracking-wider leading-tight',
+                  stepState(step) === 'done'   ? 'text-[var(--color-primary)]' :
+                  stepState(step) === 'active' ? 'text-[var(--text-main)]' :
+                  'text-[var(--text-faint)]'
+                ]">{{ step.label }}</p>
+                <p v-if="stepState(step) === 'active'"
+                  class="text-[8px] text-[var(--text-muted)] mt-0.5 hidden md:block">{{ step.desc }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verified badge -->
+          <div v-if="selectedApp.isVerified"
+            class="mt-4 pt-4 border-t border-[var(--border-main)] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                <i class="pi pi-verified text-white text-[10px]"></i>
+              </div>
+              <span class="text-xs font-black text-emerald-700 uppercase tracking-wider">Documents Verified</span>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] font-bold text-[var(--text-muted)]">
+                by <span class="text-[var(--text-main)]">{{ selectedApp.verifiedBy?.username || 'HR Verifier' }}</span>
+                · {{ formatShort(selectedApp.verifiedAt) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Tabs ─────────────────────────────────────────────────────── -->
+        <div class="flex gap-1 mb-5 bg-[var(--bg-app)] rounded-xl p-1 border border-[var(--border-main)]">
+          <button v-for="tab in [
+            { key: 'overview',      label: 'Overview',       icon: 'pi-compass' },
+            { key: 'verification',  label: 'Qualifications', icon: 'pi-shield' },
+            { key: 'documents',     label: 'Documents',      icon: 'pi-file-pdf' },
+          ]" :key="tab.key"
+            @click="activeTab = tab.key"
+            :class="[
+              'flex-1 h-9 rounded-lg text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all',
+              activeTab === tab.key
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            ]">
+            <i :class="['pi text-[10px]', tab.icon]"></i> {{ tab.label }}
           </button>
-       </div>
-    </div>
+        </div>
 
-    <!-- 2. Filters -->
-    <div class="bg-white border border-[var(--border-main)] rounded-2xl p-4 flex flex-col md:flex-row gap-4 shadow-sm">
-       <div class="relative flex-1 group">
-          <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] group-focus-within:text-[var(--color-primary)]"></i>
-          <input v-model="searchQuery" type="text" placeholder="Search applications..." 
-            class="w-full h-12 pl-11 pr-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-medium focus:bg-white focus:ring-4 focus:ring-[var(--color-primary-ring)]/10 outline-none transition-all" />
-       </div>
-       <select v-model="filterStatus" class="h-12 px-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-[10px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)]/10 transition-all cursor-pointer">
-          <option value="">All Statuses</option>
-          <option v-for="(cfg, key) in statusConfig" :key="key" :value="key">{{ cfg.label }}</option>
-       </select>
-    </div>
-
-    <!-- 3. Content -->
-    <div v-if="loading && !applications.length" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-       <div v-for="i in 4" :key="i" class="h-32 rounded-3xl bg-white border border-[var(--border-main)] animate-pulse"></div>
-    </div>
-
-    <div v-else-if="filtered.length === 0" class="py-24 text-center bg-white border border-[var(--border-main)] rounded-3xl">
-       <div class="w-20 h-20 rounded-full bg-[var(--bg-app)] flex items-center justify-center mx-auto mb-4 text-[var(--text-faint)]">
-          <i class="pi pi-inbox text-3xl"></i>
-       </div>
-       <h3 class="text-lg font-black text-[var(--text-main)] uppercase">No applications found</h3>
-       <p class="text-xs text-[var(--text-muted)] mt-2">Try adjusting your filters or start exploring new opportunities.</p>
-       <router-link to="/user/vacancies" class="mt-6 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)] bg-[var(--color-primary-light)] px-6 py-3 rounded-xl hover:shadow-lg transition-all">
-          Browse Vacancies <i class="pi pi-arrow-right"></i>
-       </router-link>
-    </div>
-
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-       <ApplicationCard 
-         v-for="app in filtered" :key="app._id"
-         :app="app"
-         @click="openApp"
-       />
-    </div>
-
-    <!-- 4. Detail Modal -->
-    <AppModal v-model="showModal" 
-      :title="editMode ? 'Update Data Snapshot' : (selectedApp?.job?.positionTitle || 'Application Detail')"
-      :subtitle="editMode ? 'Resync your profile records for this specific application.' : 'Recruitment journey and verification status.'"
-      size="lg" @close="showModal = false">
-      
-      <template v-if="!editMode">
-         <AppTabs v-model="activeTab" :tabs="modalTabs">
-            <template #details>
-               <div class="space-y-10 py-4 animate-fade-in">
-                  <!-- Progress Tracker UI can be extracted too, but for now kept inline for brevity in logic -->
-                  <div class="p-8 bg-[var(--surface-2)] border border-[var(--border-main)] rounded-[2.5rem] flex flex-col items-center">
-                     <div class="w-full flex items-center justify-between mb-10">
-                        <h4 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Application Journey</h4>
-                        <AppBadge v-if="selectedApp" :variant="selectedApp.status" size="sm">{{ statusConfig[selectedApp.status]?.label }}</AppBadge>
-                     </div>
-                     
-                     <div v-if="selectedApp" class="w-full flex justify-between relative px-4">
-                        <div class="absolute top-5 left-10 right-10 h-1 bg-[var(--border-main)] -z-0"></div>
-                        <div v-for="(step, idx) in [
-                           { id: 'applied', icon: 'pi-send', label: 'Applied' },
-                           { id: 'verifying', icon: 'pi-search', label: 'Verified' },
-                           { id: 'comparative_assessment', icon: 'pi-chart-bar', label: 'Assessed' },
-                           { id: 'appointed', icon: 'pi-check-circle', label: 'Appointed' }
-                        ]" :key="step.id" class="flex flex-col items-center gap-3 z-10">
-                           <div :class="['w-10 h-10 rounded-xl flex items-center justify-center border-4 transition-all', 
-                              (statusConfig[selectedApp.status]?.order || 0) >= idx + 1 ? 'bg-[var(--color-primary)] border-white text-white shadow-lg' : 'bg-white border-[var(--bg-app)] text-[var(--text-faint)]']">
-                              <i :class="['pi text-xs', step.icon]"></i>
-                           </div>
-                           <span class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)]">{{ step.label }}</span>
-                        </div>
-                     </div>
-                  </div>
-
-                  <!-- Score Card (If Assessed) -->
-                  <div v-if="selectedApp?.hrRating" class="p-8 rounded-[2.5rem] bg-slate-900 text-white shadow-2xl relative overflow-hidden">
-                     <div class="absolute top-0 right-0 p-8">
-                        <p class="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Assessment Score</p>
-                        <p class="text-5xl font-black tabular-nums tracking-tighter">{{ selectedApp.totalScore?.toFixed(3) || '0.000' }}</p>
-                     </div>
-                     <div class="relative z-10">
-                        <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-6">Comparative Results</h4>
-                        <div class="grid grid-cols-2 gap-4 max-w-sm">
-                           <div v-for="(val, lbl) in { 'EDU': selectedApp.hrRating.educationPoints, 'EXP': selectedApp.hrRating.experiencePoints, 'TRN': selectedApp.hrRating.trainingPoints, 'ELG': selectedApp.hrRating.eligibilityPoints }" :key="lbl" class="bg-white/5 p-3 rounded-xl border border-white/5">
-                              <p class="text-[9px] font-black text-white/40 mb-1">{{ lbl }}</p>
-                              <p class="text-lg font-black tabular-nums">{{ val?.toFixed(2) || '0.00' }}</p>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            </template>
-
-            <template #documents>
-               <div class="grid grid-cols-1 gap-3 py-4 animate-fade-in">
-                  <div v-for="doc in selectedApp?.attachments || []" :key="doc._id" class="p-5 bg-white border border-[var(--border-main)] rounded-2xl flex items-center justify-between group hover:border-[var(--color-primary)] transition-all">
-                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-xl bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-faint)] group-hover:bg-[var(--color-primary-light)] group-hover:text-[var(--color-primary)] transition-all">
-                           <i class="pi pi-file-pdf"></i>
-                        </div>
-                        <div>
-                           <p class="text-xs font-black text-[var(--text-main)] uppercase tracking-tight">{{ doc.type.replace(/_/g, ' ') }}</p>
-                           <p class="text-[10px] text-[var(--text-faint)] font-bold mt-0.5">Snapshot from Profile</p>
-                        </div>
-                     </div>
-                     <button @click="openViewer(doc)" class="w-10 h-10 rounded-xl bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-faint)] hover:bg-[var(--text-main)] hover:text-white transition-all">
-                        <i class="pi pi-eye text-xs"></i>
-                     </button>
-                  </div>
-               </div>
-            </template>
-         </AppTabs>
-      </template>
-
-      <!-- Snapshot Editor -->
-      <template v-else>
-         <div class="space-y-8 py-4 animate-fade-in">
-            <div v-for="sec in [
-               { id: 'edu', label: 'Academic Records', icon: 'pi-graduation-cap', sel: selEdu, list: editProfile?.education, t: e => e.degree },
-               { id: 'exp', label: 'Service Experience', icon: 'pi-briefcase', sel: selExp, list: editProfile?.experience, t: e => e.positionTitle },
-            ]" :key="sec.id" class="space-y-4">
-               <h5 class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)] flex items-center gap-2">
-                  <i :class="['pi text-[10px]', sec.icon]"></i> {{ sec.label }}
-               </h5>
-               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div v-for="(item, i) in sec.list" :key="i" @click="() => { 
-                     const idx = sec.sel.indexOf(i); 
-                     if (idx === -1) sec.sel.push(i); else sec.sel.splice(idx, 1);
-                  }" :class="['p-4 rounded-2xl border-2 transition-all cursor-pointer', sec.sel.includes(i) ? 'border-[var(--color-primary)] bg-blue-50/30' : 'border-[var(--border-main)] opacity-60 hover:opacity-100']">
-                     <p class="text-xs font-black uppercase tracking-tight truncate">{{ sec.t(item) }}</p>
-                     <p class="text-[9px] font-bold text-[var(--text-faint)] truncate mt-1">{{ item.schoolName || item.department }}</p>
-                  </div>
-               </div>
+        <!-- ── Overview Tab ─────────────────────────────────────────────── -->
+        <div v-show="activeTab === 'overview'" class="space-y-4 animate-fade-in">
+          <!-- Info grid -->
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div v-for="item in [
+              { label: 'Application Code', value: selectedApp.applicationCode, mono: true },
+              { label: 'Date Applied',     value: formatDate(selectedApp.createdAt) },
+              { label: 'Position',         value: selectedApp.job?.positionTitle },
+              { label: 'Salary Grade',     value: selectedApp.job?.salaryGrade ? `SG-${selectedApp.job.salaryGrade}` : '—' },
+              { label: 'Hiring Track',     value: ({ teaching: 'Teaching', teaching_related: 'Teaching-Related', non_teaching: 'Non-Teaching' })[selectedApp.job?.hiringTrack] || '—' },
+              { label: 'Assignment',       value: Array.isArray(selectedApp.job?.placeOfAssignment) ? selectedApp.job.placeOfAssignment.join(', ') : (selectedApp.job?.placeOfAssignment || '—') },
+            ]" :key="item.label"
+              class="p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)]">
+              <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-1">{{ item.label }}</p>
+              <p :class="['text-xs font-bold text-[var(--text-main)] leading-snug', item.mono ? 'font-mono' : '']">{{ item.value || '—' }}</p>
             </div>
-         </div>
+          </div>
+
+          <!-- Score card if evaluated -->
+          <div v-if="selectedApp.hrRating && selectedApp.totalScore"
+            class="p-5 rounded-2xl bg-[var(--color-navy)] text-white relative overflow-hidden">
+            <div class="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/5"></div>
+            <div class="relative z-10 flex items-center justify-between">
+              <div>
+                <p class="text-[9px] font-black uppercase tracking-widest text-blue-300 mb-1">Comparative Assessment Score</p>
+                <p class="text-4xl font-black tabular-nums">{{ selectedApp.totalScore?.toFixed(3) }}</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div v-for="[lbl, val] in [['EDU', selectedApp.hrRating.educationPoints], ['EXP', selectedApp.hrRating.experiencePoints], ['TRN', selectedApp.hrRating.trainingPoints], ['ELG', selectedApp.hrRating.eligibilityPoints]]"
+                  :key="lbl" class="bg-white/10 rounded-lg p-2 text-center">
+                  <p class="text-[8px] font-black text-white/50">{{ lbl }}</p>
+                  <p class="text-sm font-black">{{ val?.toFixed(2) || '0.00' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Snapshot summary -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div v-for="cat in [
+              { label: 'Education',   count: selectedApp.applicantData?.education?.length || 0,   icon: 'pi-graduation-cap' },
+              { label: 'Experience',  count: selectedApp.applicantData?.experience?.length || 0,   icon: 'pi-briefcase' },
+              { label: 'Training',    count: selectedApp.applicantData?.training?.length || 0,     icon: 'pi-book' },
+              { label: 'Eligibility', count: selectedApp.applicantData?.eligibility?.length || 0,  icon: 'pi-id-card' },
+            ]" :key="cat.label"
+              class="p-3 rounded-xl bg-white border border-[var(--border-main)] flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary)] flex-shrink-0">
+                <i :class="['pi text-xs', cat.icon]"></i>
+              </div>
+              <div>
+                <p class="text-lg font-black text-[var(--text-main)] leading-none">{{ cat.count }}</p>
+                <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mt-0.5">{{ cat.label }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Verification / Qualifications Tab ────────────────────────── -->
+        <div v-show="activeTab === 'verification'" class="space-y-4 animate-fade-in">
+
+          <!-- Not yet verified notice -->
+          <div v-if="!selectedApp.isVerified"
+            class="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+            <i class="pi pi-info-circle text-amber-500 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-bold text-amber-800">Preliminary Assessment</p>
+              <p class="text-xs text-amber-700 mt-0.5">This shows your submitted data for each qualification category. Official verification happens when you visit the Division office and an HR officer reviews your original documents.</p>
+            </div>
+          </div>
+
+          <!-- Verified header -->
+          <div v-else class="flex items-center justify-between p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center">
+                <i class="pi pi-shield text-white text-sm"></i>
+              </div>
+              <div>
+                <p class="text-sm font-black text-emerald-800">Official Verification Complete</p>
+                <p class="text-xs text-emerald-700">Verified by {{ selectedApp.verifiedBy?.username || 'HR Officer' }} on {{ formatDate(selectedApp.verifiedAt) }}</p>
+              </div>
+            </div>
+            <AppBadge :variant="selectedApp.status" size="sm">
+              {{ statusConfig[selectedApp.status]?.label }}
+            </AppBadge>
+          </div>
+
+          <!-- Verification checklist cards -->
+          <div class="grid grid-cols-1 gap-3">
+            <div v-for="vc in VC_KEYS" :key="vc.key"
+              class="rounded-xl border overflow-hidden"
+              :class="selectedApp.isVerified
+                ? (vcItem(vc.key).checked ? 'border-emerald-200' : 'border-red-200')
+                : 'border-[var(--border-main)]'">
+
+              <!-- Category header -->
+              <div :class="[
+                'flex items-center justify-between px-4 py-3',
+                selectedApp.isVerified
+                  ? (vcItem(vc.key).checked ? 'bg-emerald-50' : 'bg-red-50')
+                  : 'bg-[var(--bg-app)]'
+              ]">
+                <div class="flex items-center gap-2.5">
+                  <div :class="[
+                    'w-7 h-7 rounded-lg flex items-center justify-center',
+                    selectedApp.isVerified
+                      ? (vcItem(vc.key).checked ? 'bg-emerald-500' : 'bg-red-500')
+                      : 'bg-[var(--color-primary)]'
+                  ]">
+                    <i :class="['pi text-white text-[11px]', vc.icon]"></i>
+                  </div>
+                  <span class="text-xs font-black uppercase tracking-wide text-[var(--text-main)]">{{ vc.label }}</span>
+                </div>
+                <!-- Verified result badge -->
+                <template v-if="selectedApp.isVerified">
+                  <span :class="[
+                    'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full',
+                    vcItem(vc.key).checked
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                  ]">
+                    <i :class="['pi mr-1', vcItem(vc.key).checked ? 'pi-check' : 'pi-times']"></i>
+                    {{ vc.key === 'performance' ? (vcItem(vc.key).checked ? 'Met' : 'Not Met') : (vcItem(vc.key).checked ? 'Qualified' : 'Disqualified') }}
+                  </span>
+                </template>
+                <!-- Not verified yet -->
+                <template v-else>
+                  <span class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--border-main)] text-[var(--text-muted)]">
+                    {{ (selectedApp.applicantData?.[vc.key] || []).length > 0 || (vc.key === 'performance' && selectedApp.applicantData?.performanceRating?.score) ? 'Data Submitted' : 'No Data' }}
+                  </span>
+                </template>
+              </div>
+
+              <!-- Verifier remark -->
+              <div v-if="selectedApp.isVerified && vcItem(vc.key).note"
+                class="px-4 py-2.5 border-t"
+                :class="vcItem(vc.key).checked ? 'border-emerald-100 bg-white' : 'border-red-100 bg-white'">
+                <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-1">Verifier Remark</p>
+                <p class="text-xs text-[var(--text-main)]">{{ vcItem(vc.key).note }}</p>
+              </div>
+
+              <!-- Per-record audit (education / experience / training / eligibility) -->
+              <div v-if="vc.key !== 'performance' && auditList(vc.key).length"
+                class="border-t border-[var(--border-main)] divide-y divide-[var(--border-main)]">
+                <div v-for="(rec, i) in auditList(vc.key)" :key="i"
+                  class="px-4 py-2.5 bg-white flex items-start gap-3">
+                  <!-- Relevance indicator -->
+                  <div :class="[
+                    'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5',
+                    rec.isRelevant === false ? 'bg-red-100' : rec.isRelevant === true ? 'bg-emerald-100' : 'bg-[var(--bg-app)]'
+                  ]">
+                    <i :class="[
+                      'pi text-[9px]',
+                      rec.isRelevant === false ? 'pi-times text-red-500' :
+                      rec.isRelevant === true  ? 'pi-check text-emerald-500' :
+                      'pi-minus text-[var(--text-faint)]'
+                    ]"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <!-- Record title by category -->
+                    <p class="text-xs font-bold text-[var(--text-main)] truncate">
+                      <template v-if="vc.key === 'education'">{{ rec.degree || 'Education Record' }}</template>
+                      <template v-else-if="vc.key === 'experience'">{{ rec.position || 'Experience Record' }}</template>
+                      <template v-else-if="vc.key === 'training'">{{ rec.title || 'Training Record' }}</template>
+                      <template v-else-if="vc.key === 'eligibility'">{{ rec.name || 'Eligibility Record' }}</template>
+                    </p>
+                    <!-- Sub-info -->
+                    <p class="text-[10px] text-[var(--text-muted)] mt-0.5 truncate">
+                      <template v-if="vc.key === 'education'">{{ rec.school }}</template>
+                      <template v-else-if="vc.key === 'experience'">{{ rec.company }}</template>
+                      <template v-else-if="vc.key === 'training'">{{ rec.hours ? rec.hours + ' hours' : '' }}{{ rec.provider ? ' · ' + rec.provider : '' }}</template>
+                      <template v-else-if="vc.key === 'eligibility'">{{ rec.rating ? 'Rating: ' + rec.rating : '' }}</template>
+                    </p>
+                    <!-- Audit remark -->
+                    <p v-if="rec.auditRemarks" class="text-[10px] text-red-600 mt-1 italic">
+                      <i class="pi pi-comment mr-1"></i>{{ rec.auditRemarks }}
+                    </p>
+                  </div>
+                  <!-- Relevance tag -->
+                  <span v-if="rec.isRelevant !== undefined && rec.isRelevant !== null"
+                    :class="[
+                      'text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex-shrink-0',
+                      rec.isRelevant === false ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
+                    ]">
+                    {{ rec.isRelevant ? 'Relevant' : 'Irrelevant' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Performance rating display -->
+              <div v-if="vc.key === 'performance' && selectedApp.applicantData?.performanceRating?.score"
+                class="border-t border-[var(--border-main)] px-4 py-2.5 bg-white flex items-center gap-3">
+                <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 bg-[var(--bg-app)]">
+                  <i class="pi pi-star text-[9px] text-[var(--color-primary)]"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-[var(--text-main)]">
+                    {{ selectedApp.applicantData.performanceRating.score }}
+                    <span class="font-normal text-[var(--text-muted)]"> — {{ selectedApp.applicantData.performanceRating.adjective }}</span>
+                  </p>
+                  <p v-if="selectedApp.applicantData.performanceRating.periodCovered" class="text-[10px] text-[var(--text-muted)]">
+                    {{ selectedApp.applicantData.performanceRating.periodCovered }}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Disqualification reason -->
+          <div v-if="selectedApp.status === 'disqualified' && selectedApp.disqualificationReason"
+            class="p-4 rounded-xl bg-red-50 border border-red-200">
+            <p class="text-[9px] font-black uppercase tracking-widest text-red-500 mb-1">Disqualification Reason</p>
+            <p class="text-sm text-red-800">{{ selectedApp.disqualificationReason }}</p>
+          </div>
+        </div>
+
+        <!-- ── Documents Tab ─────────────────────────────────────────────── -->
+        <div v-show="activeTab === 'documents'" class="space-y-3 animate-fade-in">
+          <div v-if="!submissionDocsList.length"
+            class="py-12 text-center text-[var(--text-faint)]">
+            <i class="pi pi-folder-open text-3xl mb-3 block"></i>
+            <p class="text-sm font-bold">No documents uploaded</p>
+            <p class="text-xs mt-1">Documents you upload during application will appear here.</p>
+          </div>
+          <div v-for="(doc, idx) in submissionDocsList" :key="idx"
+            class="flex items-center gap-4 p-4 bg-white border border-[var(--border-main)] rounded-xl hover:border-[var(--color-primary)] transition-all group">
+            <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0 group-hover:bg-[var(--color-primary-light)] transition-colors">
+              <i class="pi pi-file-pdf text-red-500 group-hover:text-[var(--color-primary)] transition-colors"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black text-[var(--text-main)] uppercase tracking-tight truncate">
+                {{ doc.type }}{{ doc.index ? ' #' + doc.index : '' }}
+              </p>
+              <p class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{{ doc.fileName || 'Document' }}</p>
+              <p v-if="doc.uploadedAt" class="text-[9px] text-[var(--text-faint)] mt-0.5">
+                <i class="pi pi-clock mr-1"></i>{{ formatShort(doc.uploadedAt) }}
+              </p>
+            </div>
+            <button @click="openViewer(doc)"
+              class="w-9 h-9 rounded-xl bg-[var(--bg-app)] hover:bg-[var(--text-main)] flex items-center justify-center text-[var(--text-faint)] hover:text-white transition-all flex-shrink-0">
+              <i class="pi pi-eye text-xs"></i>
+            </button>
+          </div>
+        </div>
+
       </template>
 
+      <!-- ── Footer ────────────────────────────────────────────────────────── -->
       <template #footer>
-         <template v-if="!editMode">
-            <AppButton variant="secondary" @click="showModal = false">Close</AppButton>
-            <div class="flex gap-2">
-               <AppButton variant="outline" icon="pi-file-pdf" @click="showCoverPdf = true">Export Cover</AppButton>
-               <AppButton v-if="canEdit" variant="primary" icon="pi-sync" :loading="editLoading" @click="startEdit">Update Snapshot</AppButton>
-            </div>
-         </template>
-         <template v-else>
-            <AppButton variant="secondary" @click="editMode = false">Cancel</AppButton>
-            <AppButton variant="primary" icon="pi-check-circle" :loading="editSaving" @click="saveEdit">Finalize Update</AppButton>
-         </template>
+        <AppButton variant="secondary" @click="showModal = false">Close</AppButton>
+        <div class="flex gap-2">
+          <AppButton variant="outline" icon="pi-file-pdf" @click="showCoverPdf = true">Cover Page</AppButton>
+          <!-- IER — Preliminary when not verified, Final when verified -->
+          <AppButton
+            :variant="isFinalIer ? 'primary' : 'outline'"
+            :icon="isFinalIer ? 'pi-verified' : 'pi-file-edit'"
+            @click="showIerPdf = true">
+            {{ isFinalIer ? 'Final IER' : 'Preliminary IER' }}
+          </AppButton>
+        </div>
       </template>
     </AppModal>
 
-    <!-- Global Helpers -->
+    <!-- ── Global helpers ─────────────────────────────────────────────────── -->
     <ApplicantCoverPagePdf v-if="showCoverPdf && selectedApp" :app="selectedApp" @close="showCoverPdf = false" />
+    <ApplicantIerPdf       v-if="showIerPdf  && selectedApp" :app="selectedApp" @close="showIerPdf  = false" />
     <AppFileViewer v-model="showViewer" :url="viewerUrl" :title="viewerTitle" />
 
   </div>

@@ -15,6 +15,7 @@
  *   })
  */
 import { reactive, readonly } from 'vue'
+import soundManager from '@/services/soundManager'
 
 const MAX_VISIBLE = 5
 const DEFAULT_DURATION = 4000  // ms
@@ -26,7 +27,11 @@ const state = reactive({
 let idCounter = 0
 
 function add(opts) {
-  const id = opts.id ?? `toast-${++idCounter}`
+  const id   = opts.id ?? `toast-${++idCounter}`
+  const type = opts.type ?? 'info'
+  if (type === 'success') soundManager.play('success')
+  else if (type === 'error') soundManager.play('error')
+  else if (type !== 'loading') soundManager.play('notification')
 
   // Replace existing if same id
   const existing = state.toasts.findIndex(t => t.id === id)

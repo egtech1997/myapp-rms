@@ -19,9 +19,11 @@ const ldTypeOptions = [
   { label: 'Other',       value: 'Other'       },
 ]
 
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+
 const addEntry = () => {
   emit('update:modelValue', [
-    { title: '', dateIssued: '', hours: '', typeOfLD: 'Technical', provider: '', document: '' },
+    { title: '', dateIssued: '', hours: '', typeOfLD: 'Technical', provider: '', document: '', documentUploadedAt: null },
     ...props.modelValue,
   ])
 }
@@ -131,12 +133,17 @@ const removeEntry = (i) => {
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-[10px] font-bold text-[var(--text-muted)]">Training Certificate / Certificate of Participation</p>
-              <div v-if="item.document" class="flex items-center gap-2 mt-0.5">
-                <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[140px]" :title="docFilename(item.document)">
-                  {{ docFilename(item.document) }}
-                </span>
-                <button @click="$emit('preview', item.document, item.title || 'Training Certificate')"
-                  class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+              <div v-if="item.document" class="mt-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-[var(--text-faint)] truncate max-w-[140px]" :title="docFilename(item.document)">
+                    {{ docFilename(item.document) }}
+                  </span>
+                  <button @click="$emit('preview', item.document, item.title || 'Training Certificate')"
+                    class="text-[11px] font-black text-[var(--color-primary)] hover:underline shrink-0">View</button>
+                </div>
+                <p v-if="item.documentUploadedAt" class="text-[9px] text-[var(--text-faint)] mt-0.5">
+                  <i class="pi pi-clock mr-0.5"></i>{{ fmtDate(item.documentUploadedAt) }}
+                </p>
               </div>
               <label v-else class="text-[11px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer mt-0.5 block">
                 Click to upload

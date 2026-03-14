@@ -56,13 +56,14 @@ const sizeConfigs = {
         :readonly="readonly"
         placeholder=" "
         :class="[
-          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 pt-6 pb-2.5 min-h-[72px] peer',
+          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 pt-6 pb-2.5 min-h-[72px] peer border-2',
           sizeConfigs[size]?.f || 'text-sm',
           error
-            ? 'border-rose-400 focus:border-rose-500 bg-rose-50/5'
-            : 'border-[var(--border-main)] hover:border-[var(--border-strong)] focus:border-[var(--color-primary)] focus:ring-0',
+            ? 'border-rose-400'
+            : isFocused
+              ? 'border-[var(--color-primary)]'
+              : 'border-[var(--border-main)]',
           disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-app)]' : 'bg-[var(--surface)]',
-          isFocused ? 'border-2' : 'border',
         ]"
         :style="autoResize ? 'overflow:hidden' : ''"
         @input="$emit('update:modelValue', $event.target.value)"
@@ -76,19 +77,18 @@ const sizeConfigs = {
         :for="id"
         :class="[
           'absolute inline-flex items-center gap-1.5 duration-300 transform origin-[0]',
-          'pointer-events-none select-none start-4 px-1 bg-[var(--surface)]',
+          'pointer-events-none select-none start-3 px-1 bg-white/95',
           sizeConfigs[size]?.f || 'text-sm',
 
-          // ── Floated (default — textarea has value) ─────────
-          'top-1.5 -translate-y-3.5 scale-75 font-black z-10',
+          // ── Floated: label center sits on top border ────────
+          'top-0 -translate-y-1/2 scale-75 font-black z-10',
 
           // ── Resting (empty + unfocused via CSS peer) ────────
-          // For textarea, resting = top-4 (near first text line), no translate
-          'peer-placeholder-shown:top-4 peer-placeholder-shown:translate-y-0',
+          'peer-placeholder-shown:top-5 peer-placeholder-shown:translate-y-0',
           'peer-placeholder-shown:scale-100 peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
 
           // ── Re-float on focus ───────────────────────────────
-          'peer-focus:top-1.5 peer-focus:-translate-y-3.5 peer-focus:scale-75',
+          'peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:scale-75',
           'peer-focus:font-black peer-focus:z-10',
 
           // ── Colors ─────────────────────────────────────────

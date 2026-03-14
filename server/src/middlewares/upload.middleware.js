@@ -80,6 +80,20 @@ const systemStorage = multer.diskStorage({
   },
 });
 
+// ── Announcement storage — images + docs in uploads/announcements/ ────────────
+const announcementStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const dir = path.join(publicDir, "uploads", "announcements");
+    ensureDir(dir);
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    const ext    = path.extname(file.originalname).toLowerCase() || ".bin";
+    cb(null, `announcement-${unique}${ext}`);
+  },
+});
+
 // ── File filters ──────────────────────────────────────────────────────────────
 const imageFilter = (_req, file, cb) =>
   file.mimetype.startsWith("image/")
@@ -90,6 +104,21 @@ const docFilter = (_req, file, cb) =>
   file.mimetype.startsWith("image/") || file.mimetype === "application/pdf"
     ? cb(null, true)
     : cb(new Error("Only images and PDF files are allowed."), false);
+
+// Accepts images, PDF, Word (.doc/.docx), and Excel (.xls/.xlsx)
+const announcementFileFilter = (_req, file, cb) => {
+  const allowed = [
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ];
+  allowed.includes(file.mimetype)
+    ? cb(null, true)
+    : cb(new Error("Only images, PDF, Word, and Excel files are allowed."), false);
+};
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 export const uploadAvatar = multer({
@@ -115,3 +144,13 @@ export const uploadSystemLogo = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: imageFilter,
 });
+
+// Single image field ("image") + up to 8 attachment files ("attachments")
+export const uploadAnnouncementFiles = multer({
+  storage: announcementStorage,
+  limits:  { fileSize: 20 * 1024 * 1024 },
+  fileFilter: announcementFileFilter,
+}).fields([
+  { name: "image",       maxCount: 1 },
+  { name: "attachments", maxCount: 8 },
+]);

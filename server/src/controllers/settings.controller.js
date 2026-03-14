@@ -21,7 +21,7 @@ export const updateSettings = catchAsync(async (req, res) => {
   const settings = await SystemSettings.findOneAndUpdate(
     {},
     { $set: update },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
   );
 
   res.status(200).json({ status: "success", data: settings });

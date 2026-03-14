@@ -26,7 +26,7 @@ export const updateRole = async (id, updateData) => {
   }
 
   return await Role.findByIdAndUpdate(id, updateData, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 };

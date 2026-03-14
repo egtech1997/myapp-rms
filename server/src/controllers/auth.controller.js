@@ -105,7 +105,7 @@ export const updateMe = catchAsync(async (req, res, next) => {
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,
     { $set: update },
-    { new: true, runValidators: true },
+    { returnDocument: 'after', runValidators: true },
   ).populate("roles");
 
   res.status(200).json({

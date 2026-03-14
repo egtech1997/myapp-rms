@@ -95,9 +95,18 @@ export const getAllInterviews = catchAsync(async (req, res) => {
   res.status(200).json({ status: "success", data: interviews });
 });
 
+// GET /v1/interviews/job/:jobId — all interviews for all applications of a job
+export const getInterviewsByJob = catchAsync(async (req, res) => {
+  const interviews = await Interview.find({ job: req.params.jobId })
+    .populate("panelist", "username name")
+    .select("application panelist status totalScore submittedAt criteria")
+    .lean();
+  res.status(200).json({ status: "success", data: interviews });
+});
+
 export const updateInterview = catchAsync(async (req, res, next) => {
   const interview = await Interview.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
   if (!interview) return next(new AppError("Interview not found", 404));

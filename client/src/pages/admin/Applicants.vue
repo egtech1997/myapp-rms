@@ -30,6 +30,8 @@ const showAuditModal = ref(false)
 const activePdsTab = ref('personal')
 const showPreview = ref(false)
 const selectedDocUrl = ref('')
+const selectedDocLabel = ref('')
+const isPreviewFullscreen = ref(false)
 const saving = ref(false)
 
 const pdsTabs = [
@@ -39,7 +41,64 @@ const pdsTabs = [
   { id: 'experience', label: 'Experience', icon: 'pi-briefcase' },
   { id: 'training', label: 'Training', icon: 'pi-star' },
   { id: 'performance', label: 'Performance', icon: 'pi-chart-bar' },
+  { id: 'documents', label: 'Documents', icon: 'pi-folder-open' },
 ]
+
+const DOC_LABELS = {
+  pds: 'Signed PDS',
+  applicationLetter: 'Application Letter',
+  performanceRatingDoc: 'Performance Rating Doc',
+  latestAppointment: 'Latest Appointment',
+  workExperienceSheet: 'Work Experience Sheet',
+  research: 'Research / Publication',
+  outstandingAccomplishments: 'Outstanding Accomplishments',
+  movs: 'Means of Verification (MOVs)',
+  awards: 'Awards & Recognition',
+  others: 'Other Documents',
+}
+
+// All viewable docs: submissionDocs (single + array) + per-record profile docs
+const allViewableDocs = computed(() => {
+  if (!selected.value) return []
+  const docs = []
+  const sd = selected.value.submissionDocs || {}
+  const ad = selected.value.applicantData || {}
+
+  // Submission docs — single files
+  for (const key of ['pds', 'applicationLetter', 'performanceRatingDoc', 'latestAppointment', 'workExperienceSheet', 'research']) {
+    if (sd[key]?.fileUrl) docs.push({ label: DOC_LABELS[key], url: resolveUrl(sd[key].fileUrl), group: 'Submission' })
+  }
+  // Submission docs — arrays
+  for (const key of ['outstandingAccomplishments', 'movs', 'awards', 'others']) {
+    if (Array.isArray(sd[key])) {
+      sd[key].forEach((f, i) => {
+        if (f?.fileUrl) docs.push({ label: `${DOC_LABELS[key]} #${i + 1}`, url: resolveUrl(f.fileUrl), group: 'Submission' })
+      })
+    }
+  }
+  // Education docs
+  ;(ad.education || []).forEach((e, i) => {
+    const label = e.school ? `Edu ${i + 1} — ${e.school}` : `Education ${i + 1}`
+    if (e.tor)     docs.push({ label: `${label} — TOR`,     url: resolveUrl(e.tor),     group: 'Education' })
+    if (e.diploma) docs.push({ label: `${label} — Diploma`, url: resolveUrl(e.diploma), group: 'Education' })
+  })
+  // Eligibility docs
+  ;(ad.eligibility || []).forEach((e, i) => {
+    const name = e.name || e.type || `Eligibility ${i + 1}`
+    if (e.document)        docs.push({ label: `${name} — Certificate`,  url: resolveUrl(e.document),        group: 'Eligibility' })
+    if (e.licenseDocument) docs.push({ label: `${name} — License Card`, url: resolveUrl(e.licenseDocument), group: 'Eligibility' })
+  })
+  // Experience docs
+  ;(ad.experience || []).forEach((e, i) => {
+    if (e.document) docs.push({ label: `${e.position || `Exp ${i + 1}`} — COE`, url: resolveUrl(e.document), group: 'Experience' })
+  })
+  // Training docs
+  ;(ad.training || []).forEach((t, i) => {
+    if (t.document) docs.push({ label: t.title || `Training ${i + 1}`, url: resolveUrl(t.document), group: 'Training' })
+  })
+
+  return docs
+})
 
 const checklist = reactive({
   education: { checked: false, note: '' },
@@ -356,6 +415,8 @@ const openReview = (app) => {
   activePdsTab.value = 'personal'
   showPreview.value = false
   selectedDocUrl.value = ''
+  selectedDocLabel.value = ''
+  isPreviewFullscreen.value = false
 
   const vc = app.verificationChecklist || {}
   Object.keys(checklist).forEach(key => {
@@ -372,6 +433,21 @@ const openReview = (app) => {
 const closeAudit = () => {
   showAuditModal.value = false
   document.body.style.overflow = ''
+}
+
+const draftSaving = ref(false)
+const saveDraft = async () => {
+  draftSaving.value = true
+  try {
+    await apiClient.patch(`/v1/applications/${selected.value._id}/status`, {
+      applicantData: selected.value.applicantData,
+    })
+    toast.fire({ icon: 'success', title: 'Progress Saved' })
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Save Failed', text: err.response?.data?.message })
+  } finally {
+    draftSaving.value = false
+  }
 }
 
 const postIER = async () => {
@@ -1042,35 +1118,36 @@ const filterTabs = [
                     <div v-else class="space-y-4">
                       <div v-for="(edu, i) in selected.applicantData.education" :key="i"
                         class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] group hover:border-[var(--color-primary)] transition-all duration-300"
-                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': edu.isRelevant === false }">
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100 bg-red-50/30': edu.isRelevant === false }">
                         <div class="flex justify-between items-start gap-4">
                           <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4 flex-1">
-                            <div v-for="[l, v] in [
-                              ['Level', edu.level],
-                              ['Degree / Diploma', edu.degree],
-                              ['School', edu.school],
-                              ['Period', `${edu.periodFrom || '—'} to ${edu.periodTo || '—'}`],
-                              ['Status', edu.status],
-                              ['Units Earned', edu.unitsEarned],
-                              ['Year Graduated', edu.yearGraduated],
-                              ['Honors Received', edu.honorsReceived],
+                            <div v-for="[l, v, isTitle] in [
+                              ['Level', edu.level, false],
+                              ['Degree / Diploma', edu.degree, true],
+                              ['School', edu.school, true],
+                              ['Period', `${edu.periodFrom || '—'} to ${edu.periodTo || '—'}`, false],
+                              ['Status', edu.status, false],
+                              ['Units Earned', edu.unitsEarned, false],
+                              ['Year Graduated', edu.yearGraduated, false],
+                              ['Honors Received', edu.honorsReceived, false],
                             ]" :key="l">
                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
-                              <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
+                              <p class="text-xs font-bold mt-1 uppercase leading-tight"
+                                :class="isTitle && edu.isRelevant === false ? 'text-red-500 line-through' : 'text-[var(--text-main)]'">{{ v || '—' }}</p>
                             </div>
                           </div>
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
                             <div class="flex gap-2 mb-1">
-                              <button v-if="edu.diploma" 
-                                @click="selectedDocUrl = resolveUrl(edu.diploma); showPreview = true"
+                              <button v-if="edu.diploma"
+                                @click="selectedDocUrl = resolveUrl(edu.diploma); selectedDocLabel = `${edu.school || 'Education'} — Diploma`; showPreview = true"
                                 class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase"
                                 title="View Diploma">
                                 <i class="pi pi-file"></i> Diploma
                               </button>
-                              <button v-if="edu.tor" 
-                                @click="selectedDocUrl = resolveUrl(edu.tor); showPreview = true"
+                              <button v-if="edu.tor"
+                                @click="selectedDocUrl = resolveUrl(edu.tor); selectedDocLabel = `${edu.school || 'Education'} — TOR`; showPreview = true"
                                 class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase"
                                 title="View TOR">
                                 <i class="pi pi-file-pdf"></i> TOR
@@ -1120,24 +1197,25 @@ const filterTabs = [
                     <div v-else class="space-y-4">
                       <div v-for="(elig, i) in selected.applicantData.eligibility" :key="i"
                         class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-all duration-300"
-                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': elig.isRelevant === false }">
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100 bg-red-50/30': elig.isRelevant === false }">
                         <div class="flex justify-between items-start gap-4">
                           <div class="grid grid-cols-2 gap-x-8 gap-y-4 flex-1">
-                            <div v-for="[l, v] in [
-                              ['Eligibility', elig.name],
-                              ['Rating', elig.rating],
-                              ['Date of Exam', formatDate(elig.dateOfExam)],
-                              ['License No.', elig.licenseNumber],
+                            <div v-for="[l, v, isTitle] in [
+                              ['Eligibility', elig.name, true],
+                              ['Rating', elig.rating, false],
+                              ['Date of Exam', formatDate(elig.dateOfExam), false],
+                              ['License No.', elig.licenseNumber, false],
                             ]" :key="l">
                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
-                              <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase leading-tight">{{ v || '—' }}</p>
+                              <p class="text-xs font-bold mt-1 uppercase leading-tight"
+                                :class="isTitle && elig.isRelevant === false ? 'text-red-500 line-through' : 'text-[var(--text-main)]'">{{ v || '—' }}</p>
                             </div>
                           </div>
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
-                            <button v-if="elig.document" 
-                              @click="selectedDocUrl = resolveUrl(elig.document); showPreview = true"
+                            <button v-if="elig.document"
+                              @click="selectedDocUrl = resolveUrl(elig.document); selectedDocLabel = `${elig.name || 'Eligibility'} — Certificate`; showPreview = true"
                               class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
                               <i class="pi pi-file-pdf"></i> View Proof
                             </button>
@@ -1185,12 +1263,13 @@ const filterTabs = [
                     <div v-else class="space-y-4">
                       <div v-for="(exp, i) in selected.applicantData.experience" :key="i"
                         class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-all duration-300"
-                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': exp.isRelevant === false }">
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100 bg-red-50/30': exp.isRelevant === false }">
                         <div class="flex justify-between items-start gap-4">
                           <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4 flex-1">
                             <div class="col-span-2">
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Position</p>
-                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.position }}</p>
+                               <p class="text-xs font-bold mt-1 uppercase"
+                                 :class="exp.isRelevant === false ? 'text-red-500 line-through' : 'text-[var(--text-main)]'">{{ exp.position }}</p>
                             </div>
                             <div>
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Duration</p>
@@ -1198,7 +1277,8 @@ const filterTabs = [
                             </div>
                             <div class="col-span-2">
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Agency / Company</p>
-                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ exp.company }}</p>
+                               <p class="text-xs font-bold mt-1 uppercase"
+                                 :class="exp.isRelevant === false ? 'text-red-400 line-through' : 'text-[var(--text-main)]'">{{ exp.company }}</p>
                             </div>
                             <div>
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">SG / Gov't</p>
@@ -1212,8 +1292,8 @@ const filterTabs = [
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
-                            <button v-if="exp.document" 
-                              @click="selectedDocUrl = resolveUrl(exp.document); showPreview = true"
+                            <button v-if="exp.document"
+                              @click="selectedDocUrl = resolveUrl(exp.document); selectedDocLabel = `${exp.position || 'Experience'} — COE`; showPreview = true"
                               class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
                               <i class="pi pi-file-pdf"></i> View Proof
                             </button>
@@ -1261,12 +1341,13 @@ const filterTabs = [
                     <div v-else class="space-y-4">
                       <div v-for="(trn, i) in selected.applicantData.training" :key="i"
                         class="p-5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)] hover:border-[var(--color-primary)] transition-all duration-300"
-                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100': trn.isRelevant === false }">
+                        :class="{ 'opacity-60 grayscale-[0.5] border-red-100 bg-red-50/30': trn.isRelevant === false }">
                         <div class="flex justify-between items-start gap-4">
                           <div class="grid grid-cols-2 gap-x-8 gap-y-4 flex-1">
                              <div class="col-span-2">
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Title of Training</p>
-                               <p class="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">{{ trn.title }}</p>
+                               <p class="text-xs font-bold mt-1 uppercase"
+                                 :class="trn.isRelevant === false ? 'text-red-500 line-through' : 'text-[var(--text-main)]'">{{ trn.title }}</p>
                             </div>
                             <div>
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Hours</p>
@@ -1280,8 +1361,8 @@ const filterTabs = [
 
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
-                            <button v-if="trn.document" 
-                              @click="selectedDocUrl = resolveUrl(trn.document); showPreview = true"
+                            <button v-if="trn.document"
+                              @click="selectedDocUrl = resolveUrl(trn.document); selectedDocLabel = `${trn.title || 'Training'} — Certificate`; showPreview = true"
                               class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
                               <i class="pi pi-file-pdf"></i> View Proof
                             </button>
@@ -1325,15 +1406,72 @@ const filterTabs = [
                       <div class="w-1 h-5 bg-[var(--color-primary)] rounded-full"></div>
                       <h3 class="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-[0.1em]">Performance Metrics</h3>
                     </div>
-                    <div v-if="!selected.applicantData?.performanceRating?.score" class="py-12 text-center text-[var(--text-muted)] text-sm">No performance rating found.</div>
-                    <div v-else class="grid grid-cols-2 gap-x-8 gap-y-8">
-                      <div v-for="[l, v] in [
-                        ['Numerical Score', selected.applicantData.performanceRating.score],
-                        ['Adjectival Rating', selected.applicantData.performanceRating.adjective],
-                        ['Period Covered', selected.applicantData.performanceRating.periodCovered],
-                      ]" :key="l">
-                        <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
-                        <p class="text-sm font-bold text-[var(--text-main)] mt-1.5 uppercase leading-tight">{{ v || '—' }}</p>
+
+                    <!-- N/A — Fresh Grad / JO / COS -->
+                    <div v-if="selected.applicantData?.performanceRating?.notApplicable"
+                      class="flex items-start gap-4 p-5 rounded-xl border border-slate-200 bg-slate-50">
+                      <i class="pi pi-info-circle text-slate-400 mt-0.5"></i>
+                      <div>
+                        <p class="text-sm font-bold text-slate-700 uppercase">Not Applicable</p>
+                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                          The applicant indicated they are a fresh graduate, Job Order, or COS employee — no performance evaluation is available.
+                          This is automatically treated as <strong>Met</strong> for IER purposes.
+                        </p>
+                        <!-- Performance Rating Doc if uploaded despite N/A -->
+                        <button v-if="selected.submissionDocs?.performanceRatingDoc?.fileUrl"
+                          @click="selectedDocUrl = resolveUrl(selected.submissionDocs.performanceRatingDoc.fileUrl); selectedDocLabel = 'Performance Rating Doc'; showPreview = true"
+                          class="mt-3 px-3 py-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] text-[10px] font-black uppercase flex items-center gap-2 border border-[var(--color-primary)]/20">
+                          <i class="pi pi-file-pdf text-[10px]"></i> View Performance Doc
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Has rating -->
+                    <div v-else-if="selected.applicantData?.performanceRating?.score" class="space-y-6">
+                      <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                        <div v-for="[l, v] in [
+                          ['Numerical Score', selected.applicantData.performanceRating.score],
+                          ['Adjectival Rating', selected.applicantData.performanceRating.adjective],
+                          ['Period Covered', selected.applicantData.performanceRating.periodCovered],
+                        ]" :key="l">
+                          <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
+                          <p class="text-sm font-bold text-[var(--text-main)] mt-1.5 uppercase leading-tight">{{ v || '—' }}</p>
+                        </div>
+                      </div>
+                      <button v-if="selected.submissionDocs?.performanceRatingDoc?.fileUrl"
+                        @click="selectedDocUrl = resolveUrl(selected.submissionDocs.performanceRatingDoc.fileUrl); selectedDocLabel = 'Performance Rating Doc'; showPreview = true"
+                        class="px-3 py-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] text-[10px] font-black uppercase flex items-center gap-2 border border-[var(--color-primary)]/20">
+                        <i class="pi pi-file-pdf text-[10px]"></i> View Performance Rating Doc
+                      </button>
+                    </div>
+
+                    <!-- Nothing submitted -->
+                    <div v-else class="py-12 text-center text-[var(--text-muted)] text-sm">No performance rating submitted.</div>
+                  </section>
+
+                  <!-- ── Documents ── -->
+                  <section v-else-if="activePdsTab === 'documents'" class="animate-fade-in">
+                    <div class="flex items-center gap-3 mb-8 border-b border-[var(--border-main)] pb-4">
+                      <div class="w-1 h-5 bg-[var(--color-primary)] rounded-full"></div>
+                      <h3 class="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-[0.1em]">Submitted Documents</h3>
+                    </div>
+
+                    <div v-if="!allViewableDocs.length" class="py-12 text-center text-[var(--text-muted)] text-sm">No documents submitted.</div>
+                    <div v-else class="space-y-6">
+                      <!-- Group by group label -->
+                      <div v-for="group in [...new Set(allViewableDocs.map(d => d.group))]" :key="group">
+                        <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-2">{{ group }}</p>
+                        <div class="flex flex-wrap gap-2">
+                          <button v-for="doc in allViewableDocs.filter(d => d.group === group)" :key="doc.url"
+                            @click="selectedDocUrl = doc.url; selectedDocLabel = doc.label; showPreview = true"
+                            :class="['flex items-center gap-2 px-3 py-2 rounded-lg border text-[10px] font-bold transition-all',
+                              selectedDocUrl === doc.url
+                                ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                                : 'bg-[var(--bg-app)] text-[var(--text-muted)] border-[var(--border-main)] hover:border-[var(--color-primary)] hover:text-[var(--text-main)]']">
+                            <i class="pi pi-file-pdf text-[9px]"></i>
+                            {{ doc.label }}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </section>
@@ -1342,28 +1480,121 @@ const filterTabs = [
               </div>
 
               <!-- Preview Frame -->
-              <div v-if="showPreview" class="w-1/2 border-l border-[var(--border-main)] bg-[#1a1a1a] flex flex-col relative">
-                <div v-if="selected?.attachments?.length" class="p-2 bg-black/40 flex gap-2 overflow-x-auto border-b border-white/10 no-scrollbar">
-                  <button v-for="file in selected.attachments" :key="file._id" @click="jumpToProof(file)"
-                    :class="[selectedDocUrl === resolveUrl(file.fileUrl) ? 'bg-[var(--color-primary)] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60']"
-                    class="px-3 py-1.5 rounded text-[9px] font-bold uppercase transition-all whitespace-nowrap">{{ file.type }}</button>
-                </div>
-                
-                <div v-if="!selectedDocUrl" class="flex-1 flex flex-col items-center justify-center text-white/20 gap-3">
-                   <i class="pi pi-file-pdf text-4xl"></i>
-                   <p class="text-xs font-bold uppercase tracking-widest">Select a document to preview</p>
+              <div v-if="showPreview" class="w-1/2 border-l border-[var(--border-main)] bg-[#111] flex flex-col">
+
+                <!-- Doc strip — grouped, scrollable -->
+                <div class="flex-shrink-0 bg-[#1a1a1a] border-b border-white/10 overflow-y-auto" style="max-height:160px">
+                  <template v-if="allViewableDocs.length">
+                    <div v-for="group in [...new Set(allViewableDocs.map(d => d.group))]" :key="group">
+                      <p class="px-3 pt-2 pb-1 text-[8px] font-black uppercase tracking-widest text-white/25">{{ group }}</p>
+                      <div class="flex flex-wrap gap-1 px-2 pb-2">
+                        <button v-for="doc in allViewableDocs.filter(d => d.group === group)" :key="doc.url"
+                          @click="selectedDocUrl = doc.url; selectedDocLabel = doc.label"
+                          :class="[selectedDocUrl === doc.url
+                            ? 'bg-[var(--color-primary)] text-white'
+                            : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80']"
+                          class="px-2.5 py-1 rounded text-[9px] font-bold transition-all whitespace-nowrap flex items-center gap-1.5">
+                          <i :class="['pi text-[8px]', doc.url.toLowerCase().endsWith('.pdf') ? 'pi-file-pdf' : 'pi-image']"></i>
+                          {{ doc.label }}
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                  <div v-else class="p-4 text-center text-white/20 text-[10px]">No documents attached</div>
                 </div>
 
-                <div v-else class="flex-1 overflow-hidden flex flex-col bg-slate-900">
-                   <img v-if="isImage" :src="selectedDocUrl" class="w-full h-full object-contain" />
-                   <iframe v-else-if="isPdf" :src="selectedDocUrl" class="w-full h-full border-none bg-white"></iframe>
-                   <div v-else class="flex-1 flex flex-col items-center justify-center text-white/40 p-10 text-center gap-4">
-                      <i class="pi pi-info-circle text-3xl"></i>
-                      <p class="text-xs font-bold uppercase leading-relaxed">Preview not supported for this file type.<br/>You can download it to view.</p>
-                      <a :href="selectedDocUrl" target="_blank" class="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Download File</a>
-                   </div>
+                <!-- Viewer toolbar -->
+                <div class="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border-b border-white/10 flex-shrink-0">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i :class="['pi text-[10px] shrink-0', isPdf ? 'pi-file-pdf text-red-400' : isImage ? 'pi-image text-blue-400' : 'pi-file text-white/40']"></i>
+                    <span class="text-[10px] font-bold text-white/70 truncate">{{ selectedDocLabel || 'Select a document' }}</span>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0 ml-2">
+                    <a v-if="selectedDocUrl" :href="selectedDocUrl" target="_blank" download
+                      class="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                      title="Download">
+                      <i class="pi pi-download text-[10px]"></i>
+                    </a>
+                    <a v-if="selectedDocUrl" :href="selectedDocUrl" target="_blank"
+                      class="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                      title="Open in new tab">
+                      <i class="pi pi-external-link text-[10px]"></i>
+                    </a>
+                    <button v-if="selectedDocUrl" @click="isPreviewFullscreen = true"
+                      class="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                      title="Fullscreen">
+                      <i class="pi pi-window-maximize text-[10px]"></i>
+                    </button>
+                    <button @click="showPreview = false"
+                      class="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 text-white/40 hover:text-rose-400 transition-all"
+                      title="Close preview">
+                      <i class="pi pi-times text-[10px]"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Viewer body -->
+                <div class="flex-1 overflow-hidden flex flex-col bg-[#0d0d0d]">
+                  <div v-if="!selectedDocUrl" class="flex-1 flex flex-col items-center justify-center text-white/15 gap-3">
+                    <i class="pi pi-arrow-up text-2xl"></i>
+                    <p class="text-[10px] font-bold uppercase tracking-widest">Select a document above</p>
+                  </div>
+                  <template v-else>
+                    <img v-if="isImage" :src="selectedDocUrl" class="w-full h-full object-contain" />
+                    <iframe v-else-if="isPdf" :src="selectedDocUrl" class="w-full h-full border-none"></iframe>
+                    <div v-else class="flex-1 flex flex-col items-center justify-center text-white/40 p-8 text-center gap-4">
+                      <i class="pi pi-file text-3xl"></i>
+                      <p class="text-[10px] font-bold uppercase leading-relaxed">Preview not supported<br/>for this file type</p>
+                      <a :href="selectedDocUrl" target="_blank"
+                        class="px-5 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">
+                        Open File
+                      </a>
+                    </div>
+                  </template>
                 </div>
               </div>
+
+              <!-- ── Fullscreen Document Overlay ── -->
+              <Teleport to="body">
+                <div v-if="isPreviewFullscreen && selectedDocUrl"
+                  class="fixed inset-0 z-[80] bg-black flex flex-col animate-fade-in">
+
+                  <!-- Fullscreen toolbar -->
+                  <div class="flex items-center justify-between px-5 py-3 bg-[#1a1a1a] border-b border-white/10 flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                      <i :class="['pi', isPdf ? 'pi-file-pdf text-red-400' : isImage ? 'pi-image text-blue-400' : 'pi-file text-white/40']"></i>
+                      <span class="text-sm font-bold text-white/80">{{ selectedDocLabel }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <a :href="selectedDocUrl" target="_blank" download
+                        class="h-8 px-3 flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase transition-all">
+                        <i class="pi pi-download text-[10px]"></i> Download
+                      </a>
+                      <a :href="selectedDocUrl" target="_blank"
+                        class="h-8 px-3 flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase transition-all">
+                        <i class="pi pi-external-link text-[10px]"></i> Open Tab
+                      </a>
+                      <button @click="isPreviewFullscreen = false"
+                        class="h-8 w-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-rose-500/80 text-white transition-all">
+                        <i class="pi pi-times"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Fullscreen viewer -->
+                  <div class="flex-1 overflow-hidden">
+                    <img v-if="isImage" :src="selectedDocUrl" class="w-full h-full object-contain" />
+                    <iframe v-else-if="isPdf" :src="selectedDocUrl" class="w-full h-full border-none bg-white"></iframe>
+                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-white/40 gap-6">
+                      <i class="pi pi-file text-5xl"></i>
+                      <a :href="selectedDocUrl" target="_blank"
+                        class="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-black uppercase tracking-widest transition-all">
+                        Open File
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </Teleport>
             </div>
           </div>
 
@@ -1413,6 +1644,15 @@ const filterTabs = [
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Save Draft -->
+            <div v-if="!selected.isVerified" class="px-5 pt-4 pb-0">
+              <button @click="saveDraft" :disabled="draftSaving"
+                class="w-full h-9 rounded-lg border border-[var(--border-main)] bg-[var(--bg-app)] hover:bg-[var(--surface)] text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                <i :class="['pi text-[10px]', draftSaving ? 'pi-spin pi-spinner' : 'pi-save']"></i>
+                {{ draftSaving ? 'Saving...' : 'Save Progress' }}
+              </button>
             </div>
 
             <!-- Final Determination -->

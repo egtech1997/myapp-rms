@@ -1,5 +1,9 @@
 <script setup>
+import { useSound } from '@/composables/useSound'
+
 defineOptions({ name: 'AppButton' })
+
+const { play } = useSound()
 
 const props = defineProps({
   variant: {
@@ -44,6 +48,7 @@ const sizeMap = {
 
 <template>
   <button
+    data-ab
     :type="type"
     :disabled="disabled || loading"
     :aria-label="ariaLabel || undefined"
@@ -59,7 +64,7 @@ const sizeMap = {
       block ? 'w-full justify-center' : '',
       (disabled || loading) ? 'pointer-events-none opacity-50' : '',
     ]"
-    @click="!disabled && !loading && emit('click', $event)"
+    @click="!disabled && !loading && (play('click'), emit('click', $event))"
   >
     <!-- Loading — spinner replaces left icon (no layout shift) -->
     <span v-if="loading" class="inline-flex items-center justify-center shrink-0" aria-hidden="true">

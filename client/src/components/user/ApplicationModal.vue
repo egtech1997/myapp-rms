@@ -24,7 +24,16 @@ const selEdu  = ref([])
 const selElig = ref([])
 const selExp  = ref([])
 const selTrn  = ref([])
-const perfRating = ref({ score: '', adjective: '', periodCovered: '' })
+const perfRating        = ref({ score: '', adjective: '', periodCovered: '' })
+const perfNotApplicable = ref(false)
+
+// Returns true if a QS field explicitly says "None Required" or is empty/unset
+const qsNoneFor = (field) => {
+  const val = q.value[field]
+  if (!val) return false
+  if (Array.isArray(val)) return val.length === 0 || val.every(v => String(v).toLowerCase() === 'none required')
+  return String(val).toLowerCase().includes('none required')
+}
 
 // ── Submission docs ───────────────────────────────────────────────────────────
 const EMPTY_DOCS = () => ({
@@ -49,6 +58,7 @@ watch(() => props.modelValue, (open) => {
   uploading.value = {}
   uploadErr.value = {}
   docs.value = EMPTY_DOCS()
+  perfNotApplicable.value = false
 
   if (props.profile) {
     selEdu.value  = props.profile.education?.map((_, i) => i)  || []
@@ -90,19 +100,19 @@ const q = computed(() => props.job?.qualifications || {})
 
 // ── PDS row definitions ────────────────────────────────────────────────────────
 const pdsRows = computed(() => [
-  { id: 'edu',  label: 'Education',   icon: 'pi-graduation-cap', val: selEdu,  data: props.profile?.education,
+  { id: 'edu',  label: 'Education',   icon: 'pi-graduation-cap', qsField: 'education',  val: selEdu,  data: props.profile?.education,
     title: (e) => e.school, sub: (e) => [e.level, e.degree].filter(Boolean).join(' — '),
     period: (e) => e.yearGraduated ? `Grad. ${e.yearGraduated}` : (e.periodFrom ? `${e.periodFrom}–${e.periodTo||'present'}` : ''),
     hasDoc: (e) => !!(e.tor || e.diploma) },
-  { id: 'elig', label: 'Eligibility', icon: 'pi-verified',       val: selElig, data: props.profile?.eligibility,
-    title: (e) => e.name, sub: (e) => e.type || '',
+  { id: 'elig', label: 'Eligibility', icon: 'pi-verified',       qsField: 'eligibility', val: selElig, data: props.profile?.eligibility,
+    title: (e) => e.type || e.name, sub: (e) => e.name || '',
     period: (e) => e.dateOfExam ? fmt(e.dateOfExam) : '',
     hasDoc: (e) => !!(e.document || e.licenseDocument) },
-  { id: 'exp',  label: 'Experience',  icon: 'pi-briefcase',      val: selExp,  data: props.profile?.experience,
+  { id: 'exp',  label: 'Experience',  icon: 'pi-briefcase',      qsField: 'experience',  val: selExp,  data: props.profile?.experience,
     title: (e) => e.position, sub: (e) => e.company || '',
     period: (e) => `${fmtMY(e.periodFrom)} – ${fmtMY(e.periodTo)}`,
     hasDoc: (e) => !!e.document },
-  { id: 'trn',  label: 'Training',    icon: 'pi-book',            val: selTrn,  data: props.profile?.training,
+  { id: 'trn',  label: 'Training',    icon: 'pi-book',           qsField: 'trainings',   val: selTrn,  data: props.profile?.training,
     title: (e) => e.title, sub: (e) => [e.typeOfLD, e.provider].filter(Boolean).join(' · '),
     period: (e) => e.hours ? `${e.hours} hrs` : '',
     hasDoc: (e) => !!e.document },
@@ -137,7 +147,7 @@ const COMMON_SLOTS = [
     example: 'e.g. "Dear SDS, I wish to apply for the position of…"',
   },
   {
-    key: 'performanceRatingDoc', label: 'Latest Performance Evaluation Document', required: true, isArray: false,
+    key: 'performanceRatingDoc', label: 'Latest Performance Evaluation Document', required: false, isArray: false,
     icon: 'pi-chart-bar',
     guide: 'Your most recent official performance appraisal covering at least one full rating period within the past year, signed by your supervisor or rating officer.',
     example: 'DepEd employees: IPCRF or RPMS form · Other gov\'t agencies: SPMS/IPCRF equivalent · Private sector: Employer-signed performance review or appraisal letter',
@@ -237,8 +247,11 @@ const docSlots = computed(() => {
   return [...COMMON_SLOTS, ...extra]
 })
 
-const requiredSlots  = computed(() => docSlots.value.filter(s => s.required))
-const optionalSlots  = computed(() => docSlots.value.filter(s => !s.required))
+// Only PDS + Application Letter are unconditionally required
+const requiredSlots = computed(() => docSlots.value.filter(s => s.required))
+// Performance doc gets its own dedicated section — exclude from both lists
+const optionalSlots = computed(() => docSlots.value.filter(s => !s.required && s.key !== 'performanceRatingDoc'))
+const perfSlot      = computed(() => docSlots.value.find(s => s.key === 'performanceRatingDoc'))
 
 // ── File upload handler ───────────────────────────────────────────────────────
 const uploadDoc = async (slot, file, append = false) => {
@@ -283,14 +296,23 @@ const docUploaded = (slot) => {
 }
 
 // ── Review checklist ──────────────────────────────────────────────────────────
-// perfOk: only required once the performance rating doc is uploaded
-const perfOk = computed(() => {
-  if (!docs.value.performanceRatingDoc) return true  // not uploaded yet — allow proceeding
-  return !!(perfRating.value.score && perfRating.value.adjective && perfRating.value.periodCovered)
+// perfRatingFilled: all three rating fields must be completed when doc is uploaded
+const perfRatingFilled = computed(() =>
+  !!(perfRating.value.score && perfRating.value.adjective && perfRating.value.periodCovered)
+)
+
+// perfDocOk:
+//   N/A checked → always ok
+//   N/A not checked + doc uploaded → rating details must also be filled
+//   N/A not checked + no doc → NOT ok (performance doc is required unless N/A)
+const perfDocOk = computed(() => {
+  if (perfNotApplicable.value) return true
+  if (!docs.value.performanceRatingDoc) return false
+  return perfRatingFilled.value
 })
 
 const canSubmit = computed(() =>
-  perfOk.value && requiredSlots.value.every(s => docUploaded(s))
+  requiredSlots.value.every(s => docUploaded(s)) && perfDocOk.value
 )
 
 // ── Submit ────────────────────────────────────────────────────────────────────
@@ -306,7 +328,9 @@ const handleApply = async () => {
         eligibility:       selElig.value.map(i => props.profile?.eligibility?.[i]).filter(Boolean),
         experience:        selExp.value.map(i  => props.profile?.experience?.[i]).filter(Boolean),
         training:          selTrn.value.map(i  => props.profile?.training?.[i]).filter(Boolean),
-        performanceRating: perfRating.value,
+        performanceRating: perfNotApplicable.value
+          ? { notApplicable: true }
+          : { ...perfRating.value },
       },
       submissionDocs: docs.value,
     })
@@ -449,9 +473,10 @@ const closeModal = () => {
             <!-- Tip -->
             <div class="flex items-start gap-3 p-4 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20">
               <i class="pi pi-lightbulb text-[var(--color-primary)] mt-0.5 shrink-0"></i>
-              <p class="text-xs text-[var(--text-sub)] leading-relaxed">
-                <strong>Before proceeding:</strong> Complete your <strong>Applicant Profile</strong> and upload all supporting documents (TOR, COE, training certs, eligibility certificates) so they are ready for selection. You will also need to upload an application letter and your latest performance evaluation.
-              </p>
+              <div class="text-xs text-[var(--text-sub)] leading-relaxed space-y-1.5">
+                <p><strong>Before proceeding:</strong> Complete your <strong>Applicant Profile</strong> and upload all supporting documents (TOR, COE, training certs, eligibility certificates) so they are ready for selection.</p>
+                <p>You will need an <strong>Application Letter</strong> and a signed <strong>Personal Data Sheet (PDS)</strong>. A Performance Evaluation document is also required — if you are a <strong>fresh graduate, currently unemployed, or applying for a Job Order / Contract of Service</strong> position, you may mark it as <em>Not Applicable</em> in the next step.</p>
+              </div>
             </div>
           </div>
 
@@ -472,14 +497,22 @@ const closeModal = () => {
                 <span class="text-[9px] italic text-[var(--text-faint)] font-normal normal-case tracking-normal ml-auto hidden sm:block">Click rows to check/uncheck</span>
               </p>
 
-              <div v-for="row in pdsRows" :key="row.id" class="border border-[var(--border-main)] rounded-2xl overflow-hidden">
+              <div v-for="row in pdsRows" :key="row.id"
+                class="border rounded-2xl overflow-hidden"
+                :class="qsNoneFor(row.qsField) ? 'border-[var(--border-main)] opacity-70' : 'border-[var(--border-main)]'">
                 <div class="px-4 py-3 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <div class="w-7 h-7 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] flex items-center justify-center shrink-0">
-                      <i :class="['pi text-[10px] text-[var(--text-muted)]', row.icon]"></i>
+                      <i :class="['pi text-[10px]', row.icon, qsNoneFor(row.qsField) ? 'text-[var(--text-faint)]' : 'text-[var(--text-muted)]']"></i>
                     </div>
                     <div>
-                      <p class="text-xs font-bold text-[var(--text-main)]">{{ row.label }}</p>
+                      <p class="text-xs font-bold text-[var(--text-main)] flex items-center gap-2">
+                        {{ row.label }}
+                        <span v-if="qsNoneFor(row.qsField)"
+                          class="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          Not Required
+                        </span>
+                      </p>
                       <p class="text-[10px] text-[var(--text-faint)]">{{ row.val.value.length }} of {{ row.data?.length || 0 }} selected</p>
                     </div>
                   </div>
@@ -489,8 +522,14 @@ const closeModal = () => {
                 </div>
                 <div class="bg-[var(--surface)]">
                   <div v-if="!row.data?.length" class="px-4 py-4 text-center">
-                    <p class="text-[10px] text-[var(--text-faint)] italic">No {{ row.label.toLowerCase() }} records in your profile yet.</p>
-                    <router-link to="/user/profile" class="text-[10px] font-black text-[var(--color-primary)] hover:underline">Add in Profile →</router-link>
+                    <template v-if="qsNoneFor(row.qsField)">
+                      <p class="text-[10px] text-emerald-600 font-bold">This position does not require {{ row.label.toLowerCase() }}.</p>
+                      <p class="text-[10px] text-[var(--text-faint)] mt-0.5 italic">You may still add records in your profile to strengthen your application.</p>
+                    </template>
+                    <template v-else>
+                      <p class="text-[10px] text-[var(--text-faint)] italic">No {{ row.label.toLowerCase() }} records in your profile yet.</p>
+                      <router-link to="/user/profile" class="text-[10px] font-black text-[var(--color-primary)] hover:underline">Add in Profile →</router-link>
+                    </template>
                   </div>
                   <div v-else class="divide-y divide-[var(--border-main)]">
                     <div v-for="(item, i) in row.data" :key="i"
@@ -593,6 +632,7 @@ const closeModal = () => {
               <p class="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 flex items-center gap-1.5 pb-1">
                 <i class="pi pi-asterisk" style="font-size:8px"></i> Required Documents
               </p>
+
               <template v-for="slot in requiredSlots" :key="slot.key">
                 <div class="rounded-2xl border overflow-hidden transition-all"
                   :class="!docUploaded(slot) ? 'border-rose-200' : 'border-emerald-200'">
@@ -698,6 +738,104 @@ const closeModal = () => {
               </template>
             </div>
 
+            <!-- Performance Rating — Dedicated Section with N/A toggle -->
+            <div class="rounded-2xl border overflow-hidden transition-all"
+              :class="perfNotApplicable ? 'border-slate-200' : perfDocOk ? 'border-emerald-200' : 'border-amber-300'">
+              <!-- Header -->
+              <div class="px-4 py-3 flex items-start gap-3 border-b"
+                :class="perfNotApplicable ? 'bg-slate-50 border-slate-200' : perfDocOk ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'">
+                <div :class="['w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+                  perfNotApplicable ? 'bg-slate-200' : perfDocOk ? 'bg-emerald-100' : 'bg-amber-100']">
+                  <i :class="['pi pi-chart-bar text-[10px]',
+                    perfNotApplicable ? 'text-slate-400' : perfDocOk ? 'text-emerald-600' : 'text-amber-600']"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-xs font-bold text-[var(--text-main)]">Performance Evaluation Document</p>
+                    <span v-if="perfNotApplicable" class="text-[9px] font-black text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">N/A</span>
+                    <span v-else-if="perfDocOk" class="ml-auto text-[9px] font-black text-emerald-600 flex items-center gap-1 shrink-0">
+                      <i class="pi pi-check-circle" style="font-size:9px"></i> Ready
+                    </span>
+                    <span v-else class="text-[9px] font-black text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">Required</span>
+                  </div>
+                  <p class="text-[10px] text-[var(--text-faint)] mt-0.5 leading-snug">{{ perfSlot?.guide }}</p>
+                  <p v-if="perfSlot?.example" class="text-[10px] text-[var(--text-muted)] mt-1 leading-snug italic border-l-2 border-[var(--border-main)] pl-2">
+                    <span class="not-italic font-bold text-[var(--text-faint)]">e.g. </span>{{ perfSlot.example }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- N/A Toggle -->
+              <div class="px-4 py-3 bg-[var(--surface)] border-b border-[var(--border-main)]">
+                <label class="flex items-start gap-3 cursor-pointer group">
+                  <div class="mt-0.5 shrink-0">
+                    <div @click="perfNotApplicable = !perfNotApplicable"
+                      :class="['w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all',
+                        perfNotApplicable ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'bg-white border-[var(--border-main)] group-hover:border-[var(--color-primary)]']">
+                      <i v-if="perfNotApplicable" class="pi pi-check text-white" style="font-size:9px"></i>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-xs font-bold text-[var(--text-main)]">Not Applicable — I do not have a performance evaluation</p>
+                    <p class="text-[10px] text-[var(--text-muted)] mt-0.5 leading-snug">
+                      Check this if you are a <strong>fresh graduate</strong>, currently <strong>unemployed</strong>, or applying for a
+                      <strong>Job Order (JO) / Contract of Service (COS)</strong> position where no formal performance appraisal exists.
+                      HR will note this during document verification.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Upload area (hidden when N/A) -->
+              <div v-if="!perfNotApplicable" class="px-4 py-3 bg-[var(--surface)]">
+                <div v-if="docs.performanceRatingDoc" class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[var(--bg-app)] border border-emerald-200 mb-3">
+                  <i :class="['pi text-xs shrink-0', docs.performanceRatingDoc.fileName?.endsWith('.pdf') ? 'pi-file-pdf text-[var(--color-primary)]' : 'pi-image text-emerald-500']"></i>
+                  <p class="text-xs text-[var(--text-main)] flex-1 truncate font-medium">{{ docs.performanceRatingDoc.fileName }}</p>
+                  <label class="text-[10px] font-bold text-[var(--color-primary)] hover:underline cursor-pointer shrink-0">
+                    Replace
+                    <input type="file" class="hidden" accept=".pdf,image/*" @change="e => uploadDoc(perfSlot, e.target.files[0])" />
+                  </label>
+                  <button @click="removeDoc('performanceRatingDoc')" class="text-[10px] text-rose-500 font-bold hover:underline shrink-0">Remove</button>
+                </div>
+                <label v-else :class="['flex items-center gap-2 h-9 px-3 rounded-xl cursor-pointer border transition-all w-fit text-xs font-bold',
+                  uploading.performanceRatingDoc ? 'border-[var(--border-main)] text-[var(--text-faint)] cursor-wait'
+                    : 'border-amber-300 text-amber-600 hover:bg-amber-50']">
+                  <i :class="['pi text-[10px]', uploading.performanceRatingDoc ? 'pi-spin pi-spinner' : 'pi-upload']"></i>
+                  {{ uploading.performanceRatingDoc ? 'Uploading…' : 'Choose file' }}
+                  <input type="file" class="hidden" accept=".pdf,image/*" :disabled="!!uploading.performanceRatingDoc"
+                    @change="e => uploadDoc(perfSlot, e.target.files[0])" />
+                </label>
+                <p v-if="uploadErr.performanceRatingDoc" class="text-[10px] text-rose-500 mt-1.5 flex items-center gap-1">
+                  <i class="pi pi-exclamation-circle" style="font-size:9px"></i> {{ uploadErr.performanceRatingDoc }}
+                </p>
+                <!-- Rating details inline -->
+                <template v-if="docs.performanceRatingDoc">
+                  <div class="mt-3 pt-3 border-t border-[var(--border-main)]">
+                    <p class="text-[9px] font-black uppercase tracking-[0.2em] text-amber-600 mb-2.5 flex items-center gap-1.5">
+                      <i class="pi pi-star" style="font-size:8px"></i> Fill in rating details from the document
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <AppInput v-model="perfRating.score" label="Rating Score" type="number" size="sm" placeholder="e.g. 4.85" hint="Scale 1.00–5.00" />
+                      <AppSelect v-model="perfRating.adjective" label="Adjectival Rating" size="sm" placeholder="Select…"
+                        :options="['Outstanding','Very Satisfactory','Satisfactory','Unsatisfactory','Poor']" />
+                      <AppInput v-model="perfRating.periodCovered" label="Period Covered" size="sm" placeholder="e.g. Jan 2024 – Dec 2024" hint="Must span at least 1 year" />
+                    </div>
+                    <p v-if="docs.performanceRatingDoc && !perfRatingFilled" class="text-[10px] text-amber-600 mt-2 flex items-center gap-1">
+                      <i class="pi pi-exclamation-triangle" style="font-size:9px"></i> Please fill in all three rating fields to proceed.
+                    </p>
+                  </div>
+                </template>
+              </div>
+
+              <!-- N/A confirmation note -->
+              <div v-else class="px-4 py-3 bg-slate-50 border-t border-slate-200">
+                <p class="text-[10px] text-slate-500 flex items-center gap-1.5">
+                  <i class="pi pi-info-circle" style="font-size:9px"></i>
+                  Your application will be submitted without a performance evaluation. HR will verify this during the review process.
+                </p>
+              </div>
+            </div>
+
             <!-- Optional Documents -->
             <div class="space-y-1">
               <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)] flex items-center gap-1.5 pb-1">
@@ -791,16 +929,18 @@ const closeModal = () => {
             <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)]">Pre-submission Checklist</p>
 
             <!-- Performance Rating -->
-            <div v-if="docs.performanceRatingDoc" class="rounded-2xl overflow-hidden border" :class="perfOk ? 'border-emerald-200' : 'border-amber-200'">
-              <div class="px-4 py-3 flex items-center gap-3" :class="perfOk ? 'bg-emerald-50' : 'bg-amber-50'">
+            <div v-if="docs.performanceRatingDoc || perfNotApplicable" class="rounded-2xl overflow-hidden border"
+              :class="perfNotApplicable ? 'border-slate-200' : perfRatingFilled ? 'border-emerald-200' : 'border-amber-200'">
+              <div class="px-4 py-3 flex items-center gap-3"
+                :class="perfNotApplicable ? 'bg-slate-50' : perfRatingFilled ? 'bg-emerald-50' : 'bg-amber-50'">
                 <div :class="['w-6 h-6 rounded-full flex items-center justify-center shrink-0',
-                  perfOk ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-white']">
-                  <i :class="['pi', perfOk ? 'pi-check' : 'pi-exclamation-triangle']" style="font-size:10px"></i>
+                  perfNotApplicable ? 'bg-slate-400 text-white' : perfRatingFilled ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-white']">
+                  <i :class="['pi', perfNotApplicable ? 'pi-minus' : perfRatingFilled ? 'pi-check' : 'pi-exclamation-triangle']" style="font-size:10px"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p :class="['text-xs font-black', perfOk ? 'text-emerald-800' : 'text-amber-800']">Performance Rating Details</p>
-                  <p :class="['text-[10px] mt-0.5 truncate', perfOk ? 'text-emerald-600' : 'text-amber-600']">
-                    {{ perfOk ? `${perfRating.adjective} · ${perfRating.score} · ${perfRating.periodCovered}` : 'Please go back and fill in the rating details' }}
+                  <p :class="['text-xs font-black', perfNotApplicable ? 'text-slate-600' : perfRatingFilled ? 'text-emerald-800' : 'text-amber-800']">Performance Rating</p>
+                  <p :class="['text-[10px] mt-0.5 truncate', perfNotApplicable ? 'text-slate-500' : perfRatingFilled ? 'text-emerald-600' : 'text-amber-600']">
+                    {{ perfNotApplicable ? 'Not Applicable — no performance evaluation submitted' : perfRatingFilled ? `${perfRating.adjective} · ${perfRating.score} · ${perfRating.periodCovered}` : 'Go back and fill in the rating details' }}
                   </p>
                 </div>
               </div>
@@ -853,14 +993,22 @@ const closeModal = () => {
               <div class="grid grid-cols-2 gap-2">
                 <div v-for="row in pdsRows" :key="row.id"
                   class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border bg-[var(--surface)]"
-                  :class="row.val.value.length > 0 ? 'border-[var(--border-main)]' : 'border-rose-100 bg-rose-50'">
+                  :class="row.val.value.length > 0 ? 'border-[var(--border-main)]'
+                    : qsNoneFor(row.qsField) ? 'border-emerald-100 bg-emerald-50'
+                    : 'border-[var(--border-main)]'">
                   <div :class="['w-5 h-5 rounded-full flex items-center justify-center shrink-0 border',
-                    row.val.value.length > 0 ? 'bg-emerald-100 border-emerald-200 text-emerald-600' : 'bg-rose-100 border-rose-200 text-rose-500']">
-                    <i :class="['pi', row.val.value.length > 0 ? 'pi-check' : 'pi-minus']" style="font-size:8px"></i>
+                    row.val.value.length > 0 ? 'bg-emerald-100 border-emerald-200 text-emerald-600'
+                    : qsNoneFor(row.qsField) ? 'bg-emerald-100 border-emerald-200 text-emerald-500'
+                    : 'bg-[var(--bg-app)] border-[var(--border-main)] text-[var(--text-faint)]']">
+                    <i :class="['pi', row.val.value.length > 0 || qsNoneFor(row.qsField) ? 'pi-check' : 'pi-minus']" style="font-size:8px"></i>
                   </div>
                   <div class="min-w-0">
                     <p class="text-[10px] font-bold text-[var(--text-main)]">{{ row.label }}</p>
-                    <p class="text-[9px] text-[var(--text-faint)]">{{ row.val.value.length }} selected</p>
+                    <p class="text-[9px] text-[var(--text-faint)]">
+                      {{ row.val.value.length > 0 ? `${row.val.value.length} selected`
+                        : qsNoneFor(row.qsField) ? 'Not required for this position'
+                        : 'None selected' }}
+                    </p>
                   </div>
                 </div>
               </div>
