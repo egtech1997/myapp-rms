@@ -13,47 +13,53 @@ const ALL_PERMISSIONS = [
   "role_view", "role_manage", "user_view", "user_manage",
 ];
 
-const ROLE_SEEDS = [
-  {
-    name: "super_admin",
-    permissions: ALL_PERMISSIONS,
-    description: "Full system access with immutable privileges.",
-  },
-  {
-    name: "admin",
-    permissions: [
-      "dash_view",
-      "vac_view", "vac_create", "vac_edit",
-      "app_view", "app_verify",
-      "eval_view",
-      "rqa_view",
-      "ann_manage",
-      "user_view", "role_view",
-    ],
-    description: "General administrative access for recruitment oversight.",
-  },
-  {
-    name: "user",
-    permissions: [],
-    description: "Standard applicant access.",
-  },
-];
-
 export const seedSystem = async () => {
-  // ── Upsert roles (never delete existing) ─────────────────────
-  for (const roleDef of ROLE_SEEDS) {
-    await Role.findOneAndUpdate(
-      { name: roleDef.name },
-      { $setOnInsert: roleDef },
-      { upsert: true, returnDocument: "after" }
-    );
-  }
-  console.log("✅ Roles verified/seeded");
+  // ── super_admin: always sync permissions so new perms are applied ──
+  const superAdminRole = await Role.findOneAndUpdate(
+    { name: "super_admin" },
+    {
+      $set:        { permissions: ALL_PERMISSIONS },
+      $setOnInsert: { description: "Full system access with immutable privileges." },
+    },
+    { upsert: true, returnDocument: "after" }
+  );
+  console.log("✅ super_admin role synced");
 
-  // ── Upsert super_admin user (only if absent) ──────────────────
-  const superAdminRole = await Role.findOne({ name: "super_admin" });
-  if (!superAdminRole) return;
+  // ── admin / user: create only if missing, never overwrite customizations ──
+  await Role.findOneAndUpdate(
+    { name: "admin" },
+    {
+      $setOnInsert: {
+        name: "admin",
+        permissions: [
+          "dash_view",
+          "vac_view", "vac_create", "vac_edit",
+          "app_view", "app_verify",
+          "eval_view",
+          "rqa_view",
+          "ann_manage",
+          "user_view", "role_view",
+        ],
+        description: "General administrative access for recruitment oversight.",
+      },
+    },
+    { upsert: true }
+  );
 
+  await Role.findOneAndUpdate(
+    { name: "user" },
+    {
+      $setOnInsert: {
+        name: "user",
+        permissions: [],
+        description: "Standard applicant access.",
+      },
+    },
+    { upsert: true }
+  );
+  console.log("✅ admin / user roles verified");
+
+  // ── super_admin account: create only if absent ────────────────────
   const existing = await User.findOne({ email: "superadmin@deped.gov.ph" });
   if (!existing) {
     const hashed = await bcrypt.hash("password", 12);
@@ -64,7 +70,7 @@ export const seedSystem = async () => {
       roles: [superAdminRole._id],
       isVerified: true,
     });
-    console.log("✅ Super-admin account created  (superadmin@deped.gov.ph / password)");
+    console.log("✅ Super-admin account created (superadmin@deped.gov.ph / password)");
   } else {
     console.log("✅ Super-admin account already exists — skipped");
   }
