@@ -4,8 +4,9 @@ import Notification from "../models/Notification.js";
 // ── Nodemailer / SMTP Setup (cPanel) ─────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT, // 465 for SSL or 587 for TLS
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+  port: parseInt(process.env.SMTP_PORT, 10),
+  secure: process.env.SMTP_SECURE === 'true',
+  family: 4, // force IPv4 — Render cannot reach SMTP servers over IPv6
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
