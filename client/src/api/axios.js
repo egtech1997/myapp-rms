@@ -33,16 +33,17 @@ apiClient.interceptors.response.use(
     const isLoginAttempt = error.config.url.includes('/auth/login')
 
     if (error.response?.status === 401) {
-      // Case 1: Wrong credentials on Login page
+      // Case 1: Wrong credentials on login page — let Login.vue handle it
       if (isLoginAttempt) {
-        return Promise.reject(error) // Let Login.vue handle the error
+        return Promise.reject(error)
       }
 
-      // Case 2: Session actually expired or token is invalid
+      // Case 2: Session expired or token invalid
+      const wasLoggedIn = !!authStore.user
       authStore.$patch({ user: null, initialized: true })
 
-      // Only redirect if they are currently inside an admin/user page
-      if (!isAuthCheck && window.location.pathname.match(/^\/(admin|user)/)) {
+      // Redirect if the user was actively logged in (not just an unauthenticated page load)
+      if (wasLoggedIn && window.location.pathname.match(/^\/(admin|user)/)) {
         window.location.href = '/auth/login?session=expired'
       }
     }
