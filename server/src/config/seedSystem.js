@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import Role from "../models/Role.js";
 import User from "../models/User.js";
 
@@ -62,11 +61,10 @@ export const seedSystem = async () => {
   // ── super_admin account: create only if absent ────────────────────
   const existing = await User.findOne({ email: "superadmin@deped.gov.ph" });
   if (!existing) {
-    const hashed = await bcrypt.hash("password", 12);
     await User.create({
       username: "super_admin",
       email: "superadmin@deped.gov.ph",
-      password: hashed,
+      password: "password",          // pre-save hook hashes this automatically
       roles: [superAdminRole._id],
       isVerified: true,
     });

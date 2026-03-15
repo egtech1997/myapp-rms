@@ -82,6 +82,8 @@ export const googleAuthCallback = catchAsync(async (req, res, next) => {
 export const logout = (req, res, next) => {
   res.cookie("token", "loggedout", {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     expires: new Date(Date.now() + 10 * 1000),
   });
   res.status(200).json({ message: "Logged out" });
