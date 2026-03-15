@@ -139,8 +139,9 @@ export const uploadApplicationDoc = multer({
   fileFilter: docFilter,
 });
 
+// System logo uses memory storage — base64 saved in MongoDB, survives redeploys
 export const uploadSystemLogo = multer({
-  storage: systemStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: imageFilter,
 });

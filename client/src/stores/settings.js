@@ -10,9 +10,11 @@ export const useSettingsStore = defineStore('settings', () => {
   const copyrightText = ref('DepEd Division of Guihulngan City')
   const logoUrl       = ref('')
 
-  const resolvedLogoUrl = computed(() =>
-    logoUrl.value ? `${SERVER_BASE}${logoUrl.value}` : ''
-  )
+  const resolvedLogoUrl = computed(() => {
+    if (!logoUrl.value) return ''
+    // base64 data URLs are self-contained; file paths need the server base prepended
+    return logoUrl.value.startsWith('data:') ? logoUrl.value : `${SERVER_BASE}${logoUrl.value}`
+  })
 
   function apply(s) {
     if (s.systemName)    systemName.value    = s.systemName

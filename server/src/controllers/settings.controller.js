@@ -16,7 +16,10 @@ export const updateSettings = catchAsync(async (req, res) => {
   if (systemName    !== undefined) update.systemName    = systemName;
   if (systemSubName !== undefined) update.systemSubName = systemSubName;
   if (copyrightText !== undefined) update.copyrightText = copyrightText;
-  if (req.file) update.logoUrl = `/uploads/system/${req.file.filename}`;
+  if (req.file) {
+    const b64 = req.file.buffer.toString("base64");
+    update.logoUrl = `data:${req.file.mimetype};base64,${b64}`;
+  }
 
   const settings = await SystemSettings.findOneAndUpdate(
     {},
