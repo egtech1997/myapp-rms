@@ -15,15 +15,26 @@ const __dirname = path.dirname(__filename);
 export const register = catchAsync(async (req, res, next) => {
   console.log(`📩 Attempting registration for: ${req.body.email}`);
   const { user, rawOtp } = await authService.registerUserLogic(req.body);
-  
-  await sendEmail({
-    email: user.email,
-    subject: "Verify Your Account",
-    html: `<h2>Your OTP is: ${rawOtp}</h2><p>Valid for 10 minutes.</p>`,
+
+  let emailSent = true;
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: "Verify Your Account",
+      html: `<h2>Your OTP is: ${rawOtp}</h2><p>Valid for 10 minutes.</p>`,
+    });
+    console.log(`✅ OTP sent to ${user.email}`);
+  } catch (emailErr) {
+    emailSent = false;
+    console.error(`❌ Email failed for ${user.email}: ${emailErr.message}`);
+    console.log(`🔑 OTP for ${user.email}: ${rawOtp}`);
+  }
+
+  res.status(201).json({
+    message: emailSent
+      ? "OTP sent to email"
+      : "Account created but email could not be sent. Please contact the administrator.",
   });
-  
-  console.log(`✅ OTP sent to ${user.email}: ${rawOtp}`);
-  res.status(201).json({ message: "OTP sent to email" });
 });
 
 export const verifyOTP = catchAsync(async (req, res, next) => {
