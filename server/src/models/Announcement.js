@@ -24,6 +24,18 @@ const announcementSchema = new mongoose.Schema({
     default: "general",
   },
 
+  // ── Tags — free-form DepEd/HRMPS taxonomy labels ────────────────────────
+  tags: [{ type: String, trim: true, maxlength: 60 }],
+
+  // ── Related links — to resources, job vacancies, or external URLs ────────
+  links: [{
+    type:       { type: String, enum: ["resource", "job", "url"], default: "url" },
+    label:      { type: String, trim: true, maxlength: 200 },
+    resourceId: { type: mongoose.Schema.Types.ObjectId, ref: "Resource" },
+    jobId:      { type: mongoose.Schema.Types.ObjectId, ref: "Job" },
+    url:        { type: String, trim: true },
+  }],
+
   // ── Optional link to a job posting ─────────────────────────────────────
   job: { type: mongoose.Schema.Types.ObjectId, ref: "Job" },
 
@@ -49,5 +61,9 @@ const announcementSchema = new mongoose.Schema({
   expiryDate: Date,
 
 }, { timestamps: true });
+
+announcementSchema.index({ status: 1, createdAt: -1 });
+announcementSchema.index({ type: 1 });
+announcementSchema.index({ tags: 1 });
 
 export default mongoose.model("Announcement", announcementSchema);

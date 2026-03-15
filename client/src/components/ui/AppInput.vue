@@ -70,7 +70,7 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
         :readonly="readonly"
         placeholder=" "
         :class="[
-          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 peer border-2',
+          'block w-full appearance-none bg-transparent outline-none transition-all duration-200 font-medium text-[var(--text-main)] rounded-xl px-4 peer border-2',
           config.h,
           config.f,
           error
@@ -95,14 +95,14 @@ const onClear = () => { emit('update:modelValue', ''); emit('clear') }
           'start-3 px-1 bg-white/95',
 
           // ── Floated: center of label sits on the top border ──
-          'top-0 -translate-y-1/2 scale-75 font-black z-10',
+          'top-0 -translate-y-1/2 scale-75 font-semibold z-10',
 
           // ── Resting: centered vertically in the input ────────
           'peer-placeholder-shown:top-1/2 peer-placeholder-shown:scale-100',
-          'peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
+          'peer-placeholder-shown:font-normal peer-placeholder-shown:z-0',
 
           // ── Re-float on focus ────────────────────────────────
-          'peer-focus:top-0 peer-focus:scale-75 peer-focus:font-black peer-focus:z-10',
+          'peer-focus:top-0 peer-focus:scale-75 peer-focus:font-semibold peer-focus:z-10',
 
           // ── Colors ───────────────────────────────────────────
           error

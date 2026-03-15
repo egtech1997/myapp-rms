@@ -56,7 +56,7 @@ const sizeConfigs = {
         :readonly="readonly"
         placeholder=" "
         :class="[
-          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl px-4 pt-6 pb-2.5 min-h-[72px] peer border-2',
+          'block w-full appearance-none outline-none transition-all duration-200 font-medium text-[var(--text-main)] rounded-xl px-4 pt-6 pb-2.5 min-h-[72px] peer border-2',
           sizeConfigs[size]?.f || 'text-sm',
           error
             ? 'border-rose-400'
@@ -81,15 +81,15 @@ const sizeConfigs = {
           sizeConfigs[size]?.f || 'text-sm',
 
           // ── Floated: label center sits on top border ────────
-          'top-0 -translate-y-1/2 scale-75 font-black z-10',
+          'top-0 -translate-y-1/2 scale-75 font-semibold z-10',
 
           // ── Resting (empty + unfocused via CSS peer) ────────
           'peer-placeholder-shown:top-5 peer-placeholder-shown:translate-y-0',
-          'peer-placeholder-shown:scale-100 peer-placeholder-shown:font-medium peer-placeholder-shown:z-0',
+          'peer-placeholder-shown:scale-100 peer-placeholder-shown:font-normal peer-placeholder-shown:z-0',
 
           // ── Re-float on focus ───────────────────────────────
           'peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:scale-75',
-          'peer-focus:font-black peer-focus:z-10',
+          'peer-focus:font-semibold peer-focus:z-10',
 
           // ── Colors ─────────────────────────────────────────
           error

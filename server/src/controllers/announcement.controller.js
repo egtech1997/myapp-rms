@@ -152,20 +152,26 @@ function processUploadedFiles(req) {
   return { imageUrl, attachments };
 }
 
+// ── Shared populate helper ────────────────────────────────────────────────
+function populateAnnouncement(query) {
+  return query
+    .populate("postedBy", "username")
+    .populate("job", "positionTitle positionCode")
+    .populate("links.resourceId", "title filePath originalName mimeType fileSize")
+    .populate("links.jobId", "positionTitle positionCode hiringTrack");
+}
+
 // ── 2. Get Public Announcements ──────────────────────────────────────────
 export const getPublicAnnouncements = catchAsync(async (req, res) => {
-  const data = await Announcement.find({ status: "published" })
-    .populate("postedBy", "username name")
-    .sort("-createdAt")
-    .limit(30);
+  const query = Announcement.find({ status: "published" }).sort("-createdAt").limit(50);
+  const data  = await populateAnnouncement(query).lean();
   res.status(200).json({ status: "success", data });
 });
 
 // ── 3. Get All Announcements (Admin) ─────────────────────────────────────
 export const getAllAnnouncements = catchAsync(async (req, res) => {
-  const data = await Announcement.find()
-    .populate("postedBy", "username name")
-    .sort("-createdAt");
+  const query = Announcement.find().sort("-createdAt");
+  const data  = await populateAnnouncement(query).lean();
   res.status(200).json({ status: "success", data });
 });
 
@@ -174,23 +180,25 @@ export const createAnnouncement = catchAsync(async (req, res, next) => {
   const {
     title, content, type, status, expiryDate,
     scheduledDate, scheduledTime, venue, job,
-    existingAttachments,
+    existingAttachments, tags, links,
   } = req.body;
 
   if (!title || !content) return next(new AppError("Title and content are required.", 400));
 
   const { imageUrl, attachments } = processUploadedFiles(req);
 
-  // Support passing existing attachment list as JSON string (for updates)
   let combinedAttachments = attachments;
   if (existingAttachments) {
-    try {
-      const existing = JSON.parse(existingAttachments);
-      combinedAttachments = [...existing, ...attachments];
-    } catch {}
+    try { combinedAttachments = [...JSON.parse(existingAttachments), ...attachments]; } catch {}
   }
 
-  const announcement = await Announcement.create({
+  let parsedTags = [];
+  if (tags) { try { parsedTags = JSON.parse(tags).filter(Boolean); } catch {} }
+
+  let parsedLinks = [];
+  if (links) { try { parsedLinks = JSON.parse(links); } catch {} }
+
+  const created = await Announcement.create({
     title,
     content,
     type:          type || "general",
@@ -202,10 +210,13 @@ export const createAnnouncement = catchAsync(async (req, res, next) => {
     image:         imageUrl,
     attachments:   combinedAttachments,
     job:           job || undefined,
+    tags:          parsedTags,
+    links:         parsedLinks,
     postedBy:      req.user._id,
   });
 
-  res.status(201).json({ status: "success", data: announcement });
+  const data = await populateAnnouncement(Announcement.findById(created._id)).lean();
+  res.status(201).json({ status: "success", data });
 });
 
 // ── 5. Update Announcement (Admin) ───────────────────────────────────────
@@ -213,7 +224,7 @@ export const updateAnnouncement = catchAsync(async (req, res, next) => {
   const {
     title, content, type, status, expiryDate,
     scheduledDate, scheduledTime, venue,
-    existingAttachments, removeImage,
+    existingAttachments, removeImage, tags, links,
   } = req.body;
 
   const announcement = await Announcement.findById(req.params.id);
@@ -221,13 +232,9 @@ export const updateAnnouncement = catchAsync(async (req, res, next) => {
 
   const { imageUrl, attachments: newAttachments } = processUploadedFiles(req);
 
-  // Merge attachment lists
   let finalAttachments = newAttachments;
   if (existingAttachments) {
-    try {
-      const existing = JSON.parse(existingAttachments);
-      finalAttachments = [...existing, ...newAttachments];
-    } catch {}
+    try { finalAttachments = [...JSON.parse(existingAttachments), ...newAttachments]; } catch {}
   }
 
   announcement.title         = title         ?? announcement.title;
@@ -238,14 +245,21 @@ export const updateAnnouncement = catchAsync(async (req, res, next) => {
   announcement.scheduledDate = scheduledDate !== undefined ? (scheduledDate || null) : announcement.scheduledDate;
   announcement.scheduledTime = scheduledTime ?? announcement.scheduledTime;
   announcement.venue         = venue         ?? announcement.venue;
-  if (imageUrl)                  announcement.image = imageUrl;
-  if (removeImage === "true")    announcement.image = undefined;
+  if (imageUrl)               announcement.image = imageUrl;
+  if (removeImage === "true") announcement.image = undefined;
   if (existingAttachments !== undefined || newAttachments.length) {
     announcement.attachments = finalAttachments;
   }
+  if (tags !== undefined) {
+    try { announcement.tags = JSON.parse(tags).filter(Boolean); } catch {}
+  }
+  if (links !== undefined) {
+    try { announcement.links = JSON.parse(links); } catch {}
+  }
 
   await announcement.save();
-  res.status(200).json({ status: "success", data: announcement });
+  const data = await populateAnnouncement(Announcement.findById(announcement._id)).lean();
+  res.status(200).json({ status: "success", data });
 });
 
 // ── 6. Delete Announcement (Admin) ───────────────────────────────────────

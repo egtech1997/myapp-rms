@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, inject } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRoleStore } from '@/stores/roles'
 import apiClient from '@/api/axios'
-import { AppModal, AppTableReport, AppPageHeader } from '@/components/ui'
+import { AppModal, AppTableReport, AppPageHeader, AppInput, AppSelect, AppFilterBar } from '@/components/ui'
 
 const toast = inject('$toast')
 const swal = inject('$swal')
@@ -280,57 +280,54 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
         </AppPageHeader>
 
         <!-- ── Toolbar ─────────────────────────────────────────────── -->
-        <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-4 flex flex-col sm:flex-row gap-3">
-            <div class="relative flex-1">
-                <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm pointer-events-none"></i>
-                <input v-model="searchQuery" type="search" placeholder="Search by name or email..."
-                    class="w-full h-9 pl-9 pr-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-shadow" />
-            </div>
-
-            <div class="flex gap-2 flex-wrap">
-                <select v-model="filterRole"
-                    class="h-9 px-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] appearance-none cursor-pointer transition-shadow">
-                    <option value="">All Roles</option>
-                    <option v-for="role in roleStore.roles" :key="role._id" :value="role.name">{{ role.name }}</option>
-                </select>
-
-                <select v-model="filterStatus"
-                    class="h-9 px-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] appearance-none cursor-pointer transition-shadow">
-                    <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-
-                <select v-model="sortBy"
-                    class="h-9 px-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] appearance-none cursor-pointer transition-shadow">
-                    <option value="createdAt">Date Joined</option>
-                    <option value="username">Name</option>
-                    <option value="email">Email</option>
-                    <option value="lastLogin">Last Login</option>
-                </select>
-
-                <button @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
-                    class="h-9 w-9 flex items-center justify-center rounded-lg border border-[var(--border-main)] bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface)] transition-colors"
-                    :title="sortDir === 'asc' ? 'Ascending' : 'Descending'">
-                    <i :class="sortDir === 'asc' ? 'pi pi-sort-amount-up' : 'pi pi-sort-amount-down'" class="text-sm"></i>
+        <AppFilterBar
+            v-model:search="searchQuery"
+            placeholder="Search by name or email..."
+            :filter-count="Number(!!filterRole) + Number(filterStatus !== '')"
+            @clear="clearFilters"
+        >
+            <template #filter-extra>
+                <p class="text-[10px] font-semibold text-[var(--text-faint)] uppercase tracking-wide px-1">Role</p>
+                <AppSelect
+                    v-model="filterRole"
+                    :options="[{ label: 'All Roles', value: '' }, ...roleStore.roles.map(r => ({ label: r.name, value: r.name }))]"
+                    size="sm" label="" placeholder="All Roles"
+                />
+                <p class="text-[10px] font-semibold text-[var(--text-faint)] uppercase tracking-wide px-1">Status</p>
+                <AppSelect
+                    v-model="filterStatus"
+                    :options="[{ label: 'All Status', value: '' }, { label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }]"
+                    size="sm" label="" placeholder="All Status"
+                />
+                <p class="text-[10px] font-semibold text-[var(--text-faint)] uppercase tracking-wide px-1">Sort by</p>
+                <div class="flex gap-2 items-end">
+                    <div class="flex-1">
+                        <AppSelect
+                            v-model="sortBy"
+                            :options="[
+                                { label: 'Date Joined', value: 'createdAt' },
+                                { label: 'Name', value: 'username' },
+                                { label: 'Email', value: 'email' },
+                                { label: 'Last Login', value: 'lastLogin' },
+                            ]"
+                            size="sm" label="" placeholder="Sort by"
+                        />
+                    </div>
+                    <button @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
+                        class="h-9 w-9 flex items-center justify-center rounded-xl border border-[var(--border-main)] text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-primary-light)] transition-all shrink-0"
+                        :title="sortDir === 'asc' ? 'Ascending' : 'Descending'">
+                        <i :class="sortDir === 'asc' ? 'pi pi-sort-amount-up' : 'pi pi-sort-amount-down'" class="text-sm"></i>
+                    </button>
+                </div>
+            </template>
+            <template #actions>
+                <button @click="showReport = true"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[var(--text-sub)] hover:bg-[var(--bg-app)] transition-colors text-left">
+                    <i class="pi pi-download text-xs text-[var(--text-muted)]"></i>
+                    Export / Print
                 </button>
-
-                <button v-if="hasActiveFilters" @click="clearFilters"
-                    class="h-9 px-3 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-500 hover:bg-red-100 transition-colors flex items-center gap-1.5">
-                    <i class="pi pi-times text-[10px]"></i> Clear
-                </button>
-            </div>
-        </div>
-
-        <!-- ── Export Bar ─────────────────────────────────────────── -->
-        <div class="flex items-center justify-end px-1">
-            <button @click="showReport = true"
-                class="h-8 px-3 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
-                       hover:bg-[var(--bg-app)] text-xs font-semibold text-[var(--text-muted)]
-                       hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5">
-                <i class="pi pi-download text-[10px]"></i> Export
-            </button>
-        </div>
+            </template>
+        </AppFilterBar>
 
         <!-- ── Table ───────────────────────────────────────────────── -->
         <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl overflow-hidden">
@@ -685,18 +682,12 @@ const isSuperAdmin = (user) => user?.username === 'super_admin'
                             <i class="pi pi-exclamation-triangle text-base flex-shrink-0 mt-0.5"></i>
                             <p class="text-sm leading-relaxed">This will immediately overwrite the user's current password.</p>
                         </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="field-label block mb-1">New Password</label>
-                            <div class="relative">
-                                <input v-model="newPassword" :type="showNewPassword ? 'text' : 'password'"
-                                    placeholder="Minimum 8 characters"
-                                    class="input pr-10" />
-                                <button type="button" @click="showNewPassword = !showNewPassword"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-                                    <i :class="['pi text-sm', showNewPassword ? 'pi-eye-slash' : 'pi-eye']"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <AppInput
+                          v-model="newPassword"
+                          label="New Password"
+                          toggleable
+                          hint="Minimum 8 characters — user will need to re-login"
+                        />
                         <button @click="handleResetPassword" :disabled="modalLoading || newPassword.length < 8"
                             class="btn-primary w-full h-10 text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
                             <i v-if="modalLoading" class="pi pi-spin pi-spinner text-sm"></i>

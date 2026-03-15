@@ -157,7 +157,7 @@ const LINKS = [
             placeholder="A short bio about your role or professional background..."
             size="sm" />
           <div>
-            <p class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Social Links</p>
+            <p class="text-[11px] font-medium text-[var(--text-muted)] mb-3">Social Links</p>
             <div class="space-y-3">
               <div v-for="link in LINKS" :key="link.key" class="flex items-center gap-3">
                 <div :class="['w-9 h-9 rounded-xl border flex items-center justify-center shrink-0', link.bg]">

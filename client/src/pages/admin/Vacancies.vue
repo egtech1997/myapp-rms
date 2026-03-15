@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
-import { AppButton, AppBadge, AppModal, AppInput, AppTextarea, AppTableReport, AppPageHeader } from '@/components/ui'
+import { AppButton, AppBadge, AppModal, AppInput, AppSelect, AppTextarea, AppTableReport, AppPageHeader, AppFilterBar } from '@/components/ui'
 import { statusConfig } from '@/utils/statusColors'
 import { ELIGIBILITY_GROUPS } from '@/utils/eligibilityOptions'
 import { useRecruitmentStore } from '@/stores/recruitment'
@@ -402,7 +402,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { month: '
 const isExpired  = (d) => d && new Date(d) < new Date()
 const trackLabel = { teaching: 'Teaching', teaching_related: 'Teach.-Related', non_teaching: 'Non-Teaching' }
 
-const SELECT_CLS = 'w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all appearance-none'
+const SELECT_CLS = 'w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all appearance-none'
 
 // ─── Bulk Selection ────────────────────────────────────────────────────────
 const selectedIds    = ref(new Set())
@@ -494,44 +494,45 @@ const confirmBulkArchive = async () => {
     </AppPageHeader>
 
     <!-- ── Toolbar ───────────────────────────────────────────────────── -->
-    <div class="bg-[var(--surface)] border border-[var(--border-main)] rounded-xl p-3.5 flex flex-col sm:flex-row gap-3">
-      <div class="relative flex-1">
-        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm pointer-events-none"></i>
-        <input v-model="searchQuery" type="search" placeholder="Search by title, code, or location..."
-          class="w-full h-9 pl-9 pr-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm
-                 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 focus:outline-none
-                 focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-shadow" />
-      </div>
-      <div class="flex gap-2 flex-wrap">
-        <select v-model="filterStatus" :class="'h-9 px-3 rounded-lg text-sm appearance-none cursor-pointer transition-shadow bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)]'">
-          <option value="">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="published">Published</option>
-          <option value="closed">Closed</option>
-          <option value="archived">Archived</option>
-        </select>
-        <select v-model="filterTrack" :class="'h-9 px-3 rounded-lg text-sm appearance-none cursor-pointer transition-shadow bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)]'">
-          <option value="">All Tracks</option>
-          <option value="teaching">Teaching</option>
-          <option value="teaching_related">Teaching-Related</option>
-          <option value="non_teaching">Non-Teaching</option>
-        </select>
-        <button v-if="hasFilters" @click="clearFilters"
-          class="h-9 px-3 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-500 hover:bg-red-100 transition-colors flex items-center gap-1.5">
-          <i class="pi pi-times text-[10px]"></i> Clear
+    <AppFilterBar
+      v-model:search="searchQuery"
+      placeholder="Search by title, code, or location..."
+      :filter-count="Number(!!filterStatus) + Number(!!filterTrack)"
+      @clear="clearFilters"
+    >
+      <template #filter-extra>
+        <p class="text-[10px] font-semibold text-[var(--text-faint)] uppercase tracking-wide px-1">Status</p>
+        <AppSelect
+          v-model="filterStatus"
+          :options="[
+            { label: 'All Status',  value: '' },
+            { label: 'Draft',       value: 'draft' },
+            { label: 'Published',   value: 'published' },
+            { label: 'Closed',      value: 'closed' },
+            { label: 'Archived',    value: 'archived' },
+          ]"
+          size="sm" label="" placeholder="All Status"
+        />
+        <p class="text-[10px] font-semibold text-[var(--text-faint)] uppercase tracking-wide px-1">Hiring Track</p>
+        <AppSelect
+          v-model="filterTrack"
+          :options="[
+            { label: 'All Tracks',       value: '' },
+            { label: 'Teaching',         value: 'teaching' },
+            { label: 'Teaching-Related', value: 'teaching_related' },
+            { label: 'Non-Teaching',     value: 'non_teaching' },
+          ]"
+          size="sm" label="" placeholder="All Tracks"
+        />
+      </template>
+      <template #actions>
+        <button @click="showReport = true"
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[var(--text-sub)] hover:bg-[var(--bg-app)] transition-colors text-left">
+          <i class="pi pi-download text-xs text-[var(--text-muted)]"></i>
+          Export / Print
         </button>
-      </div>
-    </div>
-
-    <!-- ── Export Bar ────────────────────────────────────────────────── -->
-    <div class="flex items-center justify-end px-1">
-      <button @click="showReport = true"
-        class="h-8 px-3 rounded-lg border border-[var(--border-main)] bg-[var(--surface)]
-               hover:bg-[var(--bg-app)] text-xs font-semibold text-[var(--text-muted)]
-               hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5">
-        <i class="pi pi-download text-[10px]"></i> Export
-      </button>
-    </div>
+      </template>
+    </AppFilterBar>
 
     <!-- ── Bulk Action Bar ───────────────────────────────────────────── -->
     <Transition name="bulk-bar">
@@ -762,48 +763,67 @@ const confirmBulkArchive = async () => {
         <section v-show="activeSection === 0" class="space-y-4">
           <div class="flex items-center gap-2 border-b border-[var(--border-main)] pb-2.5">
             <span class="w-5 h-5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-[9px] font-black">1</span>
-            <h4 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Position Identity</h4>
+            <h4 class="text-xs font-semibold text-[var(--text-main)]">Position Identity</h4>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2">
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Position Title <span class="text-red-400">*</span></label>
-              <AppInput v-model="form.positionTitle" placeholder="e.g. Master Teacher I" required />
+              <AppInput
+                v-model="form.positionTitle"
+                label="Position Title"
+                placeholder="e.g. Master Teacher I"
+                hint="Official position title as listed in the Plantilla"
+                required
+              />
             </div>
-            <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Position Code <span class="text-red-400">*</span></label>
-              <AppInput v-model="form.positionCode" placeholder="OSEC-DECSB-TCHR1" required />
-              <p class="text-[9px] text-[var(--text-faint)] mt-1">Base identifier (e.g. OSEC-DECSB-TCHR1)</p>
-            </div>
-            <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Salary Grade <span class="text-red-400">*</span></label>
-              <AppInput v-model.number="form.salaryGrade" type="number" min="1" max="33" placeholder="e.g. 13" required />
-            </div>
-            <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Monthly Salary (PHP) <span class="text-red-400">*</span></label>
-              <AppInput v-model.number="form.salary" type="number" min="0" placeholder="e.g. 29165" required />
-            </div>
-            <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Employment Type</label>
-              <select v-model="form.employmentType" :class="SELECT_CLS">
-                <option value="permanent">Permanent</option>
-                <option value="contractual">Contractual</option>
-                <option value="casual">Casual</option>
-                <option value="job order">Job Order</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Hiring Track <span class="text-red-400">*</span></label>
-              <select v-model="form.hiringTrack" :class="SELECT_CLS">
-                <option value="teaching">Teaching</option>
-                <option value="teaching_related">Teaching-Related</option>
-                <option value="non_teaching">Non-Teaching</option>
-              </select>
-            </div>
+            <AppInput
+              v-model="form.positionCode"
+              label="Position Code"
+              placeholder="OSEC-DECSB-TCHR1"
+              hint="Base identifier without item number suffix"
+              required
+            />
+            <AppInput
+              v-model.number="form.salaryGrade"
+              label="Salary Grade"
+              type="number" min="1" max="33"
+              placeholder="e.g. 13"
+              required
+            />
+            <AppInput
+              v-model.number="form.salary"
+              label="Monthly Salary (PHP)"
+              type="number" min="0"
+              placeholder="e.g. 29165"
+              hint="Gross monthly salary per DBM-prescribed rate"
+              required
+            />
+            <AppSelect
+              v-model="form.employmentType"
+              label="Employment Type"
+              :options="[
+                { label: 'Permanent',   value: 'permanent' },
+                { label: 'Contractual', value: 'contractual' },
+                { label: 'Casual',      value: 'casual' },
+                { label: 'Job Order',   value: 'job order' },
+              ]"
+            />
+            <AppSelect
+              v-model="form.hiringTrack"
+              label="Hiring Track"
+              :options="[
+                { label: 'Teaching',         value: 'teaching' },
+                { label: 'Teaching-Related', value: 'teaching_related' },
+                { label: 'Non-Teaching',     value: 'non_teaching' },
+              ]"
+            />
           </div>
-          <div>
-            <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Duties &amp; Description</label>
-            <AppTextarea v-model="form.description" :rows="3" placeholder="Describe the duties, responsibilities, and scope of the position..." />
-          </div>
+          <AppTextarea
+            v-model="form.description"
+            label="Duties & Description"
+            :rows="3"
+            placeholder="Describe the duties, responsibilities, and scope of the position..."
+            hint="Shown to applicants on the job vacancy listing"
+          />
         </section>
 
         <!-- ── 2. Plantilla Item Numbers ─────────────────────────────── -->
@@ -811,7 +831,7 @@ const confirmBulkArchive = async () => {
           <div class="flex items-center justify-between border-b border-[var(--border-main)] pb-2.5">
             <div class="flex items-center gap-2">
               <span class="w-5 h-5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-[9px] font-black">2</span>
-              <h4 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Plantilla Item Numbers</h4>
+              <h4 class="text-xs font-semibold text-[var(--text-main)]">Plantilla Item Numbers</h4>
             </div>
             <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20">
               <i class="pi pi-briefcase text-[var(--color-primary)] text-[9px]"></i>
@@ -826,7 +846,7 @@ const confirmBulkArchive = async () => {
               <div class="w-6 h-9 flex items-center justify-center text-[10px] font-black text-[var(--text-faint)] flex-shrink-0 tabular-nums">{{ i + 1 }}</div>
               <input v-model="form.itemNumbers[i]"
                 :placeholder="`OSEC-DECSB-TCHR1-${String(i + 1).padStart(6, '0')}`"
-                class="flex-1 h-9 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-mono text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                class="flex-1 h-9 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm font-mono text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
               <button type="button" @click="removeItem(form.itemNumbers, i)"
                 class="w-9 h-9 rounded-xl border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0">
                 <i class="pi pi-times text-xs"></i>
@@ -862,7 +882,7 @@ const confirmBulkArchive = async () => {
           <div class="flex items-center justify-between border-b border-[var(--border-main)] pb-2.5">
             <div class="flex items-center gap-2">
               <span class="w-5 h-5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-[9px] font-black">3</span>
-              <h4 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Place of Assignment</h4>
+              <h4 class="text-xs font-semibold text-[var(--text-main)]">Place of Assignment</h4>
             </div>
             <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20">
               <i class="pi pi-map-marker text-[var(--color-primary)] text-[9px]"></i>
@@ -877,7 +897,7 @@ const confirmBulkArchive = async () => {
               <div class="w-6 h-9 flex items-center justify-center text-[10px] font-black text-[var(--text-faint)] flex-shrink-0 tabular-nums">{{ i + 1 }}</div>
               <input v-model="form.placeOfAssignment[i]"
                 placeholder="e.g. Guihulngan City National High School"
-                class="flex-1 h-9 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                class="flex-1 h-9 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
               <button type="button" @click="removeItem(form.placeOfAssignment, i)"
                 class="w-9 h-9 rounded-xl border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0">
                 <i class="pi pi-times text-xs"></i>
@@ -899,14 +919,14 @@ const confirmBulkArchive = async () => {
         <section v-show="activeSection === 3" class="space-y-4">
           <div class="flex items-center gap-2 border-b border-[var(--border-main)] pb-2.5">
             <span class="w-5 h-5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-[9px] font-black">4</span>
-            <h4 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Qualification Standards (QS)</h4>
+            <h4 class="text-xs font-semibold text-[var(--text-main)]">Qualification Standards (QS)</h4>
           </div>
           <p class="text-[10px] text-[var(--text-muted)]">Per CSC MC 03 s. 2001 / DO 007 s. 2023. Toggle <span class="font-bold text-[var(--text-main)]">None Required</span> if a field does not apply.</p>
 
           <!-- Education -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Education</label>
+              <label class="text-[11px] font-medium text-[var(--text-muted)]">Education</label>
               <button type="button" @click="toggleNone('education')"
                 :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                   form.education === NONE_REQ ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -914,14 +934,15 @@ const confirmBulkArchive = async () => {
               </button>
             </div>
             <AppInput v-model="form.education" :disabled="form.education === NONE_REQ"
-              placeholder="e.g. Bachelor of Secondary Education or any Bachelor's Degree" />
+              placeholder="e.g. Bachelor of Secondary Education or any Bachelor's Degree"
+              hint="Per CSC-prescribed QS for this position" />
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Experience -->
             <div>
               <div class="flex items-center justify-between mb-1.5">
-                <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Experience</label>
+                <label class="text-[11px] font-medium text-[var(--text-muted)]">Experience</label>
                 <button type="button" @click="toggleNone('experience')"
                   :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                     form.experience === NONE_REQ ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -929,21 +950,22 @@ const confirmBulkArchive = async () => {
                 </button>
               </div>
               <AppInput v-model="form.experience" :disabled="form.experience === NONE_REQ"
-                placeholder="e.g. 2 years of relevant teaching experience" />
+                placeholder="e.g. 2 years of relevant teaching experience"
+                hint="Describe the required work experience" />
             </div>
             <!-- Min Experience -->
             <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Min Experience <span class="text-[var(--text-faint)] normal-case font-medium">(months)</span></label>
+              <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Min Experience <span class="text-[var(--text-faint)] normal-case font-medium">(months)</span></label>
               <div class="flex items-center gap-2">
-                <AppInput v-model.number="form.minExperienceMonths" type="number" min="0" placeholder="0" :disabled="form.experience === NONE_REQ" class="flex-1" />
+                <AppInput v-model.number="form.minExperienceMonths" type="number" min="0" placeholder="0"
+                  :disabled="form.experience === NONE_REQ" hint="0 = no minimum" class="flex-1" />
                 <span class="text-xs text-[var(--text-muted)] font-medium whitespace-nowrap">months</span>
               </div>
-              <p class="text-[9px] text-[var(--text-faint)] mt-1">0 = no minimum.</p>
             </div>
             <!-- Training -->
             <div>
               <div class="flex items-center justify-between mb-1.5">
-                <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Training</label>
+                <label class="text-[11px] font-medium text-[var(--text-muted)]">Training</label>
                 <button type="button" @click="toggleNone('trainings')"
                   :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                     form.trainings === NONE_REQ ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -951,23 +973,24 @@ const confirmBulkArchive = async () => {
                 </button>
               </div>
               <AppInput v-model="form.trainings" :disabled="form.trainings === NONE_REQ"
-                placeholder="e.g. 8 hours of relevant training" />
+                placeholder="e.g. 8 hours of relevant training"
+                hint="Required training hours per QS" />
             </div>
             <!-- Min Training -->
             <div>
-              <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Min Training <span class="text-[var(--text-faint)] normal-case font-medium">(hours)</span></label>
+              <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Min Training <span class="text-[var(--text-faint)] normal-case font-medium">(hours)</span></label>
               <div class="flex items-center gap-2">
-                <AppInput v-model.number="form.minTrainingHours" type="number" min="0" placeholder="0" :disabled="form.trainings === NONE_REQ" class="flex-1" />
+                <AppInput v-model.number="form.minTrainingHours" type="number" min="0" placeholder="0"
+                  :disabled="form.trainings === NONE_REQ" hint="0 = no minimum" class="flex-1" />
                 <span class="text-xs text-[var(--text-muted)] font-medium whitespace-nowrap">hours</span>
               </div>
-              <p class="text-[9px] text-[var(--text-faint)] mt-1">0 = no minimum.</p>
             </div>
           </div>
 
           <!-- Eligibility — multi-tag -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Eligibility</label>
+              <label class="text-[11px] font-medium text-[var(--text-muted)]">Eligibility</label>
               <button type="button" @click="toggleNoneEligibility(form.eligibility)"
                 :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                   form.eligibility.includes(NONE_REQ) ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -1009,7 +1032,7 @@ const confirmBulkArchive = async () => {
         <section v-show="activeSection === 4" class="space-y-4">
           <div class="flex items-center gap-2 border-b border-[var(--border-main)] pb-2.5">
             <span class="w-5 h-5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-[9px] font-black">5</span>
-            <h4 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Competency Requirements</h4>
+            <h4 class="text-xs font-semibold text-[var(--text-main)]">Competency Requirements</h4>
             <span class="text-[9px] text-[var(--text-faint)] font-medium">(Optional)</span>
           </div>
           <div v-if="form.competencyRequirements.length === 0" class="text-center py-6 border border-dashed border-[var(--border-main)] rounded-xl">
@@ -1020,7 +1043,7 @@ const confirmBulkArchive = async () => {
             <div v-for="(comp, i) in form.competencyRequirements" :key="i" class="flex items-center gap-2">
               <div class="w-6 h-9 flex items-center justify-center text-[10px] font-black text-[var(--text-faint)] flex-shrink-0 tabular-nums">{{ i + 1 }}</div>
               <input v-model="form.competencyRequirements[i]" placeholder="e.g. Classroom management, Curriculum planning..."
-                class="flex-1 h-9 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                class="flex-1 h-9 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] placeholder:text-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
               <button type="button" @click="removeItem(form.competencyRequirements, i)"
                 class="w-9 h-9 rounded-xl border border-[var(--border-main)] flex items-center justify-center text-[var(--text-muted)] hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0">
                 <i class="pi pi-times text-xs"></i>
@@ -1212,27 +1235,27 @@ const confirmBulkArchive = async () => {
                 <template v-if="templateFormTab === 'position'">
                   <div class="grid grid-cols-2 gap-3">
                     <div class="col-span-2">
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Position Title <span class="text-red-400">*</span></label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Position Title <span class="text-red-400">*</span></label>
                       <input v-model="templateForm.positionTitle" placeholder="e.g. Teacher I" required
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Position Code <span class="text-red-400">*</span></label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Position Code <span class="text-red-400">*</span></label>
                       <input v-model="templateForm.positionCode" placeholder="OSEC-DECSB-TCHR1" required
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-mono text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm font-mono text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Salary Grade</label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Salary Grade</label>
                       <input v-model.number="templateForm.salaryGrade" type="number" min="1" max="33" placeholder="e.g. 13"
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Monthly Salary (PHP)</label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Monthly Salary (PHP)</label>
                       <input v-model.number="templateForm.salary" type="number" min="0" placeholder="e.g. 29165"
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Employment Type</label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Employment Type</label>
                       <select v-model="templateForm.employmentType" :class="SELECT_CLS">
                         <option value="permanent">Permanent</option>
                         <option value="contractual">Contractual</option>
@@ -1241,7 +1264,7 @@ const confirmBulkArchive = async () => {
                       </select>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Hiring Track <span class="text-red-400">*</span></label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Hiring Track <span class="text-red-400">*</span></label>
                       <select v-model="templateForm.hiringTrack" :class="SELECT_CLS">
                         <option value="teaching">Teaching</option>
                         <option value="teaching_related">Teaching-Related</option>
@@ -1249,9 +1272,9 @@ const confirmBulkArchive = async () => {
                       </select>
                     </div>
                     <div class="col-span-2">
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Description</label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Description</label>
                       <textarea v-model="templateForm.description" rows="3" placeholder="Duties and responsibilities..."
-                        class="w-full px-3 py-2 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all resize-none"></textarea>
+                        class="w-full px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all resize-none"></textarea>
                     </div>
                   </div>
                 </template>
@@ -1263,7 +1286,7 @@ const confirmBulkArchive = async () => {
                   <!-- Education -->
                   <div>
                     <div class="flex items-center justify-between mb-1.5">
-                      <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Education</label>
+                      <label class="text-[11px] font-medium text-[var(--text-muted)]">Education</label>
                       <button type="button" @click="toggleNoneTemplate('education')"
                         :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                           templateForm.education === NONE_REQ ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -1272,13 +1295,13 @@ const confirmBulkArchive = async () => {
                     </div>
                     <input v-model="templateForm.education" placeholder="e.g. Bachelor of Secondary Education"
                       :disabled="templateForm.education === NONE_REQ"
-                      class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
+                      class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
                   </div>
 
                   <div class="grid grid-cols-2 gap-3">
                     <div class="col-span-2 sm:col-span-1">
                       <div class="flex items-center justify-between mb-1.5">
-                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Experience</label>
+                        <label class="text-[11px] font-medium text-[var(--text-muted)]">Experience</label>
                         <button type="button" @click="toggleNoneTemplate('experience')"
                           :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                             templateForm.experience === NONE_REQ ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -1287,17 +1310,17 @@ const confirmBulkArchive = async () => {
                       </div>
                       <input v-model="templateForm.experience" placeholder="e.g. 2 years relevant experience"
                         :disabled="templateForm.experience === NONE_REQ"
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Min Exp (months)</label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Min Exp (months)</label>
                       <input v-model.number="templateForm.minExperienceMonths" type="number" min="0" placeholder="0"
                         :disabled="templateForm.experience === NONE_REQ"
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                       <div class="flex items-center justify-between mb-1.5">
-                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Training</label>
+                        <label class="text-[11px] font-medium text-[var(--text-muted)]">Training</label>
                         <button type="button" @click="toggleNoneTemplate('trainings')"
                           :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                             templateForm.trainings === NONE_REQ ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -1306,20 +1329,20 @@ const confirmBulkArchive = async () => {
                       </div>
                       <input v-model="templateForm.trainings" placeholder="e.g. 8 hours relevant training"
                         :disabled="templateForm.trainings === NONE_REQ"
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
                     </div>
                     <div>
-                      <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Min Training (hours)</label>
+                      <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Min Training (hours)</label>
                       <input v-model.number="templateForm.minTrainingHours" type="number" min="0" placeholder="0"
                         :disabled="templateForm.trainings === NONE_REQ"
-                        class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
+                        class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all disabled:opacity-50" />
                     </div>
                   </div>
 
                   <!-- Eligibility multi-tag -->
                   <div>
                     <div class="flex items-center justify-between mb-1.5">
-                      <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Eligibility</label>
+                      <label class="text-[11px] font-medium text-[var(--text-muted)]">Eligibility</label>
                       <button type="button" @click="toggleNoneEligibility(templateForm.eligibility)"
                         :class="['flex items-center gap-1 h-5 px-2 rounded-full text-[9px] font-bold border transition-all',
                           templateForm.eligibility.includes(NONE_REQ) ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/30' : 'bg-[var(--bg-app)] text-[var(--text-faint)] border-[var(--border-main)] hover:text-[var(--text-muted)]']">
@@ -1407,9 +1430,9 @@ const confirmBulkArchive = async () => {
               </div>
               <div class="space-y-3">
                 <div>
-                  <label class="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Application Deadline <span class="text-[var(--text-faint)] normal-case font-normal">(optional)</span></label>
+                  <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Application Deadline <span class="text-[var(--text-faint)] normal-case font-normal">(optional)</span></label>
                   <input v-model="bulkDeadline" type="date" :min="new Date().toISOString().slice(0,10)"
-                    class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
+                    class="w-full h-10 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-main)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all" />
                   <p class="text-[9px] text-[var(--text-faint)] mt-1">Leave blank for open-ended posting with no deadline.</p>
                 </div>
               </div>

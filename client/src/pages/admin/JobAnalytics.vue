@@ -83,7 +83,7 @@ const criteriaBreakdown = computed(() => {
     ]
 })
 
-const fieldClasses = "h-11 px-4 text-sm bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] text-[var(--text-main)] transition-all";
+const fieldClasses = "h-11 px-4 text-sm bg-[var(--surface)] border border-[var(--border-main)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] text-[var(--text-main)] transition-all";
 </script>
 
 <template>

@@ -34,9 +34,10 @@ const avatarSrc = computed(() =>
 
 const navLinks = [
   { label: 'Dashboard',       to: '/user/dashboard',    icon: 'pi-home'        },
-  { label: 'Job Vacancies',   to: '/user/vacancies',    icon: 'pi-briefcase'   },
-  { label: 'My Applications', to: '/user/applications', icon: 'pi-folder-open' },
   { label: 'My Profile',      to: '/user/profile',      icon: 'pi-id-card'     },
+  { label: 'My Applications', to: '/user/applications', icon: 'pi-folder-open' },
+  { label: 'Job Vacancies',   to: '/user/vacancies',    icon: 'pi-briefcase'   },
+  { label: 'Resources',       to: '/user/resources',    icon: 'pi-book'        },
 ]
 </script>
 

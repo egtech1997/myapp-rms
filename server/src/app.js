@@ -27,6 +27,7 @@ import pdsRouter from "./routes/pds.routes.js";
 import bulkRouter from "./routes/bulk.routes.js";
 import announcementRouter from "./routes/announcement.routes.js";
 import jobTemplateRouter from "./routes/jobTemplate.routes.js";
+import resourceRouter from "./routes/resource.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -125,6 +126,7 @@ app.use("/api/v1/pds", pdsRouter);
 app.use("/api/v1/bulk", bulkRouter);
 app.use("/api/v1/announcements", announcementRouter);
 app.use("/api/v1/job-templates", jobTemplateRouter);
+app.use("/api/v1/resources", resourceRouter);
 
 // Serve Vue 3 SPA (production build)
 const clientDist = path.join(__dirname, "../../client/dist");

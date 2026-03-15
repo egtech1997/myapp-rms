@@ -57,6 +57,24 @@ const excerpt = (content) => {
   return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 110)
 }
 
+const TAG_PALETTE = [
+  'bg-blue-50 text-blue-700 border-blue-200',
+  'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'bg-violet-50 text-violet-700 border-violet-200',
+  'bg-amber-50 text-amber-700 border-amber-200',
+  'bg-rose-50 text-rose-700 border-rose-200',
+  'bg-teal-50 text-teal-700 border-teal-200',
+  'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'bg-cyan-50 text-cyan-700 border-cyan-200',
+  'bg-orange-50 text-orange-700 border-orange-200',
+  'bg-purple-50 text-purple-700 border-purple-200',
+]
+const tagColor = (tag) => {
+  let h = 0
+  for (const c of tag) h = (h + c.charCodeAt(0)) % TAG_PALETTE.length
+  return TAG_PALETTE[h]
+}
+
 async function fetchAnnouncements() {
   try {
     const { data } = await apiClient.get('/v1/announcements')
@@ -177,11 +195,15 @@ onMounted(async () => {
                 </span>
               </div>
 
-              <!-- Attachment count badge -->
-              <div v-if="item.attachments?.length" class="absolute top-3 right-3">
-                <span class="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black bg-black/40 text-white backdrop-blur-sm border border-white/20">
+              <!-- Attachment + links badges -->
+              <div class="absolute top-3 right-3 flex flex-col gap-1 items-end">
+                <span v-if="item.attachments?.length" class="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black bg-black/40 text-white backdrop-blur-sm border border-white/20">
                   <i class="pi pi-paperclip text-[8px]"></i>
                   {{ item.attachments.length }}
+                </span>
+                <span v-if="item.links?.length" class="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black bg-black/40 text-white backdrop-blur-sm border border-white/20">
+                  <i class="pi pi-link text-[8px]"></i>
+                  {{ item.links.length }}
                 </span>
               </div>
             </div>
@@ -210,9 +232,20 @@ onMounted(async () => {
               <h3 class="font-black text-base leading-snug mb-2 line-clamp-2" style="color:#2D3748;">{{ item.title }}</h3>
 
               <!-- Excerpt -->
-              <p class="text-sm leading-relaxed line-clamp-2 flex-grow mb-4" style="color:#607080;">
+              <p class="text-sm leading-relaxed line-clamp-2 flex-grow mb-3" style="color:#607080;">
                 {{ excerpt(item.content) }}
               </p>
+
+              <!-- Tags -->
+              <div v-if="item.tags?.length" class="flex flex-wrap gap-1 mb-4">
+                <span
+                  v-for="tag in item.tags.slice(0, 4)" :key="tag"
+                  :class="['inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black border', tagColor(tag)]"
+                >
+                  <span class="opacity-60">#</span>{{ tag }}
+                </span>
+                <span v-if="item.tags.length > 4" class="text-[9px] font-bold" style="color:#9DAABB;">+{{ item.tags.length - 4 }}</span>
+              </div>
 
               <!-- Footer -->
               <div class="flex items-center justify-between pt-4 mt-auto" style="border-top:1px solid #EEF1F7;">

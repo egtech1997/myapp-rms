@@ -20,6 +20,7 @@ const ensureDir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recurs
 ensureDir(path.join(publicDir, "uploads", "avatars"));
 ensureDir(path.join(publicDir, "uploads", "system"));
 ensureDir(path.join(publicDir, "uploads", "documents"));
+ensureDir(path.join(publicDir, "uploads", "resources"));
 
 // ── Avatar storage ────────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -145,6 +146,38 @@ export const uploadSystemLogo = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: imageFilter,
 });
+
+// ── Resource storage — downloadable forms, memos, etc. ───────────────────────
+const resourceStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, path.join(publicDir, "uploads", "resources")),
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    const ext    = path.extname(file.originalname).toLowerCase() || ".bin";
+    cb(null, `resource-${unique}${ext}`);
+  },
+});
+
+const resourceFileFilter = (_req, file, cb) => {
+  const allowed = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+  ];
+  allowed.includes(file.mimetype)
+    ? cb(null, true)
+    : cb(new Error("Only PDF, Word, Excel, PowerPoint, and image files are allowed."), false);
+};
+
+export const uploadResourceFile = multer({
+  storage: resourceStorage,
+  limits:  { fileSize: 25 * 1024 * 1024 },
+  fileFilter: resourceFileFilter,
+}).single("file");
 
 // Single image field ("image") + up to 8 attachment files ("attachments")
 export const uploadAnnouncementFiles = multer({

@@ -61,7 +61,7 @@ const onChange = (e) => emit('update:modelValue', e.target.value)
         :value="modelValue"
         :disabled="disabled"
         :class="[
-          'block w-full appearance-none outline-none transition-all duration-200 font-bold text-[var(--text-main)] rounded-xl pr-8 cursor-pointer px-4 peer border-2',
+          'block w-full appearance-none outline-none transition-all duration-200 font-medium text-[var(--text-main)] rounded-xl pr-8 cursor-pointer px-4 peer border-2',
           config.h,
           config.f,
           error
@@ -105,7 +105,7 @@ const onChange = (e) => emit('update:modelValue', e.target.value)
           'absolute inline-flex items-center gap-1.5 duration-200 transform origin-[0]',
           'pointer-events-none select-none start-3 px-1 bg-white/95',
           config.f,
-          'top-0 -translate-y-1/2 scale-75 font-black z-10 bg-white/95',
+          'top-0 -translate-y-1/2 scale-75 font-semibold z-10 bg-white/95',
           error ? 'text-rose-500' : 'text-[var(--color-primary)]',
           'max-w-[calc(100%-3rem)] overflow-hidden',
         ]">

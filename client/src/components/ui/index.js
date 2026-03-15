@@ -5,6 +5,9 @@ export { default as AppTableReport }  from './AppTableReport.vue'
 export { default as AppDataTable }    from './AppDataTable.vue'
 export { default as AppPageHeader }   from './AppPageHeader.vue'
 
+// Search + filter toolbar
+export { default as AppFilterBar }   from './AppFilterBar.vue'
+
 // Form inputs
 export { default as AppInput }       from './AppInput.vue'
 export { default as AppTextarea }    from './AppTextarea.vue'

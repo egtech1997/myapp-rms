@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, inject, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
-import { AppBadge, AppButton, AppCard, AppDrawer, AppInput, AppTextarea, AppPageHeader, AppModal } from '@/components/ui'
+import { AppBadge, AppButton, AppCard, AppDrawer, AppInput, AppSelect, AppTextarea, AppPageHeader, AppModal } from '@/components/ui'
 import { useRecruitmentStore } from '@/stores/recruitment'
 import { storeToRefs } from 'pinia'
 
@@ -196,10 +196,10 @@ onMounted(fetchJobs)
         <div class="relative w-full lg:w-64 group">
           <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs z-10"></i>
           <input v-model="searchCandidate" type="search" placeholder="Find candidate..."
-            class="w-full h-10 pl-9 pr-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 transition-all font-medium" />
+            class="w-full h-10 pl-9 pr-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 transition-all font-medium" />
         </div>
 
-        <select v-model="filterStatus" class="h-10 px-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30">
+        <select v-model="filterStatus" class="h-10 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border-main)] text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30">
           <option value="all">All Candidates</option>
           <option value="pending">Pending Only</option>
           <option value="appointed">Appointed Only</option>
@@ -366,42 +366,41 @@ onMounted(fetchJobs)
          <!-- Decision Workflow -->
          <div class="space-y-8">
             <section class="space-y-5">
-               <h4 class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-[var(--border-main)] pb-2 flex items-center gap-2">
-                 <i class="pi pi-file-edit"></i> Appointment Particulars
-               </h4>
+               <div class="flex items-center gap-3 border-b border-[var(--border-main)] pb-3">
+                 <i class="pi pi-file-edit text-[var(--color-primary)] text-sm"></i>
+                 <span class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.15em]">Appointment Particulars</span>
+               </div>
                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div class="flex flex-col gap-2">
-                     <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Effective Date</label>
-                     <AppInput v-model="appointForm.effectiveDate" type="date" />
-                  </div>
-                  <div class="flex flex-col gap-2">
-                     <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Nature of Appointment</label>
-                     <select v-model="appointForm.nature" class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-bold text-[var(--text-main)] outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30">
-                        <option>Original</option>
-                        <option>Promotion</option>
-                        <option>Transfer</option>
-                        <option>Reappointment</option>
-                        <option>Reinstatement</option>
-                     </select>
-                  </div>
-                  <div class="flex flex-col gap-2">
-                     <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Employment Status</label>
-                     <select v-model="appointForm.status" class="w-full h-10 px-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm font-bold text-[var(--text-main)] outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30">
-                        <option>Permanent</option>
-                        <option>Temporary</option>
-                        <option>Substitute</option>
-                        <option>Coterminous</option>
-                     </select>
-                  </div>
-                  <div class="flex flex-col gap-2">
-                     <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Plantilla Item No.</label>
-                     <AppInput v-model="appointForm.itemNumber" placeholder="e.g. OSEC-DECSB-..." />
-                  </div>
+                  <AppInput
+                    v-model="appointForm.effectiveDate"
+                    label="Effective Date"
+                    type="date"
+                    hint="Date the appointment takes effect"
+                  />
+                  <AppSelect
+                    v-model="appointForm.nature"
+                    label="Nature of Appointment"
+                    :options="['Original','Promotion','Transfer','Reappointment','Reinstatement']"
+                  />
+                  <AppSelect
+                    v-model="appointForm.status"
+                    label="Employment Status"
+                    :options="['Permanent','Temporary','Substitute','Coterminous']"
+                  />
+                  <AppInput
+                    v-model="appointForm.itemNumber"
+                    label="Plantilla Item No."
+                    placeholder="e.g. OSEC-DECSB-T1-99999"
+                    hint="From the approved Plantilla of Personnel"
+                  />
                </div>
-               <div class="flex flex-col gap-2">
-                  <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">SDS Deliberation Notes</label>
-                  <AppTextarea v-model="appointForm.remarks" placeholder="Official remarks for record..." :rows="3" />
-               </div>
+               <AppTextarea
+                 v-model="appointForm.remarks"
+                 label="SDS Deliberation Notes"
+                 placeholder="Official remarks for record..."
+                 :rows="3"
+                 hint="These notes will be included in the appointment record"
+               />
             </section>
 
             <div class="p-5 bg-amber-50 rounded-2xl border border-amber-100 flex gap-4">

@@ -76,6 +76,11 @@ const routes = [
         name: 'Job Vacancies',
         component: () => import('@/pages/user/Vacancies.vue'),
       },
+      {
+        path: 'resources',
+        name: 'Resources',
+        component: () => import('@/pages/user/Resources.vue'),
+      },
     ],
   },
 
@@ -158,6 +163,11 @@ const routes = [
         name: 'Announcements',
         component: () => import('@/pages/admin/Announcements.vue'),
       },
+      {
+        path: 'resources',
+        name: 'Manage Resources',
+        component: () => import('@/pages/admin/Resources.vue'),
+      },
     ],
   },
 
@@ -224,7 +234,8 @@ router.beforeEach(async (to, from) => {
     isLoggedIn &&
     !authStore.isAdmin &&
     to.path.startsWith('/user/') &&
-    to.path !== '/user/profile'
+    to.path !== '/user/profile' &&
+    to.path !== '/user/resources'
   ) {
     // Only check on first navigation after login (use sessionStorage flag to avoid
     // calling the API on every route change)

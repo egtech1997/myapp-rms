@@ -38,6 +38,7 @@ const navigationGroups = [
         title: 'Administration',
         items: [
             { label: 'Announcements',   icon: 'pi-megaphone',    to: '/admin/announcements',     perm: 'ann_manage' },
+            { label: 'Resources',       icon: 'pi-book',         to: '/admin/resources',         perm: 'ann_manage' },
             { label: 'User Accounts',   icon: 'pi-user-plus',    to: '/admin/user-list',         perm: 'user_manage' },
             { label: 'Roles & Perms',   icon: 'pi-shield',       to: '/admin/roles-permissions', perm: 'role_manage' },
             { label: 'Audit Logs',      icon: 'pi-history',      to: '/admin/audit-logs',        perm: 'audit_view' },

@@ -136,7 +136,7 @@ const quickActions = [
                 <AppCard class="card-raised flex-1">
                     <template #header>
                         <div class="px-5 py-3 border-b border-[var(--border-main)] flex justify-between items-center bg-[var(--bg-app)]">
-                            <h3 class="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Audit Stream</h3>
+                            <h3 class="text-xs font-semibold text-[var(--text-main)]">Audit Stream</h3>
                             <button class="text-[9px] font-black text-[var(--color-primary)] uppercase hover:underline">View All</button>
                         </div>
                     </template>

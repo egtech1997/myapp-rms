@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRoleStore } from '@/stores/roles'
-import { AppBreadcrumb, AppButton, AppModal, AppInput, AppPageHeader } from '@/components/ui'
+import { AppBreadcrumb, AppButton, AppModal, AppInput, AppTextarea, AppPageHeader } from '@/components/ui'
 
 const toast = inject('$toast')
 const swal  = inject('$swal')
@@ -394,28 +394,27 @@ const handleDeleteRole = async () => {
       size="sm">
 
       <div class="space-y-5">
-        <div class="flex flex-col gap-2">
-          <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Role Identifier</label>
-          <AppInput v-model="newRoleName" placeholder="e.g. DISTRICT_ADMIN" class="uppercase" />
-        </div>
-        <div class="flex flex-col gap-2">
-          <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Role Purpose / Scope</label>
-          <textarea v-model="newRoleDesc" rows="3" placeholder="Describe the responsibilities associated with this role..."
-            class="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] text-sm text-[var(--text-main)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]/30 focus:border-[var(--color-primary)] transition-all resize-none"></textarea>
-        </div>
+        <AppInput
+          v-model="newRoleName"
+          label="Role Identifier"
+          placeholder="e.g. DISTRICT_ADMIN"
+          class="uppercase"
+          hint="Use SCREAMING_SNAKE_CASE — e.g. DISTRICT_ADMIN"
+        />
+        <AppTextarea
+          v-model="newRoleDesc"
+          label="Role Purpose / Scope"
+          placeholder="Describe the responsibilities associated with this role..."
+          :rows="3"
+          hint="Optional — helps admins understand when to assign this role"
+        />
       </div>
 
       <template #footer>
-        <div class="flex gap-2 w-full">
-          <button type="button" @click="showCreateModal = false"
-            class="flex-1 h-11 rounded-xl border border-[var(--border-main)] text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--bg-app)] transition-colors">
-            Cancel
-          </button>
-          <button type="button" :disabled="isSaving || !newRoleName" @click="handleCreateRole"
-            class="flex-[2] h-11 rounded-xl bg-[var(--color-primary)] text-white text-xs font-black uppercase tracking-widest hover:bg-[var(--color-primary-dark)] transition-all shadow-md disabled:opacity-50">
-            {{ isSaving ? 'Initializing...' : 'Initialize Role' }}
-          </button>
-        </div>
+        <AppButton variant="ghost" @click="showCreateModal = false">Cancel</AppButton>
+        <AppButton variant="primary" :loading="isSaving" :disabled="!newRoleName" @click="handleCreateRole">
+          Initialize Role
+        </AppButton>
       </template>
     </AppModal>
   </div>

@@ -1640,7 +1640,7 @@ const filterTabs = [
                     <p class="text-[10px] font-bold uppercase tracking-wide leading-none"
                       :class="checklist[key].checked ? 'text-emerald-700' : 'text-[var(--text-main)]'">{{ key }} Verified</p>
                     <input v-model="checklist[key].note" placeholder="Add audit note..."
-                      class="w-full mt-2 text-[10px] bg-[var(--bg-app)] border border-[var(--border-main)]/50 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400 italic placeholder:text-[var(--text-faint)]" />
+                      class="w-full mt-2 text-[10px] bg-[var(--surface)] border border-[var(--border-main)]/50 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400 italic placeholder:text-[var(--text-faint)]" />
                   </div>
                 </div>
               </div>
