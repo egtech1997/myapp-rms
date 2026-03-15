@@ -31,9 +31,8 @@ export const register = catchAsync(async (req, res, next) => {
   }
 
   res.status(201).json({
-    message: emailSent
-      ? "OTP sent to email"
-      : "Account created but email could not be sent. Please contact the administrator.",
+    message: emailSent ? "OTP sent to email" : "OTP generated (email unavailable)",
+    ...(emailSent ? {} : { otp: rawOtp }),
   });
 });
 

@@ -14,8 +14,9 @@ const loading = ref(false);
 const resending = ref(false);
 const resendTimer = ref(0);
 
-// Custom OTP Input Logic
-const otpDigits = ref(['', '', '', '', '', '']);
+// Pre-fill OTP if passed in query (email unavailable fallback)
+const prefillOtp = route.query.otp || '';
+const otpDigits = ref(prefillOtp ? prefillOtp.split('').slice(0, 6) : ['', '', '', '', '', '']);
 const otpInputRefs = ref([]);
 
 const currentOtp = computed(() => otpDigits.value.join(''));

@@ -18,11 +18,11 @@ const handleRegister = async () => {
 
     try {
         const targetEmail = form.value.email;
-        await authStore.register(form.value);
+        const data = await authStore.register(form.value);
 
         router.push({
             path: '/auth/verify-otp',
-            query: { email: targetEmail }
+            query: { email: targetEmail, ...(data?.otp ? { otp: data.otp } : {}) }
         });
     } catch (err) {
         error.value = authStore.error || 'Registration failed';
