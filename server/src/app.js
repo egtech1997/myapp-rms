@@ -42,27 +42,37 @@ const allowedOrigins = [
   "http://127.0.0.1:5173"
 ].filter(Boolean);
 
+// Extract the Vercel project base hostname (e.g. "myapp-rms-8f5l") to allow
+// all preview deployment URLs for the same project (*.vercel.app subdomains).
+const vercelProjectBase = process.env.CLIENT_URL?.includes('vercel.app')
+  ? new URL(process.env.CLIENT_URL).hostname.split('.')[0]  // "myapp-rms-8f5l"
+  : null;
+
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin || process.env.NODE_ENV !== 'production') return callback(null, true);
-      
-      // Check if origin is exactly in our list
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
 
-      // Dynamic check: Allow if it matches the same IP/Host as CLIENT_URL 
-      // even if the port or protocol varies slightly (e.g. http vs https)
-      const clientUrlHost = process.env.CLIENT_URL ? new URL(process.env.CLIENT_URL).hostname : null;
-      const requestHost = new URL(origin).hostname;
+      // Exact match
+      if (allowedOrigins.includes(origin)) return callback(null, true);
 
-      if (requestHost === clientUrlHost || requestHost === 'localhost' || requestHost === '127.0.0.1') {
-        callback(null, true);
-      } else {
-        console.warn(`[CORS Blocked] Origin: ${origin} | Expected: ${process.env.CLIENT_URL}`);
-        callback(new Error('Not allowed by CORS'));
-      }
+      try {
+        const requestHost = new URL(origin).hostname;
+
+        // Allow all Vercel preview URLs for this project (same base slug)
+        if (vercelProjectBase && requestHost.endsWith('.vercel.app') &&
+            requestHost.startsWith(vercelProjectBase)) {
+          return callback(null, true);
+        }
+
+        // Allow localhost variants
+        if (requestHost === 'localhost' || requestHost === '127.0.0.1') {
+          return callback(null, true);
+        }
+      } catch (_) { /* invalid origin URL */ }
+
+      console.warn(`[CORS Blocked] Origin: ${origin} | Expected: ${process.env.CLIENT_URL}`);
+      callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
   }),
