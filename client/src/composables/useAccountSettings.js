@@ -24,6 +24,9 @@ export function useAccountSettings() {
 
   // ── Forms ─────────────────────────────────────────────────
   const profileForm = reactive({
+    firstName:  '',
+    middleName: '',
+    lastName:   '',
     username: '',
     bio: '',
     links: { facebook: '', linkedin: '', twitter: '' },
@@ -33,6 +36,9 @@ export function useAccountSettings() {
 
   const initForm = () => {
     if (!authStore.user) return
+    profileForm.firstName       = authStore.user.firstName       || ''
+    profileForm.middleName      = authStore.user.middleName      || ''
+    profileForm.lastName        = authStore.user.lastName        || ''
     profileForm.username        = authStore.user.username        || ''
     profileForm.bio             = authStore.user.bio             || ''
     profileForm.links.facebook  = authStore.user.links?.facebook || ''
@@ -106,9 +112,12 @@ export function useAccountSettings() {
     isSaving.value = true
     try {
       const { data } = await apiClient.patch('/auth/update-me', {
-        username: profileForm.username.trim(),
-        bio: profileForm.bio,
-        links: profileForm.links,
+        firstName:  profileForm.firstName.trim(),
+        middleName: profileForm.middleName.trim(),
+        lastName:   profileForm.lastName.trim(),
+        username:   profileForm.username.trim(),
+        bio:        profileForm.bio,
+        links:      profileForm.links,
       })
       authStore.user = { ...authStore.user, ...data.user }
       $toast?.fire({ icon: 'success', title: 'Profile saved!' })

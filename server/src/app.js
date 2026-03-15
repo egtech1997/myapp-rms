@@ -126,11 +126,11 @@ app.use("/api/v1/bulk", bulkRouter);
 app.use("/api/v1/announcements", announcementRouter);
 app.use("/api/v1/job-templates", jobTemplateRouter);
 
-app.all("*", (req, res, next) => {
-  res.status(404).json({
-    status: "fail",
-    message: `Can't find ${req.originalUrl} on this server!`,
-  });
+// Serve Vue 3 SPA (production build)
+const clientDist = path.join(__dirname, "../../client/dist");
+app.use(express.static(clientDist));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(clientDist, "index.html"));
 });
 
 app.use(errorMiddleware);

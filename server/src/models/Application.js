@@ -163,6 +163,13 @@ const applicationSchema = new mongoose.Schema(
   },
 );
 
+// ── Indexes ───────────────────────────────────────────────────────────────────
+applicationSchema.index({ submittedBy: 1 });                  // "my applications" query
+applicationSchema.index({ submittedTo: 1 });                  // applicants per job query
+applicationSchema.index({ submittedTo: 1, status: 1 });       // filter applicants by status
+applicationSchema.index({ status: 1 });                       // analytics/dashboard queries
+applicationSchema.index({ createdAt: -1 });                   // recent applications
+
 applicationSchema.pre("save", async function () {
   if (this.isNew && !this.applicationCode) {
     const jobSuffix = this.submittedTo.toString().slice(-4).toUpperCase();

@@ -23,10 +23,12 @@ passport.use(
         let user = await User.findOne({ email }).populate("roles");
 
         if (user) {
-          user.googleId = profile.id;
+          user.googleId   = profile.id;
           user.isVerified = true;
-          user.lastLogin = Date.now();
-          if (!user.avatar) user.avatar = profile.photos[0]?.value;
+          user.lastLogin  = Date.now();
+          if (!user.avatar)     user.avatar     = profile.photos[0]?.value;
+          if (!user.firstName)  user.firstName  = profile.name?.givenName  || '';
+          if (!user.lastName)   user.lastName   = profile.name?.familyName || '';
 
           await user.save({ validateBeforeSave: false });
 
@@ -38,9 +40,11 @@ passport.use(
 
         const newUser = new User({
           username,
-          email: email,
-          googleId: profile.id,
-          avatar: profile.photos[0]?.value,
+          email:      email,
+          googleId:   profile.id,
+          avatar:     profile.photos[0]?.value,
+          firstName:  profile.name?.givenName  || '',
+          lastName:   profile.name?.familyName || '',
           isVerified: true,
           roles: targetRole ? [targetRole._id] : [],
         });

@@ -11,6 +11,7 @@ import ApplicationCard from '@/components/user/ApplicationCard.vue'
 defineOptions({ name: 'UserApplications' })
 
 const toast = inject('$toast')
+const $swal = inject('$swal')
 
 // ── State ───────────────────────────────────────────────────────────────────
 const applications = ref([])
@@ -72,6 +73,13 @@ function stepState(step) {
   return 'pending'
 }
 
+// Step detail toggle
+const selectedStep = ref(null)
+const toggleStep = (step) => {
+  if (stepState(step) === 'pending') return
+  selectedStep.value = selectedStep.value === step.key ? null : step.key
+}
+
 // Verification checklist helper
 const VC_KEYS = [
   { key: 'education',   label: 'Education',    icon: 'pi-graduation-cap' },
@@ -88,6 +96,15 @@ function vcItem(key) {
 function auditList(category) {
   return selectedApp.value?.applicantData?.[category] || []
 }
+
+// Only show VC categories where the applicant actually submitted data
+const visibleVcKeys = computed(() => {
+  if (!selectedApp.value) return []
+  return VC_KEYS.filter(vc => {
+    if (vc.key === 'performance') return !!selectedApp.value.applicantData?.performanceRating?.score
+    return (selectedApp.value.applicantData?.[vc.key] || []).length > 0
+  })
+})
 
 // Format helpers
 const formatDate = (d) => d
@@ -130,6 +147,34 @@ const submissionDocsList = computed(() => {
 })
 
 // ── Actions ─────────────────────────────────────────────────────────────────
+const syncing = ref(false)
+
+const syncProfile = async () => {
+  const confirm = await $swal.fire({
+    title: 'Sync Profile Data?',
+    html: 'This will update your application snapshot with your <strong>current profile data</strong> (eligibility, education, experience, training). Use this if you updated your profile after submitting.<br/><br/>This cannot be done after the application is verified.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, sync now',
+    confirmButtonColor: 'var(--color-primary)',
+  })
+  if (!confirm.isConfirmed) return
+
+  syncing.value = true
+  try {
+    await apiClient.post(`/v1/applications/${selectedApp.value._id}/sync-profile`)
+    toast.fire({ icon: 'success', title: 'Profile data synced successfully' })
+    await fetchApplications()
+    // Re-select the updated app
+    const updated = applications.value.find(a => a._id === selectedApp.value._id)
+    if (updated) selectedApp.value = updated
+  } catch (err) {
+    toast.fire({ icon: 'error', title: err?.response?.data?.message || 'Sync failed' })
+  } finally {
+    syncing.value = false
+  }
+}
+
 const fetchApplications = async () => {
   loading.value = true
   try {
@@ -143,9 +188,10 @@ const fetchApplications = async () => {
 }
 
 const openApp = (app) => {
-  selectedApp.value = app
-  activeTab.value   = 'overview'
-  showModal.value   = true
+  selectedApp.value  = app
+  activeTab.value    = 'overview'
+  selectedStep.value = null
+  showModal.value    = true
 }
 
 onMounted(fetchApplications)
@@ -243,14 +289,18 @@ onActivated(fetchApplications)
           <div class="flex items-start justify-between relative">
             <!-- Progress line -->
             <div class="absolute top-5 left-0 right-0 h-0.5 bg-[var(--border-main)] mx-6 -z-0"></div>
-            <div v-for="step in journeySteps" :key="step.key" class="flex flex-col items-center gap-2 z-10 flex-1">
+            <div v-for="step in journeySteps" :key="step.key"
+              class="flex flex-col items-center gap-2 z-10 flex-1 transition-all"
+              :class="stepState(step) !== 'pending' ? 'cursor-pointer' : 'cursor-default'"
+              @click="toggleStep(step)">
               <!-- Icon bubble -->
               <div :class="[
                 'w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shadow-sm',
                 stepState(step) === 'done'   ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' :
                 stepState(step) === 'active' ? 'bg-white border-[var(--color-primary)] text-[var(--color-primary)] shadow-lg ring-4 ring-[var(--color-primary-light)]' :
                 stepState(step) === 'failed' ? 'bg-red-500 border-red-500 text-white' :
-                'bg-white border-[var(--border-main)] text-[var(--text-faint)]'
+                'bg-white border-[var(--border-main)] text-[var(--text-faint)]',
+                selectedStep === step.key ? 'ring-4 ring-[var(--color-gold)] scale-110' : ''
               ]">
                 <i :class="['pi text-sm', stepState(step) === 'done' ? 'pi-check' : step.icon]"></i>
               </div>
@@ -282,6 +332,158 @@ onActivated(fetchApplications)
                 · {{ formatShort(selectedApp.verifiedAt) }}
               </p>
             </div>
+          </div>
+
+          <!-- ── Step Detail Panel ──────────────────────────────────────── -->
+          <div v-if="selectedStep" class="mt-4 pt-4 border-t border-[var(--color-gold)]/40 animate-fade-in">
+
+            <!-- Applied -->
+            <template v-if="selectedStep === 'applied'">
+              <p class="text-[9px] font-black uppercase tracking-widest text-[var(--color-primary)] mb-3">
+                <i class="pi pi-send mr-1.5"></i>Application Submitted
+              </p>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="p-2.5 rounded-lg bg-white border border-[var(--border-main)]">
+                  <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)]">Date Submitted</p>
+                  <p class="text-xs font-bold text-[var(--text-main)] mt-0.5">{{ formatDate(selectedApp.createdAt) }}</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-white border border-[var(--border-main)]">
+                  <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)]">Application Code</p>
+                  <p class="text-xs font-bold font-mono text-[var(--text-main)] mt-0.5">{{ selectedApp.applicationCode }}</p>
+                </div>
+              </div>
+            </template>
+
+            <!-- Verifying -->
+            <template v-else-if="selectedStep === 'verifying'">
+              <!-- Disqualified at this stage -->
+              <template v-if="selectedApp.status === 'disqualified'">
+                <p class="text-[9px] font-black uppercase tracking-widest text-red-600 mb-3">
+                  <i class="pi pi-times-circle mr-1.5"></i>Verification Result — Disqualified
+                </p>
+                <div class="p-3 rounded-xl bg-red-50 border border-red-200">
+                  <p class="text-[9px] font-black uppercase tracking-widest text-red-500 mb-1">Reason</p>
+                  <p class="text-xs text-red-800">{{ selectedApp.disqualificationReason || 'No reason specified.' }}</p>
+                </div>
+              </template>
+              <!-- Awaiting verification -->
+              <template v-else-if="!selectedApp.isVerified">
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <i class="pi pi-clock text-amber-500 text-lg"></i>
+                  <div>
+                    <p class="text-sm font-bold text-amber-800">Documents Under Review</p>
+                    <p class="text-xs text-amber-700 mt-0.5">Your documents are being reviewed by HR. You will be notified of any updates.</p>
+                  </div>
+                </div>
+              </template>
+              <!-- Verified -->
+              <template v-else>
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                    <i class="pi pi-shield mr-1.5"></i>Verification Complete
+                  </p>
+                  <p class="text-[10px] text-[var(--text-muted)]">
+                    by <span class="font-bold text-[var(--text-main)]">{{ selectedApp.verifiedBy?.username || 'HR Officer' }}</span>
+                    · {{ formatShort(selectedApp.verifiedAt) }}
+                  </p>
+                </div>
+                <!-- Category results -->
+                <div class="space-y-1.5 mb-3">
+                  <div v-for="vc in visibleVcKeys" :key="vc.key"
+                    class="flex items-center gap-2.5 p-2 rounded-lg border"
+                    :class="vcItem(vc.key).checked ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'">
+                    <i :class="['pi text-[11px]', vcItem(vc.key).checked ? 'pi-check text-emerald-600' : 'pi-times text-red-500']"></i>
+                    <span class="text-[11px] font-bold flex-1" :class="vcItem(vc.key).checked ? 'text-emerald-800' : 'text-red-700'">{{ vc.label }}</span>
+                    <span :class="['text-[10px] font-black uppercase', vcItem(vc.key).checked ? 'text-emerald-600' : 'text-red-500']">
+                      {{ vc.key === 'performance' ? (vcItem(vc.key).checked ? 'Met' : 'Not Met') : (vcItem(vc.key).checked ? 'Qualified' : 'Not Qualified') }}
+                    </span>
+                    <span v-if="vcItem(vc.key).note" class="text-[10px] text-[var(--text-muted)] italic truncate max-w-[100px]" :title="vcItem(vc.key).note">
+                      · {{ vcItem(vc.key).note }}
+                    </span>
+                  </div>
+                </div>
+                <!-- Non-relevant records -->
+                <template v-if="visibleVcKeys.some(vc => auditList(vc.key).some(r => r.isRelevant === false))">
+                  <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-1.5">Non-Relevant Records</p>
+                  <div class="space-y-1">
+                    <template v-for="vc in visibleVcKeys" :key="'nr-' + vc.key">
+                      <div v-for="(rec, i) in auditList(vc.key).filter(r => r.isRelevant === false)" :key="i"
+                        class="flex items-start gap-2 p-2 rounded-lg bg-red-50 border border-red-100">
+                        <i class="pi pi-times-circle text-red-500 text-[10px] mt-0.5 flex-shrink-0"></i>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-[10px] font-bold text-red-700">
+                            [{{ vc.label }}]
+                            <template v-if="vc.key === 'education'">{{ rec.degree || rec.school }}</template>
+                            <template v-else-if="vc.key === 'experience'">{{ rec.position || rec.company }}</template>
+                            <template v-else-if="vc.key === 'training'">{{ rec.title }}</template>
+                            <template v-else-if="vc.key === 'eligibility'">{{ rec.name }}</template>
+                            — Non-Relevant
+                          </p>
+                          <p v-if="rec.auditRemarks" class="text-[10px] text-red-600 italic mt-0.5">{{ rec.auditRemarks }}</p>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </template>
+            </template>
+
+            <!-- Comparative Assessment -->
+            <template v-else-if="selectedStep === 'comparative_assessment'">
+              <p class="text-[9px] font-black uppercase tracking-widest text-[var(--color-primary)] mb-3">
+                <i class="pi pi-chart-bar mr-1.5"></i>Evaluation Points Breakdown
+              </p>
+              <div v-if="selectedApp.hrRating" class="grid grid-cols-2 gap-2">
+                <div v-for="[lbl, icon, val] in [
+                  ['Education', 'pi-graduation-cap', selectedApp.hrRating.educationPoints],
+                  ['Experience', 'pi-briefcase', selectedApp.hrRating.experiencePoints],
+                  ['Training', 'pi-book', selectedApp.hrRating.trainingPoints],
+                  ['Eligibility', 'pi-id-card', selectedApp.hrRating.eligibilityPoints],
+                ]" :key="lbl"
+                  class="p-3 rounded-xl bg-white border border-[var(--border-main)] flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center flex-shrink-0">
+                    <i :class="['pi text-[var(--color-primary)] text-xs', icon]"></i>
+                  </div>
+                  <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-[var(--text-faint)]">{{ lbl }}</p>
+                    <p class="text-sm font-black text-[var(--text-main)] tabular-nums">{{ val?.toFixed(3) || '0.000' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="flex items-center gap-2 text-[var(--text-muted)] text-xs py-2">
+                <i class="pi pi-clock"></i> Assessment not yet complete.
+              </div>
+            </template>
+
+            <!-- Ranked -->
+            <template v-else-if="selectedStep === 'ranked'">
+              <p class="text-[9px] font-black uppercase tracking-widest text-[var(--color-primary)] mb-3">
+                <i class="pi pi-sort-amount-up mr-1.5"></i>Comparative Assessment Score
+              </p>
+              <div v-if="selectedApp.totalScore"
+                class="flex items-center justify-between p-4 rounded-xl bg-[var(--color-navy)] text-white">
+                <div>
+                  <p class="text-[9px] font-black uppercase tracking-widest text-blue-300 mb-1">Total Score</p>
+                  <p class="text-3xl font-black tabular-nums">{{ selectedApp.totalScore?.toFixed(3) }}</p>
+                </div>
+                <i class="pi pi-trophy text-[var(--color-gold)] text-3xl"></i>
+              </div>
+              <div v-else class="flex items-center gap-2 text-[var(--text-muted)] text-xs py-2">
+                <i class="pi pi-clock"></i> Ranking not yet finalized.
+              </div>
+            </template>
+
+            <!-- Appointed -->
+            <template v-else-if="selectedStep === 'appointed'">
+              <div class="text-center py-4">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-3 shadow-lg">
+                  <i class="pi pi-check-circle text-white text-2xl"></i>
+                </div>
+                <p class="text-base font-black text-emerald-700 uppercase tracking-tight">Congratulations!</p>
+                <p class="text-xs text-[var(--text-muted)] mt-2 max-w-xs mx-auto">You have been officially appointed to the position. Please report to the Division Office for appointment document issuance.</p>
+              </div>
+            </template>
+
           </div>
         </div>
 
@@ -389,9 +591,23 @@ onActivated(fetchApplications)
             </AppBadge>
           </div>
 
+          <!-- Sync tip — if no data and not yet verified -->
+          <div v-if="!visibleVcKeys.length && !selectedApp.isVerified"
+            class="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 mb-1">
+            <i class="pi pi-exclamation-triangle text-amber-500 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-bold text-amber-800">No qualification data in this snapshot</p>
+              <p class="text-xs text-amber-700 mt-0.5">If you added eligibility, education, or experience to your profile <em>after</em> submitting, click <strong>Sync Profile</strong> in the footer to update this application's snapshot.</p>
+            </div>
+          </div>
+
           <!-- Verification checklist cards -->
+          <div v-if="!visibleVcKeys.length" class="py-8 text-center text-[var(--text-faint)]">
+            <i class="pi pi-folder-open text-2xl mb-2 block"></i>
+            <p class="text-sm font-bold">No qualification data submitted</p>
+          </div>
           <div class="grid grid-cols-1 gap-3">
-            <div v-for="vc in VC_KEYS" :key="vc.key"
+            <div v-for="vc in visibleVcKeys" :key="vc.key"
               class="rounded-xl border overflow-hidden"
               :class="selectedApp.isVerified
                 ? (vcItem(vc.key).checked ? 'border-emerald-200' : 'border-red-200')
@@ -553,7 +769,14 @@ onActivated(fetchApplications)
       <!-- ── Footer ────────────────────────────────────────────────────────── -->
       <template #footer>
         <AppButton variant="secondary" @click="showModal = false">Close</AppButton>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <!-- Sync profile — only when not yet verified -->
+          <AppButton v-if="selectedApp && !selectedApp.isVerified"
+            variant="ghost" icon="pi-refresh"
+            :disabled="syncing"
+            @click="syncProfile">
+            {{ syncing ? 'Syncing...' : 'Sync Profile' }}
+          </AppButton>
           <AppButton variant="outline" icon="pi-file-pdf" @click="showCoverPdf = true">Cover Page</AppButton>
           <!-- IER — Preliminary when not verified, Final when verified -->
           <AppButton

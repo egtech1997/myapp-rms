@@ -29,4 +29,12 @@ const notificationSchema = new mongoose.Schema({
   metadata: mongoose.Schema.Types.Mixed,
 }, { timestamps: true });
 
+// ── Indexes ───────────────────────────────────────────────────────────────────
+// Compound index: fetch user's notifications sorted by newest first
+notificationSchema.index({ recipient: 1, createdAt: -1 });
+// Unread count query
+notificationSchema.index({ recipient: 1, status: 1 });
+// TTL — auto-delete notifications older than 6 months
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 15552000 });
+
 export default mongoose.model("Notification", notificationSchema);

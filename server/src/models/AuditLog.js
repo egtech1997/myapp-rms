@@ -38,6 +38,9 @@ const auditLogSchema = new mongoose.Schema({
   description: String,
 }, { timestamps: true });
 
+// TTL — auto-purge audit logs older than 1 year (adjust expireAfterSeconds as needed)
+auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 31536000 });
+
 // Ensure logs are immutable at the application level
 auditLogSchema.pre("save", async function() {
   if (!this.isNew) {

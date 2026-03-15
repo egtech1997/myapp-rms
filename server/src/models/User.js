@@ -34,6 +34,9 @@ const userSchema = new mongoose.Schema(
     passwordResetExpires: Date,
     lastLogin: Date,
     passwordChangedAt: Date,
+    firstName:  { type: String, trim: true },
+    middleName: { type: String, trim: true },
+    lastName:   { type: String, trim: true },
     bio: { type: String, maxlength: 240 },
     links: {
       facebook: { type: String, trim: true },
@@ -47,6 +50,14 @@ const userSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   },
 );
+
+// ── Indexes ───────────────────────────────────────────────────────────────────
+// email has unique:true but no explicit index — add it for auth query speed
+userSchema.index({ email: 1 });
+userSchema.index({ isActive: 1 });                            // filter active users
+// TTL indexes — auto-delete expired tokens at DB level (no cron needed)
+userSchema.index({ 'otp.expiresAt': 1 }, { expireAfterSeconds: 0, sparse: true });
+userSchema.index({ passwordResetExpires: 1 }, { expireAfterSeconds: 0, sparse: true });
 
 userSchema.virtual("avatarUrl").get(function () {
   if (!this.avatar) {

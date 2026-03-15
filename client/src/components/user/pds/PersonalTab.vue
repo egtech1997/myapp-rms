@@ -31,6 +31,51 @@ const religionOptions = [
   "Jehovah's Witnesses", 'Buddhism', 'Hinduism', 'Other',
 ]
 
+const disabilityOptions = [
+  {
+    label: 'None',
+    options: [{ label: 'None / Not Applicable', value: '' }],
+  },
+  {
+    label: 'Sensory',
+    options: [
+      { label: 'Visual Disability',          value: 'Visual Disability' },
+      { label: 'Hearing Disability',         value: 'Hearing Disability' },
+      { label: 'Deaf-Blindness',             value: 'Deaf-Blindness' },
+      { label: 'Speech/Language Disability', value: 'Speech/Language Disability' },
+    ],
+  },
+  {
+    label: 'Physical',
+    options: [
+      { label: 'Orthopedic/Physical Disability', value: 'Orthopedic/Physical Disability' },
+      { label: 'Chronic Illness',                value: 'Chronic Illness' },
+    ],
+  },
+  {
+    label: 'Developmental / Cognitive',
+    options: [
+      { label: 'Intellectual Disability',  value: 'Intellectual Disability' },
+      { label: 'Learning Disability',      value: 'Learning Disability' },
+      { label: 'Autism Spectrum Disorder', value: 'Autism Spectrum Disorder' },
+    ],
+  },
+  {
+    label: 'Mental Health',
+    options: [
+      { label: 'Psychosocial Disability', value: 'Psychosocial Disability' },
+      { label: 'Mental Disability',       value: 'Mental Disability' },
+    ],
+  },
+  {
+    label: 'Other',
+    options: [
+      { label: 'Multiple Disabilities', value: 'Multiple Disabilities' },
+      { label: 'Other Disability',      value: 'Other Disability' },
+    ],
+  },
+]
+
 const addPhone   = () => props.modelValue.contact.phones.push('')
 const removePhone = (i) => props.modelValue.contact.phones.splice(i, 1)
 const addEmail   = () => props.modelValue.contact.emails.push('')
@@ -71,7 +116,7 @@ const removeEmail = (i) => props.modelValue.contact.emails.splice(i, 1)
         <AppSelect v-model="modelValue.sex"         label="Sex"          :options="sexOptions" />
         <AppSelect v-model="modelValue.civilStatus" label="Civil Status" :options="civilStatusOptions" />
         <AppSelect v-model="modelValue.religion"    label="Religion"     :options="religionOptions" />
-        <AppInput  v-model="modelValue.disability"  label="Disability (if any)" hint="e.g. Visual Impairment — leave blank if none" />
+        <AppSelect v-model="modelValue.disability"  label="Disability (if any)" :options="disabilityOptions" :grouped="true" />
         <div class="flex items-center gap-6 h-11 px-4 border border-[var(--border-main)] rounded-xl bg-[var(--surface)]">
           <AppCheckbox v-model="modelValue.isIndigenous" label="Indigenous People (IP)" />
           <AppCheckbox v-model="modelValue.isSoloParent" label="Solo Parent" />

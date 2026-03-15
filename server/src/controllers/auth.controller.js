@@ -108,11 +108,14 @@ export const getMe = catchAsync(async (req, res, next) => {
 });
 
 export const updateMe = catchAsync(async (req, res, next) => {
-  const { username, bio, links } = req.body;
+  const { username, bio, links, firstName, middleName, lastName } = req.body;
   const update = {};
-  if (username !== undefined) update.username = username;
-  if (bio      !== undefined) update.bio      = bio;
-  if (links    !== undefined) update.links    = links;
+  if (username   !== undefined) update.username   = username;
+  if (bio        !== undefined) update.bio        = bio;
+  if (links      !== undefined) update.links      = links;
+  if (firstName  !== undefined) update.firstName  = firstName;
+  if (middleName !== undefined) update.middleName = middleName;
+  if (lastName   !== undefined) update.lastName   = lastName;
 
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,

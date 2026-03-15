@@ -138,6 +138,12 @@ const LINKS = [
 
         <!-- ── Profile tab ─────────────────────────────────── -->
         <div v-if="activeTab === 'profile'" class="p-6 flex flex-col gap-5" role="tabpanel">
+          <!-- Full name row -->
+          <div class="grid grid-cols-3 gap-3">
+            <AppInput v-model="profileForm.firstName"  label="First Name"  size="sm" />
+            <AppInput v-model="profileForm.middleName" label="Middle Name" size="sm" />
+            <AppInput v-model="profileForm.lastName"   label="Last Name"   size="sm" />
+          </div>
           <AppInput
             v-model="profileForm.username"
             label="Username"

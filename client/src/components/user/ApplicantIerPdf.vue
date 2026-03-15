@@ -129,10 +129,22 @@ const trnItems = computed(() =>
   training.value.map(t => ({ text: fmtTrn(t), isRelevant: t.isRelevant })).filter(i => i.text)
 )
 
-// Eligibility: {text, isRelevant} — null text filtered out
-function fmtElig(e) { return (e.type || e.name || '').trim() || null }
+// Eligibility: produce a display label — never returns null when a record exists
+function fmtElig(e) {
+  // Prefer user-entered specific name, then category, then license number
+  const primary = (e.name || e.type || e.licenseNumber || '').trim()
+  if (primary) return primary
+  // Fallback: build from available metadata so no record goes invisible
+  const parts = [
+    e.rating     ? `Rating: ${e.rating}%` : '',
+    e.placeOfExam ? `at ${e.placeOfExam}` : '',
+    e.dateOfExam  ? new Date(e.dateOfExam).toLocaleDateString('en-PH', { year: 'numeric', month: 'short' }) : '',
+  ].filter(Boolean)
+  return parts.length ? parts.join(', ') : 'Eligibility Record'
+}
+// fmtElig always returns a non-empty string — no filter needed, every record shows
 const eligItems = computed(() =>
-  eligibility.value.map(e => ({ text: fmtElig(e), isRelevant: e.isRelevant })).filter(i => i.text)
+  eligibility.value.map(e => ({ text: fmtElig(e), isRelevant: e.isRelevant }))
 )
 
 // For cellFontSize — join all texts

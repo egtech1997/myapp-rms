@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { AppButton, AppInput, AppSelect } from '@/components/ui'
+import { AppButton, AppInput, AppSelect, AppFileViewer } from '@/components/ui'
 import apiClient from '@/api/axios'
 
 defineOptions({ name: 'ApplicationModal' })
@@ -14,9 +14,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submitted'])
 
 // ── Steps ────────────────────────────────────────────────────────────────────
-const STEPS = ['details', 'select', 'upload', 'review']
+const STEPS = ['details', 'select', 'upload', 'verify', 'review']
 const step  = ref('details')
-const stepLabel = { details: 'Job Details', select: 'Select Records', upload: 'Documents', review: 'Review & Submit' }
+const stepLabel = { details: 'Job Details', select: 'Select Records', upload: 'Documents', verify: 'Verify', review: 'Review & Submit' }
 const stepIdx = computed(() => STEPS.indexOf(step.value))
 
 // ── PDS Selection ─────────────────────────────────────────────────────────────
@@ -241,6 +241,11 @@ const NON_TEACHING_SLOTS = [
   },
 ]
 
+const findSlot = (key) => COMMON_SLOTS.find(s => s.key === key)
+  || TEACHING_SLOTS.find(s => s.key === key)
+  || TEACHING_RELATED_SLOTS.find(s => s.key === key)
+  || NON_TEACHING_SLOTS.find(s => s.key === key)
+
 const docSlots = computed(() => {
   const t = props.job?.hiringTrack
   const extra = t === 'teaching' ? TEACHING_SLOTS : t === 'teaching_related' ? TEACHING_RELATED_SLOTS : NON_TEACHING_SLOTS
@@ -277,6 +282,45 @@ const uploadDoc = async (slot, file, append = false) => {
   } finally {
     uploading.value = { ...uploading.value, [key]: false }
   }
+}
+
+// ── File viewer ───────────────────────────────────────────────────────────────
+const viewerVisible = ref(false)
+const viewerUrl     = ref('')
+const viewerTitle   = ref('Document Preview')
+
+const viewDoc = (fileUrl, title = 'Document Preview') => {
+  if (!fileUrl) return
+  viewerUrl.value   = fileUrl
+  viewerTitle.value = title
+  viewerVisible.value = true
+}
+
+// Returns the actual selected record objects for a pdsRow
+const getSelectedItems = (row) =>
+  row.val.value.map(i => row.data?.[i]).filter(Boolean)
+
+// Returns document entries { label, url } for a selected profile record
+const getRecordDocs = (rowId, item) => {
+  if (rowId === 'edu') {
+    const d = []
+    if (item.tor)     d.push({ label: 'Transcript of Records (TOR)', url: item.tor })
+    if (item.diploma) d.push({ label: 'Diploma', url: item.diploma })
+    return d
+  }
+  if (rowId === 'elig') {
+    const d = []
+    if (item.document)        d.push({ label: 'Eligibility Certificate', url: item.document })
+    if (item.licenseDocument) d.push({ label: 'License / ID', url: item.licenseDocument })
+    return d
+  }
+  if (rowId === 'exp') {
+    return item.document ? [{ label: 'COE / Appointment Paper', url: item.document }] : []
+  }
+  if (rowId === 'trn') {
+    return item.document ? [{ label: 'Training Certificate', url: item.document }] : []
+  }
+  return []
 }
 
 const removeDoc = (key, idx = null) => {
@@ -470,13 +514,101 @@ const closeModal = () => {
               </div>
             </div>
 
-            <!-- Tip -->
-            <div class="flex items-start gap-3 p-4 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20">
-              <i class="pi pi-lightbulb text-[var(--color-primary)] mt-0.5 shrink-0"></i>
-              <div class="text-xs text-[var(--text-sub)] leading-relaxed space-y-1.5">
-                <p><strong>Before proceeding:</strong> Complete your <strong>Applicant Profile</strong> and upload all supporting documents (TOR, COE, training certs, eligibility certificates) so they are ready for selection.</p>
-                <p>You will need an <strong>Application Letter</strong> and a signed <strong>Personal Data Sheet (PDS)</strong>. A Performance Evaluation document is also required — if you are a <strong>fresh graduate, currently unemployed, or applying for a Job Order / Contract of Service</strong> position, you may mark it as <em>Not Applicable</em> in the next step.</p>
+            <!-- What you need to prepare -->
+            <div class="rounded-2xl border border-[var(--color-primary)]/20 overflow-hidden">
+              <div class="px-4 py-3 bg-[var(--color-primary-light)] flex items-center gap-2.5">
+                <i class="pi pi-lightbulb text-[var(--color-primary)] shrink-0"></i>
+                <p class="text-xs font-bold text-[var(--color-primary)]">What you need to prepare</p>
               </div>
+              <div class="px-4 py-3 bg-[var(--surface)] space-y-2">
+                <div v-for="item in [
+                  { icon: 'pi-envelope',   text: 'Application Letter addressed to the Schools Division Superintendent' },
+                  { icon: 'pi-id-card',    text: 'Signed and notarized Personal Data Sheet (CS Form 212)' },
+                  { icon: 'pi-chart-bar',  text: 'Latest Performance Evaluation (IPCRF/RPMS) — or mark N/A if fresh grad, unemployed, or JO/COS applicant' },
+                  { icon: 'pi-graduation-cap', text: 'Transcript of Records (TOR) and/or Diploma from your profile' },
+                  { icon: 'pi-verified',   text: 'Eligibility / License certificate from your profile' },
+                  { icon: 'pi-briefcase',  text: 'COE or Appointment Paper from your work experience records' },
+                  { icon: 'pi-book',       text: 'Training certificates from your training records' },
+                ]" :key="item.text" class="flex items-start gap-2.5">
+                  <div class="w-5 h-5 rounded-md bg-[var(--color-primary-light)] flex items-center justify-center shrink-0 mt-0.5">
+                    <i :class="['pi text-[9px] text-[var(--color-primary)]', item.icon]"></i>
+                  </div>
+                  <p class="text-xs text-[var(--text-sub)] leading-snug">{{ item.text }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload rules -->
+            <div class="rounded-2xl border border-[var(--border-main)] overflow-hidden">
+              <div class="px-4 py-3 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2.5">
+                <i class="pi pi-upload text-[var(--text-muted)] shrink-0" style="font-size:11px"></i>
+                <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-main)]">Document Upload Rules</p>
+              </div>
+
+              <!-- PDF rule -->
+              <div class="px-4 py-3 bg-[var(--surface)] border-b border-[var(--border-main)] flex items-start gap-3">
+                <div class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="pi pi-file-pdf text-rose-500" style="font-size:14px"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-black text-[var(--text-main)] mb-0.5">Multi-page documents → PDF required</p>
+                  <p class="text-xs text-[var(--text-sub)] leading-relaxed">
+                    If your document has <strong>more than one page</strong> (e.g. TOR, PDS, IPCRF), you must combine all pages into a <strong>single PDF file</strong> before uploading. Do not upload separate images per page.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Image rule -->
+              <div class="px-4 py-3 bg-[var(--surface)] border-b border-[var(--border-main)] flex items-start gap-3">
+                <div class="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="pi pi-image text-sky-500" style="font-size:14px"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-black text-[var(--text-main)] mb-0.5">Single-page documents → image accepted</p>
+                  <p class="text-xs text-[var(--text-sub)] leading-relaxed">
+                    If your document fits on <strong>one page</strong> (e.g. a single certificate, medal photo, award), uploading a clear <strong>JPG or PNG photo</strong> is fine. Make sure the entire document is visible with no cut edges.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Quality rule -->
+              <div class="px-4 py-3 bg-[var(--surface)] border-b border-[var(--border-main)] flex items-start gap-3">
+                <div class="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="pi pi-eye text-emerald-500" style="font-size:14px"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-black text-[var(--text-main)] mb-0.5">All text, signatures &amp; stamps must be readable</p>
+                  <p class="text-xs text-[var(--text-sub)] leading-relaxed">
+                    Lay the document flat on a well-lit surface. Avoid shadows, glare, and folded corners. Blurry or unreadable documents will be <strong>rejected during verification</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Scanner tip -->
+              <div class="px-4 py-3 bg-amber-50 flex items-start gap-3">
+                <div class="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+                  <i class="pi pi-mobile text-amber-600" style="font-size:14px"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-black text-amber-800 mb-1">No scanner? Use your phone</p>
+                  <p class="text-xs text-amber-700 leading-relaxed mb-2">
+                    Free scanner apps automatically straighten and convert your photo into a clean PDF.
+                  </p>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    <div v-for="app in [
+                      { name: 'Adobe Scan',     note: 'iOS & Android' },
+                      { name: 'Microsoft Lens', note: 'iOS & Android' },
+                      { name: 'Google Drive',   note: 'Android built-in' },
+                      { name: 'CamScanner',     note: 'iOS & Android' },
+                    ]" :key="app.name"
+                      class="px-2.5 py-1.5 rounded-lg bg-white border border-amber-200">
+                      <p class="text-[10px] font-bold text-[var(--text-main)]">{{ app.name }}</p>
+                      <p class="text-[9px] text-[var(--text-faint)]">{{ app.note }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -564,68 +696,6 @@ const closeModal = () => {
         <!-- ══ STEP 3: DOCUMENT UPLOAD ══════════════════════════════════════ -->
         <template v-else-if="step === 'upload'">
           <div class="overflow-y-auto custom-scrollbar flex-1 px-6 sm:px-8 py-6 space-y-4">
-
-            <!-- Upload Guide -->
-            <div class="rounded-2xl border border-[var(--color-primary)]/20 overflow-hidden">
-
-              <!-- Header -->
-              <div class="px-4 py-3 bg-[var(--color-primary-light)] flex items-center gap-2.5">
-                <i class="pi pi-info-circle text-[var(--color-primary)] shrink-0"></i>
-                <p class="text-xs font-bold text-[var(--color-primary)]">Before you upload — read this first</p>
-              </div>
-
-              <!-- Quality requirement -->
-              <div class="px-4 py-3 bg-[var(--surface)] border-t border-[var(--color-primary)]/10 space-y-2">
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-faint)]">File Quality Requirements</p>
-                <ul class="space-y-1.5 text-xs text-[var(--text-sub)] leading-relaxed">
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-emerald-500 shrink-0 mt-0.5" style="font-size:11px"></i>
-                    <span><strong>PDF is preferred.</strong> All pages of a document should be in a single PDF file.</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-emerald-500 shrink-0 mt-0.5" style="font-size:11px"></i>
-                    <span><strong>Images must be clear and fully readable</strong> — all text, signatures, and stamps must be visible. Blurry, dark, or cut-off documents will be rejected during verification.</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-emerald-500 shrink-0 mt-0.5" style="font-size:11px"></i>
-                    <span><strong>Lay documents flat</strong> on a well-lit surface before taking a photo. Avoid shadows, glare, and folds covering content.</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-emerald-500 shrink-0 mt-0.5" style="font-size:11px"></i>
-                    <span><strong>Accepted formats:</strong> PDF, JPG, PNG. Maximum 15 MB per file.</span>
-                  </li>
-                </ul>
-              </div>
-
-              <!-- Scanner app tip -->
-              <div class="px-4 py-3 bg-amber-50 border-t border-amber-100 space-y-1.5">
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700 flex items-center gap-1.5">
-                  <i class="pi pi-mobile" style="font-size:9px"></i> Tip: Use your phone as a document scanner
-                </p>
-                <p class="text-xs text-amber-800 leading-relaxed">
-                  No scanner? Use a <strong>free scanner app</strong> to photograph your documents and save them as a clean, straight PDF automatically.
-                </p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                  <div v-for="app in [
-                    { name: 'Adobe Scan',      icon: 'pi-file-pdf',   note: 'iOS & Android' },
-                    { name: 'Microsoft Lens',  icon: 'pi-camera',     note: 'iOS & Android' },
-                    { name: 'Google Drive',    icon: 'pi-google',     note: 'Android built-in' },
-                    { name: 'CamScanner',      icon: 'pi-qrcode',     note: 'iOS & Android' },
-                  ]" :key="app.name"
-                    class="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-white border border-amber-200">
-                    <i :class="['pi shrink-0 text-amber-500', app.icon]" style="font-size:12px"></i>
-                    <div class="min-w-0">
-                      <p class="text-[10px] font-bold text-[var(--text-main)] truncate">{{ app.name }}</p>
-                      <p class="text-[9px] text-[var(--text-faint)]">{{ app.note }}</p>
-                    </div>
-                  </div>
-                </div>
-                <p class="text-[10px] text-amber-700 pt-0.5">
-                  Open any of these apps → tap <strong>Scan</strong> → point camera at document → save as <strong>PDF</strong> → upload here.
-                </p>
-              </div>
-
-            </div>
 
             <!-- Required Documents -->
             <div class="space-y-1">
@@ -918,11 +988,289 @@ const closeModal = () => {
 
           <div class="px-6 sm:px-8 py-4 border-t border-[var(--border-main)] flex items-center justify-between shrink-0 bg-[var(--surface)]">
             <AppButton variant="secondary" @click="step = 'select'"><i class="pi pi-arrow-left text-[10px] mr-1"></i> Back</AppButton>
-            <AppButton @click="step = 'review'" iconRight="pi-arrow-right">Review Checklist</AppButton>
+            <AppButton @click="step = 'verify'" iconRight="pi-arrow-right">Verify Documents</AppButton>
           </div>
         </template>
 
-        <!-- ══ STEP 4: REVIEW CHECKLIST ══════════════════════════════════════ -->
+        <!-- ══ STEP 4: VERIFY DOCUMENTS ══════════════════════════════════════ -->
+        <template v-else-if="step === 'verify'">
+          <div class="overflow-y-auto custom-scrollbar flex-1 px-6 sm:px-8 py-6 space-y-2">
+
+            <!-- Header note -->
+            <div class="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 mb-4">
+              <i class="pi pi-eye text-amber-600 mt-0.5 shrink-0"></i>
+              <p class="text-xs text-amber-800 leading-relaxed">
+                <strong>Check each document carefully.</strong> Click <strong>View</strong> to open and confirm you uploaded the correct file. Documents are shown in physical folder order.
+              </p>
+            </div>
+
+            <!-- ① Application Letter -->
+            <template v-if="findSlot('applicationLetter')">
+              <div class="flex items-center gap-3 px-4 py-3 rounded-2xl border"
+                :class="docs.applicationLetter ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-black"
+                  :class="docs.applicationLetter ? 'bg-emerald-500 text-white' : 'bg-rose-400 text-white'">1</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[10px] font-black uppercase tracking-widest mb-0.5"
+                    :class="docs.applicationLetter ? 'text-emerald-700' : 'text-rose-500'">Application Letter</p>
+                  <p class="text-xs font-medium text-[var(--text-main)] truncate">{{ docs.applicationLetter?.fileName || 'Not uploaded — required' }}</p>
+                </div>
+                <button v-if="docs.applicationLetter" @click="viewDoc(docs.applicationLetter.fileUrl, 'Application Letter')"
+                  class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                  <i class="pi pi-eye" style="font-size:9px"></i> View
+                </button>
+                <button v-else @click="step = 'upload'"
+                  class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-rose-600 bg-rose-100 border border-rose-200 hover:bg-rose-500 hover:text-white transition-all outline-none">
+                  <i class="pi pi-upload" style="font-size:9px"></i> Upload
+                </button>
+              </div>
+            </template>
+
+            <!-- ② Personal Data Sheet -->
+            <template v-if="findSlot('pds')">
+              <div class="flex items-center gap-3 px-4 py-3 rounded-2xl border"
+                :class="docs.pds ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-black"
+                  :class="docs.pds ? 'bg-emerald-500 text-white' : 'bg-rose-400 text-white'">2</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[10px] font-black uppercase tracking-widest mb-0.5"
+                    :class="docs.pds ? 'text-emerald-700' : 'text-rose-500'">Personal Data Sheet (PDS)</p>
+                  <p class="text-xs font-medium text-[var(--text-main)] truncate">{{ docs.pds?.fileName || 'Not uploaded — required' }}</p>
+                </div>
+                <button v-if="docs.pds" @click="viewDoc(docs.pds.fileUrl, 'Personal Data Sheet (PDS)')"
+                  class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                  <i class="pi pi-eye" style="font-size:9px"></i> View
+                </button>
+                <button v-else @click="step = 'upload'"
+                  class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-rose-600 bg-rose-100 border border-rose-200 hover:bg-rose-500 hover:text-white transition-all outline-none">
+                  <i class="pi pi-upload" style="font-size:9px"></i> Upload
+                </button>
+              </div>
+            </template>
+
+            <!-- ③ Performance Rating -->
+            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl border"
+              :class="docs.performanceRatingDoc ? 'border-emerald-200 bg-emerald-50' : perfNotApplicable ? 'border-slate-200 bg-slate-50' : 'border-amber-200 bg-amber-50'">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-black"
+                :class="docs.performanceRatingDoc ? 'bg-emerald-500 text-white' : perfNotApplicable ? 'bg-slate-400 text-white' : 'bg-amber-400 text-white'">3</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-black uppercase tracking-widest mb-0.5"
+                  :class="docs.performanceRatingDoc ? 'text-emerald-700' : perfNotApplicable ? 'text-slate-500' : 'text-amber-700'">Performance Rating / IPCRF</p>
+                <p class="text-xs font-medium text-[var(--text-main)] truncate">
+                  {{ docs.performanceRatingDoc ? docs.performanceRatingDoc.fileName : perfNotApplicable ? 'Marked as Not Applicable' : 'Not uploaded' }}
+                </p>
+                <p v-if="docs.performanceRatingDoc && perfRatingFilled" class="text-[9px] text-emerald-600 mt-0.5">
+                  {{ perfRating.adjective }} · {{ perfRating.score }} · {{ perfRating.periodCovered }}
+                </p>
+              </div>
+              <button v-if="docs.performanceRatingDoc" @click="viewDoc(docs.performanceRatingDoc.fileUrl, 'Performance Rating / IPCRF')"
+                class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                <i class="pi pi-eye" style="font-size:9px"></i> View
+              </button>
+            </div>
+
+            <!-- ④ Education Records (TOR / Diploma) -->
+            <div class="rounded-2xl border overflow-hidden" :class="pdsRows[0].val.value.length > 0 ? 'border-[var(--border-main)]' : 'border-[var(--border-main)]'">
+              <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">4</div>
+                <i class="pi pi-graduation-cap text-[10px] text-[var(--color-primary)]"></i>
+                <p class="text-xs font-black text-[var(--text-main)]">Education Records</p>
+                <span class="ml-auto text-[10px] font-bold text-[var(--text-faint)]">{{ pdsRows[0].val.value.length }} selected</span>
+              </div>
+              <div v-if="pdsRows[0].val.value.length === 0" class="px-4 py-3 bg-[var(--surface)]">
+                <p class="text-[10px] text-[var(--text-faint)]">No education records selected.</p>
+              </div>
+              <div v-else class="divide-y divide-[var(--border-main)]">
+                <div v-for="(item, i) in getSelectedItems(pdsRows[0])" :key="i" class="px-4 py-3 bg-[var(--surface)]">
+                  <p class="text-xs font-bold text-[var(--text-main)] leading-snug">{{ pdsRows[0].title(item) }}</p>
+                  <p v-if="pdsRows[0].sub(item)" class="text-[10px] text-[var(--text-muted)]">{{ pdsRows[0].sub(item) }}</p>
+                  <p v-if="pdsRows[0].period(item)" class="text-[9px] text-[var(--text-faint)]">{{ pdsRows[0].period(item) }}</p>
+                  <div v-if="getRecordDocs('edu', item).length" class="mt-2 flex flex-wrap gap-1.5">
+                    <button v-for="doc in getRecordDocs('edu', item)" :key="doc.label"
+                      @click="viewDoc(doc.url, doc.label)"
+                      class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                      <i class="pi pi-eye" style="font-size:9px"></i> {{ doc.label }}
+                    </button>
+                  </div>
+                  <p v-else class="mt-1.5 text-[10px] text-amber-600 flex items-center gap-1">
+                    <i class="pi pi-exclamation-triangle" style="font-size:9px"></i> No document attached in profile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ⑤ Eligibility Records -->
+            <div class="rounded-2xl border overflow-hidden">
+              <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">5</div>
+                <i class="pi pi-verified text-[10px] text-[var(--color-primary)]"></i>
+                <p class="text-xs font-black text-[var(--text-main)]">Eligibility Records</p>
+                <span class="ml-auto text-[10px] font-bold"
+                  :class="qsNoneFor('eligibility') ? 'text-emerald-600' : 'text-[var(--text-faint)]'">
+                  {{ qsNoneFor('eligibility') ? 'Not required' : `${pdsRows[1].val.value.length} selected` }}
+                </span>
+              </div>
+              <div v-if="qsNoneFor('eligibility')" class="px-4 py-3 bg-emerald-50">
+                <p class="text-[10px] text-emerald-600 flex items-center gap-1.5"><i class="pi pi-check-circle" style="font-size:9px"></i> Not required for this position.</p>
+              </div>
+              <div v-else-if="pdsRows[1].val.value.length === 0" class="px-4 py-3 bg-[var(--surface)]">
+                <p class="text-[10px] text-[var(--text-faint)]">No eligibility records selected.</p>
+              </div>
+              <div v-else class="divide-y divide-[var(--border-main)]">
+                <div v-for="(item, i) in getSelectedItems(pdsRows[1])" :key="i" class="px-4 py-3 bg-[var(--surface)]">
+                  <p class="text-xs font-bold text-[var(--text-main)]">{{ pdsRows[1].title(item) }}</p>
+                  <p v-if="pdsRows[1].period(item)" class="text-[9px] text-[var(--text-faint)]">{{ pdsRows[1].period(item) }}</p>
+                  <div v-if="getRecordDocs('elig', item).length" class="mt-2 flex flex-wrap gap-1.5">
+                    <button v-for="doc in getRecordDocs('elig', item)" :key="doc.label"
+                      @click="viewDoc(doc.url, doc.label)"
+                      class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                      <i class="pi pi-eye" style="font-size:9px"></i> {{ doc.label }}
+                    </button>
+                  </div>
+                  <p v-else class="mt-1.5 text-[10px] text-amber-600 flex items-center gap-1">
+                    <i class="pi pi-exclamation-triangle" style="font-size:9px"></i> No document attached in profile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ⑥ Work Experience Records -->
+            <div class="rounded-2xl border overflow-hidden">
+              <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">6</div>
+                <i class="pi pi-briefcase text-[10px] text-[var(--color-primary)]"></i>
+                <p class="text-xs font-black text-[var(--text-main)]">Work Experience Records</p>
+                <span class="ml-auto text-[10px] font-bold"
+                  :class="qsNoneFor('experience') ? 'text-emerald-600' : 'text-[var(--text-faint)]'">
+                  {{ qsNoneFor('experience') ? 'Not required' : `${pdsRows[2].val.value.length} selected` }}
+                </span>
+              </div>
+              <div v-if="qsNoneFor('experience')" class="px-4 py-3 bg-emerald-50">
+                <p class="text-[10px] text-emerald-600 flex items-center gap-1.5"><i class="pi pi-check-circle" style="font-size:9px"></i> Not required for this position.</p>
+              </div>
+              <div v-else-if="pdsRows[2].val.value.length === 0" class="px-4 py-3 bg-[var(--surface)]">
+                <p class="text-[10px] text-[var(--text-faint)]">No experience records selected.</p>
+              </div>
+              <div v-else class="divide-y divide-[var(--border-main)]">
+                <div v-for="(item, i) in getSelectedItems(pdsRows[2])" :key="i" class="px-4 py-3 bg-[var(--surface)]">
+                  <p class="text-xs font-bold text-[var(--text-main)]">{{ pdsRows[2].title(item) }}</p>
+                  <p v-if="pdsRows[2].sub(item)" class="text-[10px] text-[var(--text-muted)]">{{ pdsRows[2].sub(item) }}</p>
+                  <p v-if="pdsRows[2].period(item)" class="text-[9px] text-[var(--text-faint)]">{{ pdsRows[2].period(item) }}</p>
+                  <div v-if="getRecordDocs('exp', item).length" class="mt-2 flex flex-wrap gap-1.5">
+                    <button v-for="doc in getRecordDocs('exp', item)" :key="doc.label"
+                      @click="viewDoc(doc.url, doc.label)"
+                      class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                      <i class="pi pi-eye" style="font-size:9px"></i> {{ doc.label }}
+                    </button>
+                  </div>
+                  <p v-else class="mt-1.5 text-[10px] text-amber-600 flex items-center gap-1">
+                    <i class="pi pi-exclamation-triangle" style="font-size:9px"></i> No document attached in profile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ⑦ Training Records -->
+            <div class="rounded-2xl border overflow-hidden">
+              <div class="px-4 py-2.5 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">7</div>
+                <i class="pi pi-book text-[10px] text-[var(--color-primary)]"></i>
+                <p class="text-xs font-black text-[var(--text-main)]">Training Records</p>
+                <span class="ml-auto text-[10px] font-bold"
+                  :class="qsNoneFor('trainings') ? 'text-emerald-600' : 'text-[var(--text-faint)]'">
+                  {{ qsNoneFor('trainings') ? 'Not required' : `${pdsRows[3].val.value.length} selected` }}
+                </span>
+              </div>
+              <div v-if="qsNoneFor('trainings')" class="px-4 py-3 bg-emerald-50">
+                <p class="text-[10px] text-emerald-600 flex items-center gap-1.5"><i class="pi pi-check-circle" style="font-size:9px"></i> Not required for this position.</p>
+              </div>
+              <div v-else-if="pdsRows[3].val.value.length === 0" class="px-4 py-3 bg-[var(--surface)]">
+                <p class="text-[10px] text-[var(--text-faint)]">No training records selected.</p>
+              </div>
+              <div v-else class="divide-y divide-[var(--border-main)]">
+                <div v-for="(item, i) in getSelectedItems(pdsRows[3])" :key="i" class="px-4 py-3 bg-[var(--surface)]">
+                  <p class="text-xs font-bold text-[var(--text-main)]">{{ pdsRows[3].title(item) }}</p>
+                  <p v-if="pdsRows[3].sub(item)" class="text-[10px] text-[var(--text-muted)]">{{ pdsRows[3].sub(item) }}</p>
+                  <p v-if="pdsRows[3].period(item)" class="text-[9px] text-[var(--text-faint)]">{{ pdsRows[3].period(item) }}</p>
+                  <div v-if="getRecordDocs('trn', item).length" class="mt-2 flex flex-wrap gap-1.5">
+                    <button v-for="doc in getRecordDocs('trn', item)" :key="doc.label"
+                      @click="viewDoc(doc.url, doc.label)"
+                      class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                      <i class="pi pi-eye" style="font-size:9px"></i> {{ doc.label }}
+                    </button>
+                  </div>
+                  <p v-else class="mt-1.5 text-[10px] text-amber-600 flex items-center gap-1">
+                    <i class="pi pi-exclamation-triangle" style="font-size:9px"></i> No document attached in profile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ⑧ Proof of Employment / Latest Appointment (optional) -->
+            <div v-if="docs.latestAppointment" class="flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--border-main)] bg-[var(--surface)]">
+              <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">8</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-0.5">Proof of Employment / Latest Appointment</p>
+                <p class="text-xs font-medium text-[var(--text-main)] truncate">{{ docs.latestAppointment.fileName }}</p>
+              </div>
+              <button @click="viewDoc(docs.latestAppointment.fileUrl, 'Latest Appointment')"
+                class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                <i class="pi pi-eye" style="font-size:9px"></i> View
+              </button>
+            </div>
+
+            <!-- ⑨ Work Experience Sheet (optional) -->
+            <div v-if="docs.workExperienceSheet" class="flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--border-main)] bg-[var(--surface)]">
+              <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">9</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-0.5">Work Experience Sheet</p>
+                <p class="text-xs font-medium text-[var(--text-main)] truncate">{{ docs.workExperienceSheet.fileName }}</p>
+              </div>
+              <button @click="viewDoc(docs.workExperienceSheet.fileUrl, 'Work Experience Sheet')"
+                class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                <i class="pi pi-eye" style="font-size:9px"></i> View
+              </button>
+            </div>
+
+            <!-- ⑩+ Track-specific optional docs -->
+            <template v-for="(slot, si) in optionalSlots.filter(s => !['latestAppointment','workExperienceSheet'].includes(s.key))" :key="slot.key">
+              <template v-if="slot.isArray && docUploaded(slot)">
+                <div v-for="(f, idx) in docs[slot.key]" :key="idx"
+                  class="flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--border-main)] bg-[var(--surface)]">
+                  <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">{{ 10 + si }}</div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-0.5">{{ slot.label }} ({{ idx + 1 }})</p>
+                    <p class="text-xs font-medium text-[var(--text-main)] truncate">{{ f.fileName }}</p>
+                  </div>
+                  <button @click="viewDoc(f.fileUrl, `${slot.label} (${idx + 1})`)"
+                    class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                    <i class="pi pi-eye" style="font-size:9px"></i> View
+                  </button>
+                </div>
+              </template>
+              <div v-else-if="!slot.isArray && docUploaded(slot)"
+                class="flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--border-main)] bg-[var(--surface)]">
+                <div class="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0 text-[9px] font-black text-white">{{ 10 + si }}</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] mb-0.5">{{ slot.label }}</p>
+                  <p class="text-xs font-medium text-[var(--text-main)] truncate">{{ docs[slot.key]?.fileName }}</p>
+                </div>
+                <button @click="viewDoc(docs[slot.key]?.fileUrl, slot.label)"
+                  class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)] hover:text-white transition-all outline-none">
+                  <i class="pi pi-eye" style="font-size:9px"></i> View
+                </button>
+              </div>
+            </template>
+
+          </div>
+
+          <div class="px-6 sm:px-8 py-4 border-t border-[var(--border-main)] flex items-center justify-between shrink-0 bg-[var(--surface)]">
+            <AppButton variant="secondary" @click="step = 'upload'"><i class="pi pi-arrow-left text-[10px] mr-1"></i> Back</AppButton>
+            <AppButton @click="step = 'review'" iconRight="pi-arrow-right">Proceed to Submit</AppButton>
+          </div>
+        </template>
+
+        <!-- ══ STEP 5: REVIEW CHECKLIST ══════════════════════════════════════ -->
         <template v-else-if="step === 'review'">
           <div class="overflow-y-auto custom-scrollbar flex-1 px-6 sm:px-8 py-6 space-y-4">
 
@@ -1024,7 +1372,7 @@ const closeModal = () => {
           </div>
 
           <div class="px-6 sm:px-8 py-4 border-t border-[var(--border-main)] flex items-center justify-between shrink-0 bg-[var(--surface)]">
-            <AppButton variant="secondary" @click="step = 'upload'"><i class="pi pi-arrow-left text-[10px] mr-1"></i> Back</AppButton>
+            <AppButton variant="secondary" @click="step = 'verify'"><i class="pi pi-arrow-left text-[10px] mr-1"></i> Back</AppButton>
             <div class="flex items-center gap-3">
               <p v-if="submitError" class="text-[10px] font-bold text-rose-500 flex items-center gap-1 max-w-[180px]">
                 <i class="pi pi-exclamation-circle" style="font-size:9px"></i> {{ submitError }}
@@ -1070,4 +1418,10 @@ const closeModal = () => {
       </div>
     </div>
   </Teleport>
+
+  <AppFileViewer
+    v-model="viewerVisible"
+    :url="viewerUrl"
+    :title="viewerTitle"
+  />
 </template>

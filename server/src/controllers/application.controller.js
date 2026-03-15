@@ -83,9 +83,7 @@ export const applyToJob = catchAsync(async (req, res, next) => {
     submissionDocs: submissionDocs || {},
   });
 
-  await Job.findByIdAndUpdate(jobId, {
-    $addToSet: { applications: newApplication._id },
-  });
+  // No longer maintaining Job.applications array — use Application.find({ submittedTo: jobId }) instead
 
   res.status(201).json({ status: "success", data: newApplication });
 });
@@ -112,7 +110,8 @@ export const getJobApplications = catchAsync(async (req, res, next) => {
   const { jobId } = req.params;
   const applications = await Application.find({ submittedTo: jobId })
     .populate("submittedBy", "username email avatarUrl")
-    .sort("-totalScore");
+    .sort("-totalScore")
+    .lean();
 
   res.status(200).json({ status: "success", data: applications });
 });
@@ -350,7 +349,7 @@ export const syncApplicationWithProfile = catchAsync(async (req, res, next) => {
   }
 
   const Profile = (await import('../models/Profile.js')).default;
-  const profile = await Profile.findOne({ user: application.submittedBy._id });
+  const profile = await Profile.findOne({ user: application.submittedBy._id }).lean();
   if (!profile) return next(new AppError('Profile not found for this user.', 404));
 
   application.applicantData = {

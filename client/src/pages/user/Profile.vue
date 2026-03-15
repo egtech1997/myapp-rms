@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { resolveUrl } from '@/utils/url'
 import apiClient from '@/api/axios'
 
-import { AppSpinner, AppFileViewer } from '@/components/ui'
+import { AppSpinner, AppFileViewer, AppModal } from '@/components/ui'
 
 import PersonalTab    from '@/components/user/pds/PersonalTab.vue'
 import FamilyTab      from '@/components/user/pds/FamilyTab.vue'
@@ -33,6 +33,7 @@ const activeTab = ref(localStorage.getItem('profile_active_tab') || 'personal')
 const showViewer  = ref(false)
 const viewerUrl   = ref('')
 const viewerTitle = ref('')
+const showTips    = ref(false)
 
 const openViewer = (url, title = 'Document Preview') => {
   if (!url) return
@@ -220,7 +221,13 @@ onActivated(loadProfile)
 
         <!-- Identity -->
         <div class="flex-1 min-w-0">
-          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)] mb-0.5">Applicant Profile</p>
+          <div class="flex items-center gap-2 mb-0.5">
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)]">Applicant Profile</p>
+            <button @click="showTips = true"
+              class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-300 text-amber-600 bg-amber-50 hover:bg-amber-400 hover:text-white hover:border-amber-400 transition-all duration-200 outline-none">
+              <i class="pi pi-lightbulb" style="font-size:8px"></i> Tips
+            </button>
+          </div>
           <p class="text-base font-black text-[var(--text-main)] leading-tight">{{ fullName }}</p>
           <p class="text-xs text-[var(--text-muted)] truncate">{{ authStore.user?.email }}</p>
         </div>
@@ -294,6 +301,114 @@ onActivated(loadProfile)
     </div>
 
     <AppFileViewer v-model="showViewer" :url="viewerUrl" :title="viewerTitle" />
+
+    <!-- ── Upload Tips Modal ──────────────────────────────────────────────── -->
+    <AppModal v-model="showTips" title="Document Upload Tips" size="lg">
+      <div class="space-y-4">
+
+        <!-- Intro -->
+        <div class="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+          <i class="pi pi-lightbulb text-amber-500 mt-0.5 shrink-0"></i>
+          <p class="text-xs text-amber-800 leading-relaxed">
+            Upload supporting documents to each record so HR can verify your qualifications during the application process. Good-quality uploads prevent delays and rejections.
+          </p>
+        </div>
+
+        <!-- Multi-page → PDF -->
+        <div class="rounded-2xl border border-[var(--border-main)] overflow-hidden">
+          <div class="px-4 py-3 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2">
+            <i class="pi pi-file-pdf text-[var(--text-muted)]" style="font-size:11px"></i>
+            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-main)]">File Format Rules</p>
+          </div>
+
+          <div class="px-4 py-3 bg-[var(--surface)] border-b border-[var(--border-main)] flex items-start gap-3">
+            <div class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0 mt-0.5">
+              <i class="pi pi-file-pdf text-rose-500" style="font-size:14px"></i>
+            </div>
+            <div>
+              <p class="text-xs font-black text-[var(--text-main)] mb-0.5">Multi-page documents → PDF required</p>
+              <p class="text-xs text-[var(--text-sub)] leading-relaxed">
+                Documents with <strong>more than one page</strong> (e.g. Transcript of Records, IPCRF, Appointment Order) must be saved as a <strong>single PDF file</strong>. Do not upload separate images per page — they will not be accepted.
+              </p>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <span v-for="ex in ['Transcript of Records','IPCRF / RPMS','Appointment Order','PDS Form 212','COE (multi-page)']" :key="ex"
+                  class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-200">{{ ex }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-4 py-3 bg-[var(--surface)] flex items-start gap-3">
+            <div class="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center shrink-0 mt-0.5">
+              <i class="pi pi-image text-sky-500" style="font-size:14px"></i>
+            </div>
+            <div>
+              <p class="text-xs font-black text-[var(--text-main)] mb-0.5">Single-page documents → image accepted</p>
+              <p class="text-xs text-[var(--text-sub)] leading-relaxed">
+                Documents that fit on <strong>one page</strong> can be uploaded as a <strong>JPG or PNG photo</strong>. Make sure the full document is visible with no cut-off edges.
+              </p>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <span v-for="ex in ['Training Certificate','Eligibility Certificate','License ID','Award / Commendation','Single-page COE']" :key="ex"
+                  class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-50 text-sky-600 border border-sky-200">{{ ex }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quality tips -->
+        <div class="rounded-2xl border border-[var(--border-main)] overflow-hidden">
+          <div class="px-4 py-3 bg-[var(--bg-app)] border-b border-[var(--border-main)] flex items-center gap-2">
+            <i class="pi pi-eye text-[var(--text-muted)]" style="font-size:11px"></i>
+            <p class="text-[10px] font-black uppercase tracking-widest text-[var(--text-main)]">Photo Quality Checklist</p>
+          </div>
+          <div class="px-4 py-3 bg-[var(--surface)] space-y-2.5">
+            <div v-for="tip in [
+              { icon: 'pi-sun',        text: 'Take photos in good lighting — natural light near a window works best.' },
+              { icon: 'pi-stop',       text: 'Lay the document flat on a plain surface. No folds, wrinkles, or curled edges.' },
+              { icon: 'pi-eye',        text: 'All text, signatures, and official stamps must be clearly readable.' },
+              { icon: 'pi-times-circle', text: 'Avoid shadows across the document and glare from flashlights.' },
+              { icon: 'pi-expand',     text: 'The entire document must fit inside the frame — no cut-off edges.' },
+            ]" :key="tip.text" class="flex items-start gap-2.5">
+              <div class="w-5 h-5 rounded-md bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 mt-0.5">
+                <i :class="['pi text-[9px] text-emerald-600', tip.icon]"></i>
+              </div>
+              <p class="text-xs text-[var(--text-sub)] leading-snug">{{ tip.text }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scanner apps -->
+        <div class="rounded-2xl border border-amber-200 overflow-hidden">
+          <div class="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+            <i class="pi pi-mobile text-amber-600" style="font-size:11px"></i>
+            <p class="text-[10px] font-black uppercase tracking-widest text-amber-800">No scanner? Use your phone</p>
+          </div>
+          <div class="px-4 py-3 bg-[var(--surface)] space-y-3">
+            <p class="text-xs text-[var(--text-sub)] leading-relaxed">
+              Free scanner apps automatically straighten, crop, and convert your document photo into a clean PDF — no physical scanner needed.
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+              <div v-for="app in [
+                { name: 'Adobe Scan',     icon: 'pi-file-pdf', note: 'iOS & Android — best quality PDF output' },
+                { name: 'Microsoft Lens', icon: 'pi-camera',   note: 'iOS & Android — integrates with OneDrive' },
+                { name: 'Google Drive',   icon: 'pi-google',   note: 'Android built-in — tap + then Scan' },
+                { name: 'CamScanner',     icon: 'pi-qrcode',   note: 'iOS & Android — quick and reliable' },
+              ]" :key="app.name"
+                class="flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-app)]">
+                <i :class="['pi text-amber-500 shrink-0 mt-0.5', app.icon]" style="font-size:14px"></i>
+                <div class="min-w-0">
+                  <p class="text-xs font-bold text-[var(--text-main)]">{{ app.name }}</p>
+                  <p class="text-[10px] text-[var(--text-faint)] leading-snug">{{ app.note }}</p>
+                </div>
+              </div>
+            </div>
+            <p class="text-[10px] text-amber-700 bg-amber-50 rounded-xl px-3 py-2 border border-amber-200">
+              <strong>How to use:</strong> Open app → tap <strong>Scan</strong> → point camera at document → adjust crop → save as <strong>PDF</strong> → upload here.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </AppModal>
   </div>
 </template>
 
