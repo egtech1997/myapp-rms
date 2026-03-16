@@ -65,11 +65,8 @@ watch(() => props.modelValue, (open) => {
     selElig.value = props.profile.eligibility?.map((_, i) => i) || []
     selExp.value  = props.profile.experience?.map((_, i) => i)  || []
     selTrn.value  = props.profile.training?.map((_, i) => i)    || []
-    perfRating.value = {
-      score:         props.profile.performanceRating?.score         ?? '',
-      adjective:     props.profile.performanceRating?.adjective     ?? '',
-      periodCovered: props.profile.performanceRating?.periodCovered ?? '',
-    }
+    // Performance rating is per-application, not stored in profile — always start blank
+    perfRating.value = { score: '', adjective: '', periodCovered: '' }
   }
 })
 

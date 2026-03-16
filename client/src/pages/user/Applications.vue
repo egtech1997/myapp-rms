@@ -49,7 +49,7 @@ const filtered = computed(() => {
   return list
 })
 
-const isFinalIer = computed(() => !!selectedApp.value?.isVerified)
+const isFinalIer = computed(() => !!selectedApp.value?.isVerified && !!selectedApp.value?.job?.finalIerReleasedAt)
 
 // Journey steps with status mapping
 const journeySteps = [

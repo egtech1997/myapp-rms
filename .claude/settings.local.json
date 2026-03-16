@@ -19,7 +19,8 @@
       "Bash(cd C:/Users/DepEd/Desktop/myapp/client && npx vite build --mode development 2>&1 | grep -E \"^.*error|built\" | tail -5)",
       "Bash(cd C:/Users/DepEd/Desktop/myapp/client && npx vite build --mode development 2>&1 | grep -E \"error|built\" | tail -3)",
       "Bash(grep -rn \"from 'primevue\" C:/Users/DepEd/Desktop/myapp/client/src/ 2>/dev/null)",
-      "Bash(find /c/Users/DepEd/Desktop/myapp/client/src -name \"*.vue\" | xargs grep -l \"apply\\\\|Apply\\\\|vacancy\\\\|Vacancy\" | grep -i \"user\\\\|vacanc\" | head -10)"
+      "Bash(find /c/Users/DepEd/Desktop/myapp/client/src -name \"*.vue\" | xargs grep -l \"apply\\\\|Apply\\\\|vacancy\\\\|Vacancy\" | grep -i \"user\\\\|vacanc\" | head -10)",
+      "Bash(find /c/Users/DepEd/Desktop/myapp/client/src/pages/user -type f -name \"*.vue\" 2>/dev/null | head -20)"
     ]
   }
 }

@@ -17,6 +17,7 @@ router.use(protect);
 router.post("/", requirePermission("vac_create"), validate(jobSchema), jobController.createJob);
 router.patch("/bulk-status", requirePermission("vac_edit"), jobController.bulkUpdateStatus);
 router.patch("/:id", requirePermission("vac_edit"), validate(jobUpdateSchema), jobController.updateJob);
+router.patch("/:id/finalize-ier", requirePermission("vac_edit"), jobController.finalizeIer);
 router.delete("/:id", requirePermission("vac_delete"), jobController.deleteJob);
 
 export default router;

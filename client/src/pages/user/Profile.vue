@@ -118,7 +118,7 @@ const loadProfile = async () => {
   loading.value = true
   try {
     const { data } = await apiClient.get('/v1/profile/me')
-    if (data.data) Object.assign(form, data.data)
+    if (data.data) Object.assign(form, JSON.parse(JSON.stringify(data.data)))
   } catch {
     toast.fire({ icon: 'error', title: 'Failed to load profile data' })
   } finally {
@@ -129,7 +129,7 @@ const loadProfile = async () => {
 const saveProfile = async () => {
   saving.value = true
   try {
-    await apiClient.put('/v1/profile/me', form)
+    await apiClient.put('/v1/profile/me', JSON.parse(JSON.stringify(form)))
     toast.fire({ icon: 'success', title: 'Profile saved!' })
     // If in setup mode and required fields are now filled, continue to intended destination
     if (isSetupMode.value && form.name?.firstName) {
@@ -186,7 +186,7 @@ const handleUpload = async (event, section, index, field) => {
       form.comelecAddress.documentUploadedAt = at
     }
     // Auto-save so file URLs persist across page refreshes
-    await apiClient.put('/v1/profile/me', form)
+    await apiClient.put('/v1/profile/me', JSON.parse(JSON.stringify(form)))
     toast.fire({ icon: 'success', title: 'Document uploaded and saved' })
   } catch {
     toast.fire({ icon: 'error', title: 'Upload failed' })

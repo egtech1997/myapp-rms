@@ -101,7 +101,8 @@ const profileSchema = new mongoose.Schema(
       {
         level: {
           type: String,
-          enum: ["Elementary", "Secondary", "Vocational", "Bachelor", "Masteral", "Doctorate"],
+          enum: ["Elementary", "Secondary", "Vocational", "Associate", "Bachelor",
+                 "Post-Baccalaureate", "Masteral", "Post-Graduate Diploma", "Doctorate"],
           required: true,
         },
         school: { type: String, required: true },

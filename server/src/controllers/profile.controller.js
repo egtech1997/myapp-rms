@@ -17,11 +17,53 @@ export const getMyProfile = catchAsync(async (req, res) => {
   res.status(200).json({ status: "success", data: profile || null });
 });
 
+// Ensure a profile sub-array only contains plain objects, never strings.
+// Strings can accumulate when a reactive proxy or array gets JSON.stringify'd
+// and re-saved (e.g. Vue proxy serialisation edge cases or client reloads).
+const sanitizeProfileArray = (arr) => {
+  if (!Array.isArray(arr)) return arr;
+  return arr.flatMap((item) => {
+    if (item && typeof item === 'object') return [item];
+    if (typeof item !== 'string') return [];
+    const trimmed = item.trim();
+    const target = trimmed.startsWith('[') ? trimmed : trimmed.startsWith('{') ? `[${trimmed}]` : null;
+    if (!target) return [];
+    try {
+      const parsed = JSON.parse(target);
+      return Array.isArray(parsed) ? parsed.filter(i => i && typeof i === 'object') : [];
+    } catch {
+      // JS-notation (single quotes, ObjectId, etc.) — extract {...} blocks
+      const blocks = target.match(/\{[^{}]+\}/g) || [];
+      return blocks.map(block => {
+        const get = (f) => {
+          const m = block.match(new RegExp(`${f}:\\s*['"]([^'"]+)['"]`)) ||
+                    block.match(new RegExp(`${f}:\\s*([^,\\s}]+)`));
+          return m ? m[1] : undefined;
+        };
+        return Object.fromEntries(
+          ['type','name','rating','dateOfExam','placeOfExam','licenseNumber',
+           'licenseValidity','document','licenseDocument','school','degree',
+           'level','position','company','serviceType','title','hours','periodFrom','periodTo',
+           'provider','typeOfLD','salaryGrade','statusOfAppointment']
+            .map(f => [f, get(f)])
+            .filter(([, v]) => v !== undefined)
+        );
+      }).filter(o => Object.keys(o).length > 0);
+    }
+  });
+};
+
 // ── PUT /v1/profile/me ────────────────────────────────────────────────────────
 export const upsertMyProfile = catchAsync(async (req, res) => {
+  // Sanitize arrays before saving — prevents stringified arrays from persisting in MongoDB
+  const body = { ...req.body };
+  ['education', 'eligibility', 'experience', 'training', 'voluntaryWork'].forEach(key => {
+    if (body[key] !== undefined) body[key] = sanitizeProfileArray(body[key]);
+  });
+
   const profile = await Profile.findOneAndUpdate(
     { user: req.user._id },
-    { $set: { ...req.body, user: req.user._id } },
+    { $set: { ...body, user: req.user._id } },
     { returnDocument: 'after', upsert: true, runValidators: false },
   );
 

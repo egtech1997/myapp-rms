@@ -18,7 +18,7 @@ const applications = ref([])
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('all')
-const isIerPosted = ref(false)
+const finalIerReleased = computed(() => !!selectedJob.value?.finalIerReleasedAt)
 
 // ── PICKER STATE ─────────────────────────────────────────────────────────────
 const showJobPicker = ref(false)
@@ -33,6 +33,7 @@ const selectedDocUrl = ref('')
 const selectedDocLabel = ref('')
 const isPreviewFullscreen = ref(false)
 const saving = ref(false)
+const syncingProfile = ref(false)
 
 const pdsTabs = [
   { id: 'personal', label: 'Profile', icon: 'pi-user' },
@@ -101,11 +102,12 @@ const allViewableDocs = computed(() => {
 })
 
 const checklist = reactive({
-  education: { checked: false, note: '' },
+  education:   { checked: false, note: '' },
   eligibility: { checked: false, note: '' },
-  experience: { checked: false, note: '' },
-  training: { checked: false, note: '' },
+  experience:  { checked: false, note: '' },
+  training:    { checked: false, note: '' },
   performance: { checked: false, note: '' },
+  documents:   { checked: false, note: '' },
 })
 const verifyQualified = ref(true)
 const verifyReason = ref('')
@@ -130,6 +132,7 @@ const filtered = computed(() => {
   return list
 })
 
+const CHECKLIST_TOTAL = computed(() => Object.keys(checklist).length)
 const checksCompleted = computed(() => Object.values(checklist).filter(c => c.checked).length)
 
 const selectedJob = computed(() => jobs.value.find(j => j._id === selectedJobId.value) || null)
@@ -163,21 +166,8 @@ const onJobChange = () => {
   if (selectedJobId.value) {
     statusFilter.value = 'review'
     loadApplications()
-    checkIerStatus()
   } else {
     applications.value = []
-    isIerPosted.value = false
-  }
-}
-
-const checkIerStatus = async () => {
-  if (!selectedJobId.value) return
-  try {
-    const { data } = await apiClient.get('/v1/announcements/admin')
-    const ier = data.data.find(a => a.job === selectedJobId.value && a.type === 'ier_release')
-    isIerPosted.value = !!ier
-  } catch (err) {
-    console.error('Failed to check IER status', err)
   }
 }
 
@@ -321,96 +311,118 @@ const extractString = (val) => {
   return String(val)
 }
 
+// ── Normalize a single record object for display ─────────────────────────────
+const normalizeRecord = (obj, key) => {
+  if (!obj || typeof obj !== 'object') return obj
+  const normalized = { ...obj }
+  if (key === 'eligibility' && !normalized.name && normalized.type) {
+    normalized.name = extractString(normalized.type)
+  }
+  Object.keys(normalized).forEach(field => {
+    const val = normalized[field]
+    if (field !== 'isRelevant' && field !== 'auditRemarks' && field !== '_isCorrupt') {
+      if (val && typeof val === 'object' && !(val instanceof Date)) {
+        normalized[field] = extractString(val)
+      }
+    }
+  })
+  return normalized
+}
+
 // ── Refresh Snapshot ─────────────────────────────────────────────────────────
 const sanitizeApplicantData = (app) => {
   if (!app?.applicantData) return
-  
+
   const sections = ['education', 'eligibility', 'experience', 'training']
   sections.forEach(key => {
-    if (Array.isArray(app.applicantData[key])) {
-      app.applicantData[key] = app.applicantData[key].map(item => {
-        let normalized = item
-        if (typeof item === 'string' && (item.trim().startsWith('{') || item.trim().startsWith('['))) {
-          try {
-            const parsed = JSON.parse(item)
-            normalized = (parsed && typeof parsed === 'object') ? parsed : { name: item, isRelevant: true }
-          } catch (e) {
-            // It's a non-JSON object string (likely Mongoose inspect output)
-            // Extract all likely fields to prevent data loss in UI
-            normalized = {
-              name:          extractField(item, 'name') || extractField(item, 'type') || item,
-              type:          extractField(item, 'type'),
-              rating:        extractField(item, 'rating'),
-              dateOfExam:    extractField(item, 'dateOfExam'),
-              placeOfExam:   extractField(item, 'placeOfExam'),
-              licenseNumber: extractField(item, 'licenseNumber'),
-              licenseValidity: extractField(item, 'licenseValidity'),
-              // Also handle other sections
-              school:        extractField(item, 'school'),
-              degree:        extractField(item, 'degree'),
-              position:      extractField(item, 'position'),
-              company:       extractField(item, 'company'),
-              title:         extractField(item, 'title'),
-              isRelevant:    true,
-              _isCorrupt:    true,
-              auditRemarks:  'Extracted from object-string'
-            }
-          }
+    if (!Array.isArray(app.applicantData[key])) return
+
+    app.applicantData[key] = app.applicantData[key].flatMap(item => {
+      // ── Plain object — just normalize ──────────────────────────────────────
+      if (typeof item !== 'string') {
+        return [normalizeRecord(item, key)]
+      }
+
+      const trimmed = item.trim()
+
+      // ── Stringified ARRAY (entire array collapsed into one string element) ──
+      // This happens when the whole array was .toString()'d and saved as one element.
+      // We can't reliably eval JS-notation, so try JSON first, otherwise skip to
+      // avoid a Mongoose CastError on the backend.
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          if (Array.isArray(parsed)) return parsed.map(i => normalizeRecord(i, key))
+        } catch {}
+        // Non-JSON (single-quoted JS notation) — extract individual object blocks
+        // using regex to find each {...} segment, then extract fields from each
+        const blocks = trimmed.match(/\{[^{}]+\}/g) || []
+        if (blocks.length) {
+          return blocks.map(block => ({
+            name:            extractField(block, 'name') || extractField(block, 'type') || '',
+            type:            extractField(block, 'type') || '',
+            rating:          extractField(block, 'rating') || '',
+            dateOfExam:      extractField(block, 'dateOfExam') || null,
+            placeOfExam:     extractField(block, 'placeOfExam') || '',
+            licenseNumber:   extractField(block, 'licenseNumber') || '',
+            licenseValidity: extractField(block, 'licenseValidity') || null,
+            document:        extractField(block, 'document') || '',
+            school:          extractField(block, 'school') || '',
+            degree:          extractField(block, 'degree') || '',
+            level:           extractField(block, 'level') || '',
+            periodFrom:      extractField(block, 'periodFrom') || null,
+            periodTo:        extractField(block, 'periodTo') || null,
+            position:        extractField(block, 'position') || '',
+            company:         extractField(block, 'company') || '',
+            title:           extractField(block, 'title') || '',
+            hours:           extractField(block, 'hours') || '',
+            typeOfLD:        extractField(block, 'typeOfLD') || '',
+            provider:        extractField(block, 'provider') || '',
+            isRelevant:      extractField(block, 'isRelevant') !== 'false',
+            auditRemarks:    extractField(block, 'auditRemarks') || '',
+            _isCorrupt:      true,
+          })).map(obj => normalizeRecord(obj, key))
         }
-        
-        // Handle all properties in the record that might be objects
-        if (normalized && typeof normalized === 'object') {
-          // Special for eligibility: if 'name' is missing but 'type' exists, use 'type' as name
-          if (key === 'eligibility' && !normalized.name && normalized.type) {
-            normalized.name = extractString(normalized.type)
-          }
+        return [] // truly unrecoverable — skip to avoid CastError
+      }
 
-          // Normalize ONLY object/array fields to strings for simple template display
-          Object.keys(normalized).forEach(field => {
-            const val = normalized[field]
-            if (field !== 'isRelevant' && field !== 'auditRemarks' && field !== '_isCorrupt') {
-              if (val && typeof val === 'object' && !(val instanceof Date)) {
-                normalized[field] = extractString(val)
-              }
-            }
-          })
+      // ── Stringified single OBJECT ──────────────────────────────────────────
+      if (trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          return [normalizeRecord(parsed, key)]
+        } catch {
+          return [{
+            name:            extractField(trimmed, 'name') || extractField(trimmed, 'type') || '',
+            type:            extractField(trimmed, 'type') || '',
+            rating:          extractField(trimmed, 'rating') || '',
+            dateOfExam:      extractField(trimmed, 'dateOfExam') || null,
+            placeOfExam:     extractField(trimmed, 'placeOfExam') || '',
+            licenseNumber:   extractField(trimmed, 'licenseNumber') || '',
+            licenseValidity: extractField(trimmed, 'licenseValidity') || null,
+            school:          extractField(trimmed, 'school') || '',
+            degree:          extractField(trimmed, 'degree') || '',
+            position:        extractField(trimmed, 'position') || '',
+            company:         extractField(trimmed, 'company') || '',
+            title:           extractField(trimmed, 'title') || '',
+            isRelevant:      extractField(trimmed, 'isRelevant') !== 'false',
+            auditRemarks:    extractField(trimmed, 'auditRemarks') || '',
+            _isCorrupt:      true,
+          }]
         }
-        
-        return normalized
-      })
-    }
-  })
-}
+      }
 
-const syncLoading = ref(false)
-const syncFromProfile = async () => {
-  const result = await swal.fire({
-    title: 'Sync Latest Profile?',
-    text: 'This will overwrite the current application snapshot with the candidate\'s latest profile data.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, Sync Now',
+      return [] // unknown format — skip
+    })
   })
-  if (!result.isConfirmed) return
-
-  syncLoading.value = true
-  try {
-    const { data } = await apiClient.post(`/v1/applications/${selected.value._id}/sync-profile`)
-    const sanitized = data.data
-    sanitizeApplicantData(sanitized)
-    selected.value = sanitized
-    const idx = applications.value.findIndex(a => a._id === selected.value._id)
-    if (idx !== -1) applications.value[idx] = sanitized
-    toast.fire({ icon: 'success', title: 'Snapshot Synchronized' })
-  } catch (err) {
-    toast.fire({ icon: 'error', title: 'Sync Failed', text: err.response?.data?.message })
-  } finally {
-    syncLoading.value = false
-  }
 }
 
 const openReview = (app) => {
   sanitizeApplicantData(app)
+  // Ensure performanceRating is always a plain object so inputs can bind safely
+  if (app.applicantData && !app.applicantData.performanceRating) {
+    app.applicantData.performanceRating = {}
+  }
   selected.value = app
   activePdsTab.value = 'personal'
   showPreview.value = false
@@ -435,12 +447,43 @@ const closeAudit = () => {
   document.body.style.overflow = ''
 }
 
+// Strip _isCorrupt and extra display-only fields before sending to server
+const cleanForServer = (applicantData) => {
+  if (!applicantData) return applicantData
+  const raw = JSON.parse(JSON.stringify(applicantData))
+  const sections = ['education', 'eligibility', 'experience', 'training']
+  sections.forEach(key => {
+    if (Array.isArray(raw[key])) {
+      raw[key] = raw[key].flatMap(item => {
+        // Filter out corrupt string items — Mongoose cannot cast strings as subdocuments
+        if (!item || typeof item !== 'object') return []
+        // Strip fields not in the Application schema (common across all sections)
+        const { _isCorrupt, ...rest } = item
+        // Nullify empty/invalid date strings so Mongoose doesn't throw CastError
+        if (key === 'eligibility') {
+          if (!rest.dateOfExam || rest.dateOfExam === 'null') rest.dateOfExam = null
+          if (!rest.licenseValidity || rest.licenseValidity === 'null') rest.licenseValidity = null
+        }
+        if (key === 'experience') {
+          if (!rest.periodFrom || rest.periodFrom === 'null') rest.periodFrom = null
+          if (!rest.periodTo || rest.periodTo === 'null') rest.periodTo = null
+        }
+        if (key === 'training') {
+          if (!rest.dateIssued || rest.dateIssued === 'null') rest.dateIssued = null
+        }
+        return [rest]
+      })
+    }
+  })
+  return raw
+}
+
 const draftSaving = ref(false)
 const saveDraft = async () => {
   draftSaving.value = true
   try {
     await apiClient.patch(`/v1/applications/${selected.value._id}/status`, {
-      applicantData: selected.value.applicantData,
+      applicantData: cleanForServer(selected.value.applicantData),
     })
     toast.fire({ icon: 'success', title: 'Progress Saved' })
   } catch (err) {
@@ -450,47 +493,84 @@ const saveDraft = async () => {
   }
 }
 
-const postIER = async () => {
+const finalizeIER = async () => {
   if (stats.value.forReview > 0) {
     const confirm = await swal.fire({
       title: 'Pending Reviews',
-      text: `There are still ${stats.value.forReview} applicants for review. Posting the IER now will only include verified applicants. Continue?`,
+      text: `There are still ${stats.value.forReview} applicant(s) not yet verified. Releasing the Final IER now will only cover verified applicants. Continue?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, Proceed anyway',
+      confirmButtonText: 'Yes, Continue',
+      confirmButtonColor: '#4A4D8F',
     })
     if (!confirm.isConfirmed) return
   }
 
   const result = await swal.fire({
-    title: isIerPosted.value ? 'Re-post Initial Evaluation Results?' : 'Post Initial Evaluation Results?',
-    text: isIerPosted.value 
-      ? 'This will update the existing IER announcement on the public bulletin.' 
-      : 'This will publish the IER to the public bulletin and notify all qualified/disqualified candidates.',
+    title: finalIerReleased.value ? 'Re-release Final IER?' : 'Release Final IER?',
+    html: finalIerReleased.value
+      ? 'This will update the Final IER timestamp. Applicants will see their results updated on the portal.'
+      : 'This will mark the IER as <strong>Final</strong>. Applicants will be able to view and print their individual IER with verification results, strikethroughs on irrelevant items, and verifier names.',
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'Yes, Publish Now',
+    confirmButtonText: finalIerReleased.value ? 'Yes, Re-release' : 'Yes, Release Final IER',
+    confirmButtonColor: '#4A4D8F',
   })
   if (!result.isConfirmed) return
   try {
-    await apiClient.post('/v1/announcements/ier', { jobId: selectedJobId.value })
-    toast.fire({ icon: 'success', title: 'IER Posted Successfully' })
-    isIerPosted.value = true
+    const { data } = await apiClient.patch(`/v1/jobs/${selectedJobId.value}/finalize-ier`)
+    // Update the selectedJob in jobs list so finalIerReleased computed updates
+    const idx = jobs.value.findIndex(j => j._id === selectedJobId.value)
+    if (idx !== -1) jobs.value[idx] = { ...jobs.value[idx], finalIerReleasedAt: data.data.finalIerReleasedAt }
+    toast.fire({ icon: 'success', title: 'Final IER Released' })
   } catch (err) {
-    toast.fire({ icon: 'error', title: 'Failed to post IER', text: err.response?.data?.message })
+    toast.fire({ icon: 'error', title: 'Failed to release Final IER', text: err.response?.data?.message })
   }
 }
 
-const exportIER = () => {
-  if (!selectedJobId.value) return
-  showIerReport.value = true
-}
 
-const downloadCsv = () => {
-  // logic handled by component
+const syncApplicationProfile = async () => {
+  const result = await swal.fire({
+    title: 'Sync Profile Snapshot?',
+    html: 'This will refresh the applicant data snapshot from their current profile — updating any documents or records they added after submitting. This cannot be undone.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Sync',
+    confirmButtonColor: '#4A4D8F',
+  })
+  if (!result.isConfirmed) return
+  syncingProfile.value = true
+  try {
+    const { data } = await apiClient.post(`/v1/applications/${selected.value._id}/sync-profile`)
+    // Re-sanitize and update local selected state
+    sanitizeApplicantData(data.data)
+    if (data.data.applicantData && !data.data.applicantData.performanceRating) {
+      data.data.applicantData.performanceRating = {}
+    }
+    selected.value = { ...selected.value, ...data.data }
+    toast.fire({ icon: 'success', title: 'Profile synced successfully' })
+  } catch (err) {
+    toast.fire({ icon: 'error', title: 'Sync failed', text: err.response?.data?.message })
+  } finally {
+    syncingProfile.value = false
+  }
 }
 
 const submitVerification = async () => {
+  if (!verifyQualified.value && !verifyReason.value.trim()) {
+    return swal.fire({ icon: 'warning', title: 'Reason Required', text: 'Please state the reason for disqualification.' })
+  }
+  if (checksCompleted.value < CHECKLIST_TOTAL.value) {
+    const r = await swal.fire({
+      icon: 'warning',
+      title: 'Incomplete Checklist',
+      text: `${CHECKLIST_TOTAL.value - checksCompleted.value} item(s) not yet marked as verified. Continue anyway?`,
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Continue',
+      confirmButtonColor: '#4A4D8F',
+    })
+    if (!r.isConfirmed) return
+  }
   saving.value = true
   try {
     const payload = {
@@ -499,13 +579,15 @@ const submitVerification = async () => {
       disqualificationReason: verifyQualified.value ? '' : verifyReason.value,
       isVerified: true,
       status: verifyQualified.value ? 'comparative_assessment' : 'disqualified',
-      applicantData: selected.value.applicantData
+      applicantData: cleanForServer(selected.value.applicantData),
     }
     const { data } = await apiClient.patch(`/v1/applications/${selected.value._id}/status`, payload)
     const idx = applications.value.findIndex(a => a._id === selected.value._id)
     if (idx !== -1) applications.value[idx] = data.data
     toast.fire({ icon: 'success', title: verifyQualified.value ? 'Applicant Qualified' : 'Applicant Disqualified' })
     closeAudit()
+  } catch (err) {
+    swal.fire({ icon: 'error', title: 'Submission Failed', text: err.response?.data?.message || 'An error occurred.' })
   } finally {
     saving.value = false
   }
@@ -617,6 +699,10 @@ onMounted(fetchJobs)
 // ── Export ────────────────────────────────────────────────────────────────────
 const showReport = ref(false)
 const showIerReport = ref(false)
+const showNonQualIER = ref(false)
+
+const qualifiedApps = computed(() => applications.value.filter(a => a.isVerified && a.isQualified))
+const nonQualifiedApps = computed(() => applications.value.filter(a => a.isVerified && !a.isQualified))
 
 const reportCols = [
   { label: 'Name of Applicant', value: (a) => fullName(a) },
@@ -709,6 +795,40 @@ const ierReportCols = [
   },
 ]
 
+const ierNonQualCols = [
+  { label: 'App Code', key: 'applicationCode', width: '45px' },
+  { label: 'Name of Applicant', value: (a) => fullName(a), width: '110px' },
+  {
+    label: 'Address',
+    width: '90px',
+    value: (a) => {
+      const addr = a.applicantData?.personalInfo?.address || {}
+      const bgy = extractString(addr.barangay)
+      const mun = extractString(addr.municipality)
+      const prv = extractString(addr.province)
+      return `${bgy !== '—' ? bgy : ''}, ${mun !== '—' ? mun : ''}, ${prv !== '—' ? prv : ''}`.replace(/^, |, $/, '').toUpperCase()
+    }
+  },
+  { label: 'Age', value: (a) => calculateAge(a.applicantData?.personalInfo?.birthDate), width: '25px' },
+  { label: 'Sex', value: (a) => a.applicantData?.personalInfo?.sex?.toUpperCase()?.charAt(0) || '—', width: '25px' },
+  { label: 'Education', width: '110px', value: (a) => (a.applicantData?.education || []).filter(e => e.isRelevant !== false).map(e => extractString(e.degree).toUpperCase()).filter(Boolean).join('\n\n') },
+  { label: 'Training', width: '90px', value: (a) => (a.applicantData?.training || []).filter(t => t.isRelevant !== false).map(t => extractString(t.title).toUpperCase()).filter(Boolean).join('\n\n') },
+  { label: 'Hours', width: '30px', value: (a) => calculateTotalTrainingHours(a.applicantData?.training) },
+  { label: 'Experience', width: '110px', value: (a) => (a.applicantData?.experience || []).filter(e => e.isRelevant !== false).map(e => extractString(e.position).toUpperCase()).filter(Boolean).join('\n\n') },
+  { label: 'Total Exp.', width: '60px', value: (a) => calculateTotalExperience(a.applicantData?.experience) },
+  {
+    label: 'Eligibility',
+    width: '90px',
+    value: (a) => {
+      const items = (a.applicantData?.eligibility || []).filter(e => e.isRelevant !== false)
+      if (items.length === 0) return '—'
+      return items.map(e => shortenEligibility(extractString(e.name || e.type || e.category || e))).filter(Boolean).join('\n\n')
+    }
+  },
+  { label: 'Disqualification Reason', width: '130px', value: (a) => a.disqualificationReason || 'Not specified' },
+  { label: 'Remarks', width: '70px', value: () => 'DISQUALIFIED' },
+]
+
 const filterTabs = [
   { id: 'all', label: 'All', countKey: 'total' },
   { id: 'review', label: 'For Review', countKey: 'forReview' },
@@ -729,12 +849,13 @@ const filterTabs = [
             <i class="pi pi-users text-[11px]"></i>
             <span>{{ applications.length }} applicant{{ applications.length !== 1 ? 's' : '' }}</span>
           </div>
-          <AppButton variant="secondary" icon="pi-download" @click="exportIER" :disabled="loading">Export IER</AppButton>
-          <AppButton 
-            :variant="isIerPosted ? 'success' : 'secondary'" 
-            :icon="isIerPosted ? 'pi-check-circle' : 'pi-megaphone'" 
-            @click="postIER">
-            {{ isIerPosted ? 'IER Posted' : 'Post IER' }}
+          <AppButton variant="secondary" icon="pi-download" @click="showIerReport = true" :disabled="loading || qualifiedApps.length === 0">IER Qualified</AppButton>
+          <AppButton v-if="nonQualifiedApps.length > 0" variant="secondary" icon="pi-times-circle" @click="showNonQualIER = true" :disabled="loading">IER Non-Qualified</AppButton>
+          <AppButton
+            :variant="finalIerReleased ? 'success' : 'secondary'"
+            :icon="finalIerReleased ? 'pi-check-circle' : 'pi-send'"
+            @click="finalizeIER">
+            {{ finalIerReleased ? 'Final IER Released' : 'Final IER' }}
           </AppButton>
         </div>
       </template>
@@ -923,11 +1044,19 @@ const filterTabs = [
 
     <AppTableReport
       v-model="showIerReport"
-      title="Initial Evaluation Results (IER)"
+      title="Initial Evaluation Results (IER) — Qualified Applicants"
       :subtitle="selectedJob ? selectedJob.positionTitle : ''"
       :columns="ierReportCols"
-      :rows="applications"
-      filename="IER" />
+      :rows="qualifiedApps"
+      filename="IER-Qualified" />
+
+    <AppTableReport
+      v-model="showNonQualIER"
+      title="Initial Evaluation Results — Non-Qualified Applicants"
+      :subtitle="selectedJob ? selectedJob.positionTitle : ''"
+      :columns="ierNonQualCols"
+      :rows="nonQualifiedApps"
+      filename="IER-Non-Qualified" />
 
     <!-- ── JOB PICKER MODAL (Refined) ────────────────────────────────────────── -->
     <AppModal v-model="showJobPicker" title="Select Recruitment Vacancy" icon="pi-briefcase" width="max-w-2xl">
@@ -1044,9 +1173,6 @@ const filterTabs = [
             </div>
           </div>
           <div class="flex items-center gap-3">
-             <AppButton v-if="!selected.isVerified" variant="secondary" size="sm" icon="pi-sync" :loading="syncLoading" @click="syncFromProfile">
-               Sync Latest Profile
-             </AppButton>
              <AppButton variant="ghost" icon="pi-times" @click="closeAudit" />
           </div>
         </header>
@@ -1062,9 +1188,14 @@ const filterTabs = [
                   <i :class="['pi text-[10px]', tab.icon]"></i>{{ tab.label }}
                 </button>
               </div>
-              <AppButton variant="secondary" size="sm" :icon="showPreview ? 'pi-eye-slash' : 'pi-file-pdf'" @click="showPreview = !showPreview">
-                {{ showPreview ? 'Hide Files' : 'View Proofs' }}
-              </AppButton>
+              <div class="flex items-center gap-2">
+                <AppButton v-if="!selected?.isVerified" variant="ghost" size="sm" icon="pi-refresh" :loading="syncingProfile" @click="syncApplicationProfile" title="Re-snapshot the applicant's current profile data (updates documents added after submission)">
+                  Sync Profile
+                </AppButton>
+                <AppButton variant="secondary" size="sm" :icon="showPreview ? 'pi-eye-slash' : 'pi-file-pdf'" @click="showPreview = !showPreview">
+                  {{ showPreview ? 'Hide Files' : 'View Proofs' }}
+                </AppButton>
+              </div>
             </div>
 
             <div class="flex-1 flex overflow-hidden">
@@ -1152,6 +1283,9 @@ const filterTabs = [
                                 title="View TOR">
                                 <i class="pi pi-file-pdf"></i> TOR
                               </button>
+                              <span v-if="!edu.diploma && !edu.tor" class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-faint)] border border-dashed border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase cursor-default">
+                                <i class="pi pi-file"></i> No Document
+                              </span>
                             </div>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
@@ -1215,10 +1349,21 @@ const filterTabs = [
                           <!-- Relevance Toggle -->
                           <div class="flex flex-col items-end gap-2 shrink-0">
                             <button v-if="elig.document"
-                              @click="selectedDocUrl = resolveUrl(elig.document); selectedDocLabel = `${elig.name || 'Eligibility'} — Certificate`; showPreview = true"
+                              @click="selectedDocUrl = resolveUrl(elig.document); selectedDocLabel = `${elig.name || 'Eligibility'} — Rating Certificate`; showPreview = true"
                               class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
-                              <i class="pi pi-file-pdf"></i> View Proof
+                              <i class="pi pi-file-pdf"></i> Rating Cert
                             </button>
+                            <span v-else class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-faint)] border border-dashed border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1 cursor-default">
+                              <i class="pi pi-file"></i> No Cert
+                            </span>
+                            <button v-if="elig.licenseDocument"
+                              @click="selectedDocUrl = resolveUrl(elig.licenseDocument); selectedDocLabel = `${elig.name || 'Eligibility'} — License ID`; showPreview = true"
+                              class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
+                              <i class="pi pi-id-card"></i> License ID
+                            </button>
+                            <span v-else class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-faint)] border border-dashed border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1 cursor-default">
+                              <i class="pi pi-id-card"></i> No License
+                            </span>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="elig.isRelevant = true"
@@ -1281,8 +1426,8 @@ const filterTabs = [
                                  :class="exp.isRelevant === false ? 'text-red-400 line-through' : 'text-[var(--text-main)]'">{{ exp.company }}</p>
                             </div>
                             <div>
-                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">SG / Gov't</p>
-                               <p class="text-[10px] font-bold text-[var(--text-main)] mt-1 uppercase">SG-{{ exp.salaryGrade || '—' }} &bull; {{ exp.isGov ? 'Yes' : 'No' }}</p>
+                               <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">SG / Service</p>
+                               <p class="text-[10px] font-bold text-[var(--text-main)] mt-1 uppercase">SG-{{ exp.salaryGrade || '—' }} &bull; {{ exp.serviceType || '—' }}</p>
                             </div>
                             <div>
                                <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Period</p>
@@ -1297,6 +1442,9 @@ const filterTabs = [
                               class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
                               <i class="pi pi-file-pdf"></i> View Proof
                             </button>
+                            <span v-else class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-faint)] border border-dashed border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1 cursor-default">
+                              <i class="pi pi-file"></i> No Document
+                            </span>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="exp.isRelevant = true"
@@ -1366,6 +1514,9 @@ const filterTabs = [
                               class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all border border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1">
                               <i class="pi pi-file-pdf"></i> View Proof
                             </button>
+                            <span v-else class="p-2 rounded-lg bg-[var(--bg-app)] text-[var(--text-faint)] border border-dashed border-[var(--border-main)] flex items-center gap-2 text-[9px] font-black uppercase mb-1 cursor-default">
+                              <i class="pi pi-file"></i> No Document
+                            </span>
                             <div class="flex items-center gap-1 bg-[var(--surface)] p-1 rounded-lg border border-[var(--border-main)] shadow-sm">
                               <button 
                                 @click="trn.isRelevant = true"
@@ -1417,7 +1568,6 @@ const filterTabs = [
                           The applicant indicated they are a fresh graduate, Job Order, or COS employee — no performance evaluation is available.
                           This is automatically treated as <strong>Met</strong> for IER purposes.
                         </p>
-                        <!-- Performance Rating Doc if uploaded despite N/A -->
                         <button v-if="selected.submissionDocs?.performanceRatingDoc?.fileUrl"
                           @click="selectedDocUrl = resolveUrl(selected.submissionDocs.performanceRatingDoc.fileUrl); selectedDocLabel = 'Performance Rating Doc'; showPreview = true"
                           class="mt-3 px-3 py-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] text-[10px] font-black uppercase flex items-center gap-2 border border-[var(--color-primary)]/20">
@@ -1426,16 +1576,47 @@ const filterTabs = [
                       </div>
                     </div>
 
-                    <!-- Has rating -->
-                    <div v-else-if="selected.applicantData?.performanceRating?.score" class="space-y-6">
-                      <div class="grid grid-cols-2 gap-x-8 gap-y-8">
-                        <div v-for="[l, v] in [
-                          ['Numerical Score', selected.applicantData.performanceRating.score],
-                          ['Adjectival Rating', selected.applicantData.performanceRating.adjective],
-                          ['Period Covered', selected.applicantData.performanceRating.periodCovered],
-                        ]" :key="l">
-                          <p class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{{ l }}</p>
-                          <p class="text-sm font-bold text-[var(--text-main)] mt-1.5 uppercase leading-tight">{{ v || '—' }}</p>
+                    <!-- Rating fields (editable) + doc -->
+                    <template v-else>
+                      <p class="text-[10px] text-[var(--text-muted)] mb-5">
+                        Performance rating is submitted per application. Edit below if needed, then click <strong>Save Draft</strong>.
+                      </p>
+                      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="field">
+                          <label class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Numerical Score</label>
+                          <input
+                            type="number"
+                            step="0.01" min="1" max="5"
+                            class="input w-full"
+                            placeholder="e.g. 4.75"
+                            :value="selected.applicantData?.performanceRating?.score"
+                            @input="selected.applicantData.performanceRating = { ...(selected.applicantData.performanceRating || {}), score: $event.target.value }"
+                          />
+                        </div>
+                        <div class="field">
+                          <label class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Adjectival Rating</label>
+                          <select
+                            class="input w-full"
+                            :value="selected.applicantData?.performanceRating?.adjective"
+                            @change="selected.applicantData.performanceRating = { ...(selected.applicantData.performanceRating || {}), adjective: $event.target.value }"
+                          >
+                            <option value="">Select…</option>
+                            <option>Outstanding</option>
+                            <option>Very Satisfactory</option>
+                            <option>Satisfactory</option>
+                            <option>Unsatisfactory</option>
+                            <option>Poor</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Period Covered</label>
+                          <input
+                            type="text"
+                            class="input w-full"
+                            placeholder="e.g. Jan 2024 – Dec 2024"
+                            :value="selected.applicantData?.performanceRating?.periodCovered"
+                            @input="selected.applicantData.performanceRating = { ...(selected.applicantData.performanceRating || {}), periodCovered: $event.target.value }"
+                          />
                         </div>
                       </div>
                       <button v-if="selected.submissionDocs?.performanceRatingDoc?.fileUrl"
@@ -1443,10 +1624,8 @@ const filterTabs = [
                         class="px-3 py-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] text-[10px] font-black uppercase flex items-center gap-2 border border-[var(--color-primary)]/20">
                         <i class="pi pi-file-pdf text-[10px]"></i> View Performance Rating Doc
                       </button>
-                    </div>
-
-                    <!-- Nothing submitted -->
-                    <div v-else class="py-12 text-center text-[var(--text-muted)] text-sm">No performance rating submitted.</div>
+                      <p v-else class="text-[10px] text-[var(--text-faint)] italic">No performance rating document uploaded.</p>
+                    </template>
                   </section>
 
                   <!-- ── Documents ── -->
@@ -1617,28 +1796,35 @@ const filterTabs = [
             <div class="p-6 border-b border-[var(--border-main)]">
               <div class="flex justify-between items-center mb-3">
                 <h3 class="text-[10px] font-bold text-[var(--text-main)] uppercase tracking-widest">Verification Audit</h3>
-                <span class="text-xs font-bold tabular-nums text-[var(--color-primary)]">{{ checksCompleted }} / 5</span>
+                <span class="text-xs font-bold tabular-nums text-[var(--color-primary)]">{{ checksCompleted }} / {{ CHECKLIST_TOTAL }}</span>
               </div>
               <div class="h-2 bg-[var(--bg-app)] rounded-full overflow-hidden border border-[var(--border-main)]/50">
                 <div class="h-full rounded-full transition-all duration-500"
-                  :class="checksCompleted === 5 ? 'bg-emerald-500' : 'bg-[var(--color-primary)]'"
-                  :style="{ width: `${(checksCompleted / 5) * 100}%` }"></div>
+                  :class="checksCompleted === CHECKLIST_TOTAL ? 'bg-emerald-500' : 'bg-[var(--color-primary)]'"
+                  :style="{ width: `${(checksCompleted / CHECKLIST_TOTAL) * 100}%` }"></div>
               </div>
             </div>
 
             <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-2.5 bg-[var(--bg-app)]/30">
-              <div v-for="key in ['education', 'eligibility', 'experience', 'training', 'performance']" :key="key"
+              <div v-for="[key, label] in [
+                  ['education',   'Education Verified'],
+                  ['eligibility', 'Eligibility Verified'],
+                  ['experience',  'Experience Verified'],
+                  ['training',    'Training Verified'],
+                  ['performance', 'Performance Rating Verified'],
+                  ['documents',   'Documents Verified'],
+                ]" :key="key"
                 class="p-3.5 rounded-xl border transition-all bg-[var(--surface)] shadow-sm group"
                 :class="checklist[key].checked ? 'border-emerald-200 shadow-emerald-500/5' : 'border-[var(--border-main)]'">
                 <div class="flex items-start gap-3">
                   <button @click="checklist[key].checked = !checklist[key].checked"
-                    :class="['w-5 h-5 rounded flex items-center justify-center transition-all border',
+                    :class="['w-5 h-5 rounded flex items-center justify-center transition-all border flex-shrink-0 mt-0.5',
                              checklist[key].checked ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm' : 'bg-[var(--bg-app)] border-[var(--border-main)] text-transparent group-hover:border-emerald-400']">
                     <i class="pi pi-check text-[10px] font-bold"></i>
                   </button>
                   <div class="flex-1">
                     <p class="text-[10px] font-bold uppercase tracking-wide leading-none"
-                      :class="checklist[key].checked ? 'text-emerald-700' : 'text-[var(--text-main)]'">{{ key }} Verified</p>
+                      :class="checklist[key].checked ? 'text-emerald-700' : 'text-[var(--text-main)]'">{{ label }}</p>
                     <input v-model="checklist[key].note" placeholder="Add audit note..."
                       class="w-full mt-2 text-[10px] bg-[var(--surface)] border border-[var(--border-main)]/50 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400 italic placeholder:text-[var(--text-faint)]" />
                   </div>
@@ -1647,7 +1833,7 @@ const filterTabs = [
             </div>
 
             <!-- Save Draft -->
-            <div v-if="!selected.isVerified" class="px-5 pt-4 pb-0">
+            <div class="px-5 pt-4 pb-0">
               <button @click="saveDraft" :disabled="draftSaving"
                 class="w-full h-9 rounded-lg border border-[var(--border-main)] bg-[var(--bg-app)] hover:bg-[var(--surface)] text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                 <i :class="['pi text-[10px]', draftSaving ? 'pi-spin pi-spinner' : 'pi-save']"></i>
@@ -1656,7 +1842,11 @@ const filterTabs = [
             </div>
 
             <!-- Final Determination -->
-            <div v-if="!selected.isVerified" class="p-6 bg-[var(--surface)] border-t border-[var(--border-main)] space-y-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+            <div class="p-6 bg-[var(--surface)] border-t border-[var(--border-main)] space-y-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div v-if="selected.isVerified" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                <i class="pi pi-pencil text-amber-500 text-[10px]"></i>
+                <p class="text-[9px] font-bold text-amber-700 uppercase tracking-wide">Re-verification Mode — changes will overwrite previous audit</p>
+              </div>
               <div class="flex p-1 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-xl gap-1">
                 <button v-for="opt in [{ v: true, l: 'Qualified', c: 'text-emerald-600', bg: 'bg-emerald-500 shadow-emerald-500/20' },
                                        { v: false, l: 'Disqualify', c: 'text-red-600', bg: 'bg-red-500 shadow-red-500/20' }]" :key="opt.l"
@@ -1671,16 +1861,10 @@ const filterTabs = [
                 class="w-full h-20 p-3 bg-[var(--bg-app)] border border-red-200 rounded-xl text-[10px] font-medium outline-none resize-none focus:ring-2 focus:ring-red-100 transition-all"></textarea>
 
               <AppButton variant="primary" block size="lg" :loading="saving"
-                :disabled="verifyQualified && checksCompleted < 5" @click="submitVerification"
+                :disabled="!verifyQualified && !verifyReason.trim()" @click="submitVerification"
                 class="h-12 font-bold uppercase tracking-widest text-[10px]">
-                {{ verifyQualified ? 'Confirm Qualification' : 'Submit Rejection' }}
+                {{ selected.isVerified ? (verifyQualified ? 'Update — Qualified' : 'Update — Rejected') : (verifyQualified ? 'Confirm Qualification' : 'Submit Rejection') }}
               </AppButton>
-            </div>
-            
-            <!-- Read-only footer if verified -->
-            <div v-else class="p-6 bg-[var(--bg-app)] border-t border-[var(--border-main)] text-center">
-               <p class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Snapshot Locked</p>
-               <p class="text-[9px] text-[var(--text-faint)] mt-1 italic">This record is a permanent historical archive.</p>
             </div>
           </aside>
         </div>

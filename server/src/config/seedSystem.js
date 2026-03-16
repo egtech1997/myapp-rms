@@ -1,6 +1,7 @@
 import Role from "../models/Role.js";
 import User from "../models/User.js";
 
+// All explicit permissions — kept for seeding the default admin role
 const ALL_PERMISSIONS = [
   "dash_view",
   "vac_view", "vac_create", "vac_edit", "vac_delete",
@@ -13,16 +14,17 @@ const ALL_PERMISSIONS = [
 ];
 
 export const seedSystem = async () => {
-  // ── super_admin: always sync permissions so new perms are applied ──
+  // ── super_admin: uses "all" wildcard — bypasses every permission check
+  //    automatically covers any new permission added during development
   const superAdminRole = await Role.findOneAndUpdate(
     { name: "super_admin" },
     {
-      $set:        { permissions: ALL_PERMISSIONS },
+      $set:        { permissions: ["all"] },
       $setOnInsert: { description: "Full system access with immutable privileges." },
     },
     { upsert: true, returnDocument: "after" }
   );
-  console.log("✅ super_admin role synced");
+  console.log("✅ super_admin role synced (wildcard: all)");
 
   // ── admin / user: create only if missing, never overwrite customizations ──
   await Role.findOneAndUpdate(

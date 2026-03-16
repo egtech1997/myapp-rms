@@ -105,3 +105,15 @@ export const deleteJob = catchAsync(async (req, res, next) => {
 
   res.status(204).send();
 });
+
+// ── Finalize IER (Admin) ─────────────────────────────────────────────────────
+export const finalizeIer = catchAsync(async (req, res, next) => {
+  const job = await Job.findById(req.params.id);
+  if (!job) return next(new AppError('Job not found', 404));
+
+  job.finalIerReleasedAt = new Date();
+  job.finalIerReleasedBy = req.user._id;
+  await job.save();
+
+  res.status(200).json({ status: 'success', data: job });
+});

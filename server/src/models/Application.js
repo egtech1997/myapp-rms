@@ -29,6 +29,7 @@ const applicationSchema = new mongoose.Schema(
       experience:  { checked: { type: Boolean, default: false }, note: { type: String, default: "" } },
       eligibility: { checked: { type: Boolean, default: false }, note: { type: String, default: "" } },
       performance: { checked: { type: Boolean, default: false }, note: { type: String, default: "" } },
+      documents:   { checked: { type: Boolean, default: false }, note: { type: String, default: "" } },
     },
 
     applicantData: {
@@ -46,7 +47,11 @@ const applicationSchema = new mongoose.Schema(
           yearGraduated: String,
           honorsReceived: String,
           diploma: String,
+          diplomaUploadedAt: Date,
+          diplomaPending: Boolean,
           tor: String,
+          torUploadedAt: Date,
+          torPending: Boolean,
           isRelevant: { type: Boolean, default: true },
           auditRemarks: { type: String, default: "" },
           auditedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -62,7 +67,10 @@ const applicationSchema = new mongoose.Schema(
           placeOfExam: String,
           licenseNumber: String,
           licenseValidity: Date,
-          document: String,
+          document: String,                  // rating certificate / board exam result
+          documentUploadedAt: Date,
+          licenseDocument: String,           // PRC license card / license ID
+          licenseDocumentUploadedAt: Date,
           isRelevant: { type: Boolean, default: true },
           auditRemarks: { type: String, default: "" },
           auditedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -77,6 +85,7 @@ const applicationSchema = new mongoose.Schema(
           typeOfLD: String,
           provider: String,
           document: String,
+          documentUploadedAt: Date,
           isRelevant: { type: Boolean, default: true },
           auditRemarks: { type: String, default: "" },
           auditedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -92,9 +101,12 @@ const applicationSchema = new mongoose.Schema(
           monthlySalary: Number,
           salaryGrade: String,
           statusOfAppointment: String,
-          isGovernment: Boolean,
+          serviceType: String,     // "Government" | "Private" | "Self-Employed" (matches Profile model)
+          companyEmail: String,
+          companyPhone: String,
           keyResponsibilities: [String],
           document: String,
+          documentUploadedAt: Date,
           isRelevant: { type: Boolean, default: true },
           auditRemarks: { type: String, default: "" },
           auditedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

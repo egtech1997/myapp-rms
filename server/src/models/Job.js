@@ -63,7 +63,9 @@ const jobSchema = new mongoose.Schema(
     },
 
     deadline: { type: Date },
-    hideVacancyCount: { type: Boolean, default: false },
+    hideVacancyCount:     { type: Boolean, default: false },
+    finalIerReleasedAt:   { type: Date,    default: null },
+    finalIerReleasedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },
 );

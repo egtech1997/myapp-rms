@@ -8,9 +8,49 @@ import { logAction } from "../services/audit.service.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import vm from "vm";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ── Shared helper: parse a profile sub-array that may have been stored as a ──
+// stringified element in MongoDB (e.g. from Vue reactive proxy edge cases).
+const parseProfileArray = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  return arr.flatMap((item) => {
+    if (item && typeof item === 'object') return [item];
+    if (typeof item !== 'string') return [];
+    const trimmed = item.trim();
+    const target = trimmed.startsWith('[') ? trimmed : trimmed.startsWith('{') ? `[${trimmed}]` : null;
+    if (!target) return [];
+    // Try JSON first
+    try {
+      const parsed = JSON.parse(target);
+      return Array.isArray(parsed) ? parsed.filter(i => i && typeof i === 'object') : [];
+    } catch {}
+    // JS-notation fallback (single quotes, new ObjectId, raw dates)
+    try {
+      const ctx = vm.createContext({ ObjectId: (v) => v, Date });
+      const result = vm.runInNewContext(target, ctx);
+      if (Array.isArray(result)) return result.filter(i => i && typeof i === 'object');
+    } catch {}
+    // Last resort: regex extract {...} blocks
+    const extract = (block, f) => {
+      const m = block.match(new RegExp(`${f}:\\s*['"]([^'"]+)['"]`)) ||
+                block.match(new RegExp(`${f}:\\s*([^,\\s}]+)`));
+      return m ? m[1] : undefined;
+    };
+    const blocks = target.match(/\{[^{}]+\}/g) || [];
+    return blocks.map(block => Object.fromEntries(
+      ['type','name','rating','dateOfExam','placeOfExam','licenseNumber',
+       'licenseValidity','document','licenseDocument','school','degree',
+       'level','position','company','serviceType','title','hours','periodFrom','periodTo',
+       'provider','typeOfLD','salaryGrade','statusOfAppointment']
+        .map(f => [f, extract(block, f)])
+        .filter(([, v]) => v !== undefined)
+    )).filter(o => Object.keys(o).length > 0);
+  });
+};
 
 // ── 1. Submit Application (User) ────────────────────────────────────────────
 export const applyToJob = catchAsync(async (req, res, next) => {
@@ -69,11 +109,13 @@ export const applyToJob = catchAsync(async (req, res, next) => {
   applicantData.memberships             = profile.memberships   || [];
 
   // If the client did not send selected sub-arrays, fall back to full profile snapshot
-  if (!applicantData.education)   applicantData.education   = profile.education   || [];
-  if (!applicantData.eligibility) applicantData.eligibility = profile.eligibility || [];
-  if (!applicantData.experience)  applicantData.experience  = profile.experience  || [];
-  if (!applicantData.training)    applicantData.training    = profile.training    || [];
-  if (!applicantData.performanceRating) applicantData.performanceRating = profile.performanceRating || {};
+  // parseProfileArray sanitizes any corrupt string items that may be stored in the profile
+  if (!applicantData.education)   applicantData.education   = parseProfileArray(profile.education   || []);
+  if (!applicantData.eligibility) applicantData.eligibility = parseProfileArray(profile.eligibility || []);
+  if (!applicantData.experience)  applicantData.experience  = parseProfileArray(profile.experience  || []);
+  if (!applicantData.training)    applicantData.training    = parseProfileArray(profile.training    || []);
+  // performanceRating is per-application (not stored in profile) — keep what client sent or default to {}
+  if (!applicantData.performanceRating) applicantData.performanceRating = {};
 
   const newApplication = await Application.create({
     submittedBy: req.user._id,
@@ -91,8 +133,8 @@ export const applyToJob = catchAsync(async (req, res, next) => {
 // ── 2. Get My Applications (User) ──────────────────────────────────────────
 export const getMyApplications = catchAsync(async (req, res, next) => {
   const applications = await Application.find({ submittedBy: req.user._id })
-    .populate("submittedTo", "positionTitle positionCode placeOfAssignment hiringTrack status deadline salary salaryGrade qualifications itemNumbers")
-    .populate("verifiedBy", "username email avatarUrl")
+    .populate("submittedTo", "positionTitle positionCode placeOfAssignment hiringTrack status deadline salary salaryGrade qualifications itemNumbers finalIerReleasedAt finalIerReleasedBy")
+    .populate("verifiedBy", "username email avatarUrl firstName middleName lastName")
     .sort("-createdAt")
     .lean();
 
@@ -142,8 +184,13 @@ export const updateApplicantData = catchAsync(async (req, res, next) => {
   const { applicantData } = req.body;
   if (!applicantData) return next(new AppError("No applicantData provided.", 400));
 
-  application.applicantData = applicantData;
-  await application.save();
+  const clean = { ...applicantData };
+  ['education', 'eligibility', 'experience', 'training'].forEach(key => {
+    if (Array.isArray(clean[key])) clean[key] = parseProfileArray(clean[key]);
+  });
+  application.applicantData = clean;
+  application.markModified('applicantData');
+  await application.save({ validateBeforeSave: false });
 
   res.status(200).json({ status: "success", data: application });
 });
@@ -186,14 +233,18 @@ export const updateApplicationStatus = catchAsync(async (req, res, next) => {
   if (disqualificationReason !== undefined) application.disqualificationReason = disqualificationReason;
   if (verificationChecklist !== undefined) application.verificationChecklist = verificationChecklist;
   
-  // Handle relevance audit data
+  // Handle relevance audit data — sanitize array sections to prevent corrupt
+  // stringified elements (Vue proxy edge-case) from breaking Mongoose casting.
   if (applicantData !== undefined) {
-    // We only want to allow HR to update relevance fields during status update
-    // But for simplicity, we'll allow updating the whole applicantData if provided
-    application.applicantData = applicantData;
+    const clean = { ...applicantData };
+    ['education', 'eligibility', 'experience', 'training'].forEach(key => {
+      if (Array.isArray(clean[key])) clean[key] = parseProfileArray(clean[key]);
+    });
+    application.applicantData = clean;
+    application.markModified('applicantData');
   }
 
-  if (isVerified === true && !application.isVerified) {
+  if (isVerified === true) {
     application.isVerified = true;
     application.verifiedAt = new Date();
     application.verifiedBy = req.user._id;
@@ -202,7 +253,7 @@ export const updateApplicationStatus = catchAsync(async (req, res, next) => {
     }
   }
 
-  await application.save();
+  await application.save({ validateBeforeSave: false });
 
   logAction({
     req,
@@ -341,18 +392,54 @@ export const uploadApplicationAttachment = catchAsync(async (req, res, next) => 
 export const syncApplicationWithProfile = catchAsync(async (req, res, next) => {
   const { id } = req.params;
 
-  const application = await Application.findById(id).populate('submittedBy');
+  const application = await Application.findById(id);
   if (!application) return next(new AppError('Application not found.', 404));
 
-  if (application.isVerified) {
-    return next(new AppError('Application is already verified and locked. Cannot sync.', 400));
-  }
-
-  const Profile = (await import('../models/Profile.js')).default;
-  const profile = await Profile.findOne({ user: application.submittedBy._id }).lean();
+  const profile = await Profile.findOne({ user: application.submittedBy }).lean();
   if (!profile) return next(new AppError('Profile not found for this user.', 404));
 
-  application.applicantData = {
+  // Sanitize profile arrays — if a field was stored as a stringified array in the DB
+  // (JS-notation with single quotes), parse it back to proper objects.
+  const parseProfileArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.flatMap(item => {
+      if (item && typeof item === 'object') return [item];
+      if (typeof item !== 'string') return [];
+      const trimmed = item.trim();
+      const target = trimmed.startsWith('[') ? trimmed : `[${trimmed}]`;
+      // Try vm.runInNewContext which handles JS-notation (single quotes, new ObjectId, etc.)
+      try {
+        const ctx = vm.createContext({ ObjectId: (v) => v, Date: Date });
+        const result = vm.runInNewContext(target, ctx);
+        if (Array.isArray(result)) return result.filter(r => r && typeof r === 'object');
+      } catch {}
+      // Fallback: extract individual {...} blocks via regex
+      const extract = (block, f) => {
+        const m = block.match(new RegExp(`${f}:\\s*['"]([^'"]+)['"]`)) ||
+                  block.match(new RegExp(`${f}:\\s*([^,\\s}]+)`));
+        return m ? m[1] : null;
+      };
+      const blocks = trimmed.match(/\{[^{}]+\}/g) || [];
+      return blocks.map(block => Object.fromEntries(
+        ['type','name','rating','dateOfExam','placeOfExam','licenseNumber',
+         'licenseValidity','document','licenseDocument','school','degree',
+         'level','position','company','serviceType','title','hours',
+         'periodFrom','periodTo','provider','typeOfLD','salaryGrade','statusOfAppointment']
+          .map(f => [f, extract(block, f)])
+          .filter(([, v]) => v !== null)
+      )).filter(o => Object.keys(o).length > 0);
+    });
+  };
+
+  // Nullify empty strings for Date fields so Mongoose doesn't throw a CastError
+  const nullifyDates = (arr, dateFields) =>
+    arr.map(item => {
+      const out = { ...item };
+      dateFields.forEach(f => { if (out[f] === '' || out[f] === 'null') out[f] = null; });
+      return out;
+    });
+
+  const newApplicantData = {
     personalInfo: {
       firstName: profile.name?.firstName,
       middleName: profile.name?.middleName,
@@ -375,21 +462,28 @@ export const syncApplicationWithProfile = catchAsync(async (req, res, next) => {
       currentAddress: profile.currentAddress,
       comelecAddress: profile.comelecAddress,
     },
-    education: profile.education || [],
-    eligibility: profile.eligibility || [],
-    experience: profile.experience || [],
-    training: profile.training || [],
+    education:   parseProfileArray(profile.education),
+    eligibility: nullifyDates(parseProfileArray(profile.eligibility), ['dateOfExam', 'licenseValidity']),
+    experience:  nullifyDates(parseProfileArray(profile.experience),  ['periodFrom', 'periodTo']),
+    training:    nullifyDates(parseProfileArray(profile.training),    ['dateIssued']),
     voluntaryWork: profile.voluntaryWork || [],
-    performanceRating: profile.performanceRating || {},
+    // performanceRating is per-application (not stored in profile) — always preserve submitted value
+    performanceRating: application.applicantData?.performanceRating || {},
     competencies: profile.competencies || [],
     specialSkills: profile.specialSkills || [],
     nonAcademicDistinctions: profile.nonAcademicDistinctions || [],
     memberships: profile.memberships || [],
   };
 
-  await application.save();
+  // Write directly via the raw MongoDB driver — bypasses ALL Mongoose schema casting,
+  // strict mode, and validators so every profile field is stored as-is.
+  await Application.collection.updateOne(
+    { _id: application._id },
+    { $set: { applicantData: newApplicantData } }
+  );
 
-  res.status(200).json({ status: 'success', data: application });
+  const updated = await Application.findById(application._id);
+  res.status(200).json({ status: 'success', data: updated });
 });
 
 // ── Upload Application Submission Document ───────────────────────────────────

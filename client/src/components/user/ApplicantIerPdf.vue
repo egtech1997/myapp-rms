@@ -46,9 +46,15 @@ const eligibility = computed(() => ad.value.eligibility || [])
 const perf        = computed(() => ad.value.performanceRating || {})
 
 // ── Qualification logic ───────────────────────────────────────────────────────
-const isFinal = computed(() => !!props.app.isVerified)
+const isFinal = computed(() => !!props.app.isVerified && !!props.app.job?.finalIerReleasedAt)
 const vc      = computed(() => props.app.verificationChecklist || {})
-const verifier     = computed(() => props.app.verifiedBy?.username || 'HRMO Officer')
+const verifier = computed(() => {
+  const v = props.app.verifiedBy
+  if (!v) return 'HRMO Officer'
+  const mid = v.middleName ? ` ${v.middleName.charAt(0).toUpperCase()}.` : ''
+  const full = [v.firstName, mid ? mid.trim() : '', v.lastName].filter(Boolean).join(' ')
+  return full || v.username || 'HRMO Officer'
+})
 const verifiedDate = computed(() => props.app.verifiedAt
   ? new Date(props.app.verifiedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
   : today)
